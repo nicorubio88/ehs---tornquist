@@ -418,7 +418,7 @@ function render() {
     var evId = field(d,["ID","id"]);
     var desviosEvento = DESVIOS.filter(function(dv) { return dv.Evento_ID === evId; });
     var abiertas = desviosEvento.filter(function(dv) { return dv.Estado !== "Cerrada"; }).length;
-    h+='<tr>';
+    h+='<tr style="cursor:pointer;" onclick="verEvento(\''+evId.replace(/'/g,"\\'")+'\')">';
     h+='<td class="id-cell">'+evId+'</td>';
     h+='<td>'+field(d,["Fecha","date"])+'</td>';
     h+='<td>'+field(d,["Sector","sector"])+'</td>';
@@ -427,7 +427,7 @@ function render() {
     h+='<td>'+field(d,["Persona","person"])+'</td>';
     var desc = field(d,["Descripción","description"]);
     h+='<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+desc+'</td>';
-    h+='<td><button class="btn-desvio" onclick="openDesvio(\''+evId.replace(/'/g,"\\'")+'\')">'+(desviosEvento.length > 0 ? '📋 '+desviosEvento.length : '+ Abrir')+(abiertas > 0 ? '<span class="desvio-count">'+abiertas+'</span>' : '')+'</button></td>';
+    h+='<td><button class="btn-desvio" onclick="event.stopPropagation();openDesvio(\''+evId.replace(/'/g,"\\'")+'\')">'+(desviosEvento.length > 0 ? '📋 '+desviosEvento.length : '+ Abrir')+(abiertas > 0 ? '<span class="desvio-count">'+abiertas+'</span>' : '')+'</button></td>';
     h+='</tr>';
   });
   
@@ -441,6 +441,130 @@ function render() {
   }
   
   document.getElementById("app").innerHTML = h;
+}
+
+// ============ VER DETALLE EVENTO ============
+function verEvento(eventoId) {
+  var old = document.getElementById("evento-overlay");
+  if (old) old.remove();
+  
+  var d = DATA.find(function(r) { return field(r,["ID","id"]) === eventoId; });
+  if (!d) return;
+  
+  var cat = field(d,["Categoría","eventCategory"]);
+  var catIcons = {ACCIDENTE:"🔴",INCIDENTE:"⚠️",MEDIO_AMBIENTE:"🌿"};
+  var catLabels = {ACCIDENTE:"Accidente",INCIDENTE:"Incidente",MEDIO_AMBIENTE:"Medio Ambiente"};
+  var catColors = {ACCIDENTE:"#DC2626",INCIDENTE:"#F59E0B",MEDIO_AMBIENTE:"#059669"};
+  var pri = field(d,["Prioridad","priority"]);
+  var priColors = {CRITICA:"#DC2626",ALTA:"#EA580C",MEDIA:"#CA8A04",BAJA:"#16A34A"};
+  
+  var h = '<div class="modal-overlay" id="evento-overlay" onclick="if(event.target===this)this.remove()">';
+  h += '<div class="modal">';
+  
+  // Header con color de categoría
+  h += '<div class="modal-head" style="background:'+(catColors[cat]||"#3B82F6")+';border-radius:16px 16px 0 0;border-bottom:none;">';
+  h += '<h3 style="color:#fff;">'+(catIcons[cat]||"")+" "+eventoId+' — '+(catLabels[cat]||cat)+'</h3>';
+  h += '<button class="modal-close" style="color:#fff;" onclick="document.getElementById(\'evento-overlay\').remove()">✕</button></div>';
+  
+  h += '<div class="modal-body">';
+  
+  // Prioridad badge
+  h += '<div style="text-align:center;margin-bottom:14px;"><span class="badge" style="background:'+(priColors[pri]||"#6B7280")+';font-size:14px;padding:6px 20px;">Prioridad: '+pri+'</span></div>';
+  
+  // Datos generales
+  h += '<div class="modal-section"><h4>Datos del evento</h4>';
+  h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+  var datos = [
+    ["Fecha", field(d,["Fecha","date"])],
+    ["Hora", field(d,["Hora","time"])],
+    ["Turno", field(d,["Turno","shift"])],
+    ["Sector", field(d,["Sector","sector"])],
+    ["Lugar", field(d,["Lugar","location"])],
+    ["Subtipo", field(d,["Subtipo","eventSubType"])],
+  ];
+  datos.forEach(function(r) {
+    if (r[1]) h += '<div style="background:var(--bg);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
+  });
+  h += '</div></div>';
+  
+  // Persona (si aplica)
+  var persona = field(d,["Persona","person"]);
+  if (persona) {
+    h += '<div class="modal-section"><h4>Persona involucrada</h4>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">';
+    var persDatos = [
+      ["Nombre", persona],
+      ["Legajo", field(d,["Legajo","personId"])],
+      ["Parte del cuerpo", field(d,["Parte del cuerpo","bodyPart"])],
+      ["EPP", field(d,["EPP","epp"])],
+    ];
+    persDatos.forEach(function(r) {
+      if (r[1]) h += '<div style="background:var(--bg);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
+    });
+    h += '</div></div>';
+  }
+  
+  // Consecuencia
+  var consec = field(d,["Consecuencia","consequence"]);
+  if (consec) {
+    h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid '+(priColors[pri]||"#6B7280")+';"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">Consecuencia</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+consec+'</div></div>';
+  }
+  
+  // Tipo accidente / Acto-Condición
+  var tipoAcc = field(d,["Tipo accidente","accidentType"]);
+  var actoCondicion = field(d,["Acto/Condición seleccionada","incidentOption"]);
+  if (tipoAcc) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #DC2626;"><div style="font-size:10px;color:var(--t3);">TIPO DE ACCIDENTE</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+tipoAcc+'</div></div>';
+  if (actoCondicion) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #F59E0B;"><div style="font-size:10px;color:var(--t3);">ACTO/CONDICIÓN IDENTIFICADA</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+actoCondicion+'</div></div>';
+  
+  // Descripción
+  var desc = field(d,["Descripción","description"]);
+  if (desc) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;"><div style="font-size:10px;color:var(--t3);">DESCRIPCIÓN</div><div style="font-size:13px;color:var(--t1);margin-top:4px;line-height:1.5;">'+desc+'</div></div>';
+  
+  // Tarea
+  var tarea = field(d,["Tarea","task"]);
+  if (tarea) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;"><div style="font-size:10px;color:var(--t3);">TAREA QUE SE REALIZABA</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+tarea+'</div></div>';
+  
+  // Acciones inmediatas
+  var accInm = field(d,["Acciones inmediatas","immediateActions"]);
+  if (accInm) h += '<div style="background:rgba(234,88,12,.1);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #EA580C;"><div style="font-size:10px;color:#FDBA74;">ACCIONES INMEDIATAS</div><div style="font-size:13px;color:#FED7AA;margin-top:2px;">'+accInm+'</div></div>';
+  
+  // Notificaciones
+  var notifResp = field(d,["Notif. responsable área","areaNotified"]);
+  var notifART = field(d,["Notif. ART","artNotified"]);
+  var notifAuth = field(d,["Notif. autoridad","authorityNotified"]);
+  if (notifResp || notifART || notifAuth) {
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">';
+    if (notifResp) h += '<div style="background:var(--bg);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. responsable: <strong style="color:var(--t1);">'+notifResp+'</strong>'+(field(d,["Responsable notificado","areaNotifiedTo"])?' — '+field(d,["Responsable notificado","areaNotifiedTo"]):'')+'</div>';
+    if (notifART) h += '<div style="background:var(--bg);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. ART: <strong style="color:var(--t1);">'+notifART+'</strong></div>';
+    if (notifAuth) h += '<div style="background:var(--bg);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. autoridad: <strong style="color:var(--t1);">'+notifAuth+'</strong></div>';
+    h += '</div>';
+  }
+  
+  // Medio ambiente campos
+  var sustancia = field(d,["Sustancia","substance"]);
+  if (sustancia) {
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">';
+    [["Sustancia",sustancia],["Volumen",field(d,["Volumen estimado","estimatedVolume"])],["Área afectada",field(d,["Área afectada","areaAffected"])],["Contención",field(d,["Contención","containmentActions"])]].forEach(function(r) {
+      if (r[1]) h += '<div style="background:var(--bg);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
+    });
+    h += '</div>';
+  }
+  
+  // Reportado por
+  var reportadoPor = field(d,["Reportado por","reportedBy"]);
+  if (reportadoPor) {
+    h += '<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;margin-top:8px;"><span style="font-size:11px;color:var(--t3);">Reportado por: </span><span style="font-size:12px;color:var(--t1);font-weight:600;">'+reportadoPor+'</span>';
+    var cargo = field(d,["Cargo","reporterRole"]);
+    if (cargo) h += '<span style="font-size:11px;color:var(--t3);"> ('+cargo+')</span>';
+    h += '</div>';
+  }
+  
+  // Botón abrir desvío
+  h += '<div style="text-align:center;margin-top:14px;"><button class="btn-desvio" style="padding:10px 24px;font-size:14px;" onclick="document.getElementById(\'evento-overlay\').remove();openDesvio(\''+eventoId.replace(/'/g,"\\'")+'\')">📌 Gestionar desvío</button></div>';
+  
+  h += '</div></div></div>';
+  
+  document.body.insertAdjacentHTML("beforeend", h);
 }
 
 // ============ DESVÍOS ============
