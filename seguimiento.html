@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seguimiento de Acciones — EHS Tornquist</title>
+<style>
+  :root { --bg:#0F172A; --bg2:#1E293B; --bg3:#334155; --border:#475569; --t1:#F1F5F9; --t2:#94A3B8; --t3:#64748B; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--t1); min-height:100vh; }
+  .app { max-width:1200px; margin:0 auto; padding:16px; }
+  
+  .header { background:linear-gradient(135deg,#5B21B6,#7C3AED); border-radius:16px; padding:20px 24px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  .header h1 { font-size:20px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+  .header p { font-size:13px; color:rgba(255,255,255,.6); margin-top:2px; }
+  .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .filters select { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:8px 12px; font-size:13px; outline:none; cursor:pointer; }
+  .filters select option { background:#1E293B; color:#F1F5F9; }
+  .nav-btn { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:8px 14px; font-size:13px; cursor:pointer; font-weight:600; text-decoration:none; }
+  .nav-btn:hover { background:rgba(255,255,255,.25); }
+  
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; margin-bottom:16px; }
+  .kpi { border-radius:14px; padding:14px; border-left:4px solid; }
+  .kpi .value { font-size:28px; font-weight:800; }
+  .kpi .label { font-size:11px; font-weight:600; color:var(--t2); margin-top:2px; }
+  .kpi .sub { font-size:10px; color:var(--t3); margin-top:1px; }
+  
+  .section-title { font-size:14px; font-weight:700; color:var(--t2); margin:16px 0 10px; display:flex; align-items:center; gap:8px; }
+  
+  .action-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .action-table th { padding:10px 10px; text-align:left; font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; border-bottom:1px solid var(--border); background:rgba(51,65,85,.4); position:sticky; top:0; }
+  .action-table td { padding:10px 10px; border-bottom:1px solid rgba(71,85,105,.3); color:var(--t2); vertical-align:top; }
+  .action-table tr:hover td { background:rgba(124,58,237,.05); }
+  
+  .table-card { background:var(--bg2); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:16px; }
+  .table-header { padding:12px 16px; border-bottom:1px solid var(--border); background:rgba(51,65,85,.5); display:flex; align-items:center; justify-content:space-between; }
+  .table-header h3 { font-size:14px; font-weight:700; color:var(--t2); }
+  .table-wrap { overflow-x:auto; max-height:70vh; overflow-y:auto; }
+  
+  .badge { display:inline-block; padding:3px 10px; border-radius:10px; font-size:11px; font-weight:700; color:#fff; }
+  .badge-vencida { background:#DC2626; }
+  .badge-prox { background:#F59E0B; }
+  .badge-tiempo { background:#16A34A; }
+  .badge-cerrada { background:#6B7280; }
+  .badge-sin-fecha { background:#475569; }
+  
+  .badge-acc { background:#DC2626; }
+  .badge-inc { background:#F59E0B; }
+  .badge-ma { background:#059669; }
+  
+  .dias-cell { font-weight:700; font-size:12px; }
+  .dias-vencida { color:#F87171; }
+  .dias-prox { color:#FBBF24; }
+  .dias-tiempo { color:#34D399; }
+  .dias-cerrada { color:#6B7280; }
+  
+  .evento-link { color:#818CF8; font-family:monospace; font-weight:700; font-size:12px; }
+  
+  .btn-sm { padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; border:none; cursor:pointer; margin-right:4px; margin-top:3px; }
+  .btn-cerrar { background:#16A34A; color:#fff; }
+  .btn-cerrar:hover { background:#15803D; }
+  .btn-proceso { background:#F59E0B; color:#fff; }
+  .btn-proceso:hover { background:#D97706; }
+  .btn-reprogram { background:#3B82F6; color:#fff; }
+  .btn-reprogram:hover { background:#2563EB; }
+  .btn-nota { background:#6366F1; color:#fff; }
+  .btn-nota:hover { background:#4F46E5; }
+  .btn-resp { background:#8B5CF6; color:#fff; }
+  .btn-resp:hover { background:#7C3AED; }
+  
+  .progress-bar { height:8px; background:var(--bg3); border-radius:4px; overflow:hidden; margin-top:6px; }
+  .progress-fill { height:100%; border-radius:4px; transition:width .4s; }
+  
+  .notas-list { margin-top:4px; }
+  .nota-item { font-size:10px; color:var(--t3); padding:2px 0; border-top:1px solid rgba(71,85,105,.2); }
+  .nota-item:first-child { border-top:none; }
+  .nota-fecha { color:#818CF8; font-weight:600; }
+  
+  .loading { text-align:center; padding:60px 20px; }
+  .spinner { width:40px; height:40px; border:3px solid var(--bg3); border-top-color:#7C3AED; border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 12px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  
+  .empty { text-align:center; padding:40px; color:var(--t3); }
+  
+  .sort-btn { cursor:pointer; user-select:none; }
+  .sort-btn:hover { color:#C4B5FD; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loading"><div class="spinner"></div><p style="color:#94A3B8;">Cargando acciones...</p></div>
+</div>
+
+<script>
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPVE8sjKNoGgCcQAyqozGMsmg0ygNWahjUOigXr6CWcypygFEKHkMvgGikgmwwxiQX/exec";
+
+var DATA_REG = [];
+var DATA_DEV = [];
+var F_ESTADO = "Pendientes";
+var F_SECTOR = "Todos";
+var F_RESPONSABLE = "Todos";
+var F_CATEGORIA = "Todos";
+var SORT_COL = "estado_orden";
+var SORT_DIR = "asc";
+
+function loadData() {
+  document.getElementById("app").innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#94A3B8;">Cargando acciones...</p></div>';
+  fetch(APPS_SCRIPT_URL + "?tipo=all")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.registros) { DATA_REG = data.registros; DATA_DEV = data.desvios || []; }
+      else { DATA_REG = []; DATA_DEV = []; }
+      render();
+    })
+    .catch(function() { DATA_REG = []; DATA_DEV = []; render(); });
+}
+
+function field(d, keys) { for (var i = 0; i < keys.length; i++) { if (d[keys[i]]) return d[keys[i]]; } return ""; }
+
+function getEvento(eventoId) {
+  return DATA_REG.find(function(d) { return field(d,["ID","id"]) === eventoId; });
+}
+
+function getDiasRestantes(fechaVenc) {
+  if (!fechaVenc) return null;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var venc = new Date(fechaVenc); venc.setHours(0,0,0,0);
+  return Math.ceil((venc - hoy) / 86400000);
+}
+
+function getEstadoVisual(dv) {
+  var estado = dv.Estado || "Abierta";
+  if (estado === "Cerrada") return { label: "Cerrada", badge: "badge-cerrada", diasClass: "dias-cerrada", orden: 4 };
+  var dias = getDiasRestantes(dv.Fecha_Vencimiento);
+  if (dias === null) return { label: "Sin fecha", badge: "badge-sin-fecha", diasClass: "dias-cerrada", orden: 3 };
+  if (dias < 0) return { label: "Vencida", badge: "badge-vencida", diasClass: "dias-vencida", orden: 0, dias: dias };
+  if (dias <= 7) return { label: "Próx. a vencer", badge: "badge-prox", diasClass: "dias-prox", orden: 1, dias: dias };
+  return { label: "En tiempo", badge: "badge-tiempo", diasClass: "dias-tiempo", orden: 2, dias: dias };
+}
+
+function getDiasLabel(ev) {
+  if (ev.label === "Cerrada") return "—";
+  if (ev.label === "Sin fecha") return "Sin fecha";
+  if (ev.dias < 0) return Math.abs(ev.dias) + "d vencida";
+  if (ev.dias === 0) return "Vence HOY";
+  return ev.dias + "d restantes";
+}
+
+function getFiltered() {
+  var enriched = DATA_DEV.map(function(dv) {
+    var ev = getEvento(dv.Evento_ID) || {};
+    var estadoV = getEstadoVisual(dv);
+    return {
+      raw: dv,
+      evento: ev,
+      desvioId: dv.Desvio_ID,
+      eventoId: dv.Evento_ID,
+      nro: dv.Nro_Accion,
+      descripcion: dv.Descripcion || "",
+      responsable: dv.Responsable || "—",
+      fechaVenc: dv.Fecha_Vencimiento || "",
+      estado: dv.Estado || "Abierta",
+      estadoVisual: estadoV,
+      sector: field(ev, ["Sector","sector"]) || "—",
+      categoria: field(ev, ["Categoría","eventCategory"]) || "",
+      notas: dv.Notas || "",
+      fechaCreacion: dv.Fecha_Creacion || "",
+      fechaCierre: dv.Fecha_Cierre || "",
+      cerradoPor: dv.Cerrado_Por || "",
+    };
+  });
+
+  return enriched.filter(function(d) {
+    if (F_ESTADO === "Pendientes" && d.estado === "Cerrada") return false;
+    if (F_ESTADO === "Vencidas" && d.estadoVisual.label !== "Vencida") return false;
+    if (F_ESTADO === "Cerradas" && d.estado !== "Cerrada") return false;
+    if (F_SECTOR !== "Todos" && d.sector !== F_SECTOR) return false;
+    if (F_RESPONSABLE !== "Todos" && d.responsable !== F_RESPONSABLE) return false;
+    if (F_CATEGORIA !== "Todos" && d.categoria !== F_CATEGORIA) return false;
+    return true;
+  }).sort(function(a, b) {
+    if (SORT_COL === "estado_orden") return (SORT_DIR === "asc" ? 1 : -1) * (a.estadoVisual.orden - b.estadoVisual.orden);
+    if (SORT_COL === "fecha") return (SORT_DIR === "asc" ? 1 : -1) * (String(a.fechaVenc).localeCompare(String(b.fechaVenc)));
+    if (SORT_COL === "responsable") return (SORT_DIR === "asc" ? 1 : -1) * (a.responsable.localeCompare(b.responsable));
+    if (SORT_COL === "sector") return (SORT_DIR === "asc" ? 1 : -1) * (a.sector.localeCompare(b.sector));
+    return 0;
+  });
+}
+
+function sortBy(col) {
+  if (SORT_COL === col) SORT_DIR = SORT_DIR === "asc" ? "desc" : "asc";
+  else { SORT_COL = col; SORT_DIR = "asc"; }
+  render();
+}
+
+function render() {
+  var filtered = getFiltered();
+  
+  // Collect unique values for filters
+  var allEnriched = DATA_DEV.map(function(dv) {
+    var ev = getEvento(dv.Evento_ID) || {};
+    return { responsable: dv.Responsable || "—", sector: field(ev, ["Sector","sector"]) || "—", categoria: field(ev, ["Categoría","eventCategory"]) || "", estado: dv.Estado || "Abierta", estadoVisual: getEstadoVisual(dv) };
+  });
+  
+  var responsables = {}; var sectores = {}; var categorias = {};
+  allEnriched.forEach(function(d) {
+    if (d.responsable) responsables[d.responsable] = 1;
+    if (d.sector) sectores[d.sector] = 1;
+    if (d.categoria) categorias[d.categoria] = 1;
+  });
+  
+  // KPIs
+  var totalAcciones = DATA_DEV.length;
+  var pendientes = allEnriched.filter(function(d) { return d.estado !== "Cerrada"; }).length;
+  var vencidas = allEnriched.filter(function(d) { return d.estado !== "Cerrada" && d.estadoVisual.label === "Vencida"; }).length;
+  var proxVencer = allEnriched.filter(function(d) { return d.estado !== "Cerrada" && d.estadoVisual.label === "Próx. a vencer"; }).length;
+  var enTiempo = allEnriched.filter(function(d) { return d.estado !== "Cerrada" && (d.estadoVisual.label === "En tiempo" || d.estadoVisual.label === "Sin fecha"); }).length;
+  var cerradas = allEnriched.filter(function(d) { return d.estado === "Cerrada"; }).length;
+  var pctCumpl = totalAcciones > 0 ? Math.round((cerradas / totalAcciones) * 100) : 0;
+  
+  var h = '';
+  
+  // Header
+  h += '<div class="header"><div><h1>📌 Seguimiento de Acciones</h1><p>Planta Tornquist — Control de pendientes y vencimientos</p></div>';
+  h += '<div class="filters">';
+  h += '<select onchange="F_ESTADO=this.value;render()">';
+  ["Pendientes","Vencidas","Cerradas","Todas"].forEach(function(e) { h += '<option value="'+e+'"'+(F_ESTADO===e?' selected':'')+'>'+e+'</option>'; });
+  h += '</select>';
+  h += '<select onchange="F_SECTOR=this.value;render()"><option value="Todos">Todos los sectores</option>';
+  Object.keys(sectores).sort().forEach(function(s) { h += '<option value="'+s+'"'+(F_SECTOR===s?' selected':'')+'>'+s+'</option>'; });
+  h += '</select>';
+  h += '<select onchange="F_RESPONSABLE=this.value;render()"><option value="Todos">Todos los responsables</option>';
+  Object.keys(responsables).sort().forEach(function(r) { h += '<option value="'+r+'"'+(F_RESPONSABLE===r?' selected':'')+'>'+r+'</option>'; });
+  h += '</select>';
+  h += '<select onchange="F_CATEGORIA=this.value;render()"><option value="Todos">Todas las categorías</option>';
+  var catLabels = {ACCIDENTE:"Accidente",INCIDENTE:"Incidente",MEDIO_AMBIENTE:"Medio Ambiente"};
+  Object.keys(categorias).sort().forEach(function(c) { h += '<option value="'+c+'"'+(F_CATEGORIA===c?' selected':'')+'>'+( catLabels[c]||c)+'</option>'; });
+  h += '</select>';
+  h += '<a href="index.html" class="nav-btn">🏠 Inicio</a>';
+  h += '<button class="nav-btn" onclick="loadData()">🔄</button>';
+  h += '</div></div>';
+  
+  // KPIs
+  h += '<div class="kpi-grid">';
+  [
+    { value: totalAcciones, label: "Total acciones", sub: "Todas las cargadas", color: "#7C3AED", bg: "rgba(124,58,237,.1)" },
+    { value: pendientes, label: "Pendientes", sub: "Abiertas + En proceso", color: "#3B82F6", bg: "rgba(59,130,246,.1)" },
+    { value: vencidas, label: "Vencidas", sub: "Pasó la fecha límite", color: "#DC2626", bg: "rgba(220,38,38,.1)" },
+    { value: proxVencer, label: "Próx. a vencer", sub: "Menos de 7 días", color: "#F59E0B", bg: "rgba(245,158,11,.1)" },
+    { value: enTiempo, label: "En tiempo", sub: "Dentro del plazo", color: "#16A34A", bg: "rgba(22,163,74,.1)" },
+    { value: pctCumpl + "%", label: "Cumplimiento", sub: cerradas + " de " + totalAcciones + " cerradas", color: pctCumpl >= 80 ? "#16A34A" : pctCumpl >= 50 ? "#F59E0B" : "#DC2626", bg: pctCumpl >= 80 ? "rgba(22,163,74,.1)" : pctCumpl >= 50 ? "rgba(245,158,11,.1)" : "rgba(220,38,38,.1)" },
+  ].forEach(function(k) {
+    h += '<div class="kpi" style="background:'+k.bg+';border-left-color:'+k.color+';"><div class="value" style="color:'+k.color+';">'+k.value+'</div><div class="label">'+k.label+'</div><div class="sub">'+k.sub+'</div></div>';
+  });
+  h += '</div>';
+  
+  // Progress bar
+  if (totalAcciones > 0) {
+    h += '<div style="margin-bottom:16px;"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3);margin-bottom:4px;"><span>Progreso general</span><span>'+pctCumpl+'% completado</span></div>';
+    h += '<div class="progress-bar"><div class="progress-fill" style="width:'+pctCumpl+'%;background:linear-gradient(90deg,#7C3AED,#A78BFA);"></div></div></div>';
+  }
+  
+  // Table
+  h += '<div class="table-card"><div class="table-header"><h3>📋 Acciones ('+filtered.length+' de '+totalAcciones+')</h3></div>';
+  h += '<div class="table-wrap"><table class="action-table"><thead><tr>';
+  h += '<th class="sort-btn" onclick="sortBy(\'estado_orden\')">Estado '+(SORT_COL==="estado_orden"?(SORT_DIR==="asc"?"▲":"▼"):"")+'</th>';
+  h += '<th class="sort-btn" onclick="sortBy(\'fecha\')">Vencimiento '+(SORT_COL==="fecha"?(SORT_DIR==="asc"?"▲":"▼"):"")+'</th>';
+  h += '<th>Tiempo</th>';
+  h += '<th>Evento</th>';
+  h += '<th class="sort-btn" onclick="sortBy(\'sector\')">Sector '+(SORT_COL==="sector"?(SORT_DIR==="asc"?"▲":"▼"):"")+'</th>';
+  h += '<th>Acción</th>';
+  h += '<th class="sort-btn" onclick="sortBy(\'responsable\')">Responsable '+(SORT_COL==="responsable"?(SORT_DIR==="asc"?"▲":"▼"):"")+'</th>';
+  h += '<th>Gestión</th>';
+  h += '</tr></thead><tbody>';
+  
+  var catIcons = {ACCIDENTE:"🔴",INCIDENTE:"⚠️",MEDIO_AMBIENTE:"🌿"};
+  var catBadges = {ACCIDENTE:"badge-acc",INCIDENTE:"badge-inc",MEDIO_AMBIENTE:"badge-ma"};
+  var catShort = {ACCIDENTE:"Acc",INCIDENTE:"Inc",MEDIO_AMBIENTE:"MA"};
+  
+  if (filtered.length === 0) {
+    h += '<tr><td colspan="8" class="empty">No hay acciones con los filtros seleccionados</td></tr>';
+  } else {
+    filtered.forEach(function(d) {
+      var ev = d.estadoVisual;
+      var fechaVencStr = d.fechaVenc ? String(d.fechaVenc).substring(0,10) : "—";
+      h += '<tr>';
+      // Estado
+      h += '<td><span class="badge '+ev.badge+'">'+ev.label+'</span>';
+      if (d.estado !== "Cerrada" && d.estado !== "Abierta") h += '<br><span style="font-size:10px;color:var(--t3);">'+d.estado+'</span>';
+      h += '</td>';
+      // Vencimiento
+      h += '<td style="white-space:nowrap;">'+fechaVencStr+'</td>';
+      // Tiempo restante
+      h += '<td class="dias-cell '+ev.diasClass+'">'+getDiasLabel(ev)+'</td>';
+      // Evento
+      h += '<td><span class="evento-link">'+d.eventoId+'</span>';
+      if (d.categoria) h += ' <span class="badge '+( catBadges[d.categoria]||"")+'" style="font-size:9px;padding:1px 6px;">'+( catShort[d.categoria]||"")+'</span>';
+      h += '</td>';
+      // Sector
+      h += '<td style="font-size:12px;">'+d.sector+'</td>';
+      // Acción
+      h += '<td style="max-width:220px;"><div style="font-size:12px;color:var(--t1);">'+d.descripcion+'</div>';
+      // Notas
+      if (d.notas) {
+        h += '<div class="notas-list">';
+        d.notas.split("|").forEach(function(n) {
+          if (n.trim()) h += '<div class="nota-item">💬 '+n.trim()+'</div>';
+        });
+        h += '</div>';
+      }
+      if (d.estado === "Cerrada" && d.cerradoPor) {
+        h += '<div style="font-size:10px;color:#34D399;margin-top:3px;">✅ Cerrada por '+d.cerradoPor+(d.fechaCierre?' — '+String(d.fechaCierre).substring(0,10):'')+'</div>';
+      }
+      h += '</td>';
+      // Responsable
+      h += '<td style="font-size:12px;font-weight:600;">'+d.responsable+'</td>';
+      // Gestión
+      h += '<td style="white-space:nowrap;">';
+      if (d.estado !== "Cerrada") {
+        if (d.estado === "Abierta") h += '<button class="btn-sm btn-proceso" onclick="cambiarEstado(\''+d.desvioId+'\','+d.nro+',\'En proceso\')">▶</button>';
+        h += '<button class="btn-sm btn-cerrar" onclick="cerrarAccion(\''+d.desvioId+'\','+d.nro+')">✓</button>';
+        h += '<button class="btn-sm btn-nota" onclick="agregarNota(\''+d.desvioId+'\','+d.nro+')">💬</button>';
+        h += '<button class="btn-sm btn-reprogram" onclick="reprogramar(\''+d.desvioId+'\','+d.nro+')">📅</button>';
+        h += '<button class="btn-sm btn-resp" onclick="cambiarResp(\''+d.desvioId+'\','+d.nro+')">👤</button>';
+      }
+      h += '</td>';
+      h += '</tr>';
+    });
+  }
+  
+  h += '</tbody></table></div></div>';
+  
+  // Legend
+  h += '<div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;padding:8px;font-size:11px;color:var(--t3);">';
+  h += '<span><span class="badge badge-vencida" style="font-size:9px;">Vencida</span> Pasó la fecha</span>';
+  h += '<span><span class="badge badge-prox" style="font-size:9px;">Próx.</span> Menos de 7 días</span>';
+  h += '<span><span class="badge badge-tiempo" style="font-size:9px;">En tiempo</span> Dentro del plazo</span>';
+  h += '<span><span class="badge badge-cerrada" style="font-size:9px;">Cerrada</span> Completada</span>';
+  h += '<span>▶ En proceso | ✓ Cerrar | 💬 Nota | 📅 Reprogramar | 👤 Cambiar resp.</span>';
+  h += '</div>';
+  
+  document.getElementById("app").innerHTML = h;
+}
+
+// ============ ACCIONES ============
+function cambiarEstado(desvioId, nro, nuevoEstado) {
+  var params = new URLSearchParams();
+  params.append("action", "actualizar_desvio");
+  params.append("desvio_id", desvioId);
+  params.append("nro_accion", nro);
+  params.append("estado", nuevoEstado);
+  
+  DATA_DEV.forEach(function(dv) {
+    if (dv.Desvio_ID === desvioId && String(dv.Nro_Accion) === String(nro)) dv.Estado = nuevoEstado;
+  });
+  render();
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+function cerrarAccion(desvioId, nro) {
+  var quien = prompt("¿Quién cierra esta acción?");
+  if (!quien) return;
+  
+  var params = new URLSearchParams();
+  params.append("action", "actualizar_desvio");
+  params.append("desvio_id", desvioId);
+  params.append("nro_accion", nro);
+  params.append("estado", "Cerrada");
+  params.append("cerrado_por", quien);
+  
+  DATA_DEV.forEach(function(dv) {
+    if (dv.Desvio_ID === desvioId && String(dv.Nro_Accion) === String(nro)) {
+      dv.Estado = "Cerrada"; dv.Fecha_Cierre = new Date().toISOString(); dv.Cerrado_Por = quien;
+    }
+  });
+  render();
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+function agregarNota(desvioId, nro) {
+  var nota = prompt("Escribí la nota de avance:");
+  if (!nota) return;
+  var fechaHoy = new Date().toLocaleDateString("es-AR");
+  var notaConFecha = fechaHoy + ": " + nota;
+  
+  var params = new URLSearchParams();
+  params.append("action", "agregar_nota");
+  params.append("desvio_id", desvioId);
+  params.append("nro_accion", nro);
+  params.append("nota", notaConFecha);
+  
+  DATA_DEV.forEach(function(dv) {
+    if (dv.Desvio_ID === desvioId && String(dv.Nro_Accion) === String(nro)) {
+      dv.Notas = (dv.Notas || "") + (dv.Notas ? " | " : "") + notaConFecha;
+    }
+  });
+  render();
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+function reprogramar(desvioId, nro) {
+  var nuevaFecha = prompt("Nueva fecha de vencimiento (AAAA-MM-DD):");
+  if (!nuevaFecha || !/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)) { if(nuevaFecha) alert("Formato incorrecto. Usá AAAA-MM-DD"); return; }
+  
+  var params = new URLSearchParams();
+  params.append("action", "reprogramar_desvio");
+  params.append("desvio_id", desvioId);
+  params.append("nro_accion", nro);
+  params.append("nueva_fecha", nuevaFecha);
+  
+  DATA_DEV.forEach(function(dv) {
+    if (dv.Desvio_ID === desvioId && String(dv.Nro_Accion) === String(nro)) {
+      dv.Fecha_Vencimiento = nuevaFecha;
+      var notaRepr = new Date().toLocaleDateString("es-AR") + ": Reprogramada a " + nuevaFecha;
+      dv.Notas = (dv.Notas || "") + (dv.Notas ? " | " : "") + notaRepr;
+    }
+  });
+  render();
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+function cambiarResp(desvioId, nro) {
+  var nuevoResp = prompt("Nuevo responsable:");
+  if (!nuevoResp) return;
+  
+  var params = new URLSearchParams();
+  params.append("action", "cambiar_responsable");
+  params.append("desvio_id", desvioId);
+  params.append("nro_accion", nro);
+  params.append("nuevo_responsable", nuevoResp);
+  
+  DATA_DEV.forEach(function(dv) {
+    if (dv.Desvio_ID === desvioId && String(dv.Nro_Accion) === String(nro)) {
+      var notaResp = new Date().toLocaleDateString("es-AR") + ": Responsable cambiado a " + nuevoResp;
+      dv.Notas = (dv.Notas || "") + (dv.Notas ? " | " : "") + notaResp;
+      dv.Responsable = nuevoResp;
+    }
+  });
+  render();
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+loadData();
+</script>
+</body>
+</html>
