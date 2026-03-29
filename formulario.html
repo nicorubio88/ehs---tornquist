@@ -104,7 +104,7 @@ var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPVE8sjKNoGgCcQA
 // =============================================
 
 var SECTORS = ["Pulper","Planta de Pasta","Mesas-Prensas","Secado","Estucado","Pope-Sexta","Caldera","Efluente Primario - Hidropolis","Efluente Secundario","Laboratorio","Cellier","Rebobinadora","Alistado","Cortadora - exCarpintería","Despacho","MP Fibrosa","MP Cellier","MP Químicos","Sector Camiones","Taller Eléctrico","Taller Icopro","Taller Mecánico","Administración/oficinas"];
-var SHIFTS = ["Mañana","Tarde","Noche"];
+var SHIFTS = ["A","B","C","D"];
 var BODY_PARTS = ["Cabeza","Ojos","Cara","Cuello","Hombro","Brazo","Mano","Dedos","Tronco","Espalda","Cadera","Pierna","Rodilla","Pie","Múltiples"];
 var EPP_LIST = ["Casco","Anteojos","Protección auditiva","Guantes","Calzado de seguridad","Protección respiratoria","Arnés","Ropa ignífuga","Otro"];
 
@@ -421,7 +421,7 @@ function renderCurrentStep() {
       +'<div class="field"><label>Hora</label><input type="time" value="'+(f.time||"")+'" onchange="setField(\'time\',this.value)"></div>'
       +'</div></div>';
     h+='<div class="section"><div class="section-title" style="color:'+color+';">🔄 Turno</div><div class="chips">';
-    var shiftColors={Mañana:"#F59E0B",Tarde:"#3B82F6",Noche:"#6366F1"};
+    var shiftColors={A:"#3B82F6",B:"#F59E0B",C:"#16A34A",D:"#8B5CF6"};
     SHIFTS.forEach(function(s){ var sel=f.shift===s; var sc=shiftColors[s];
       h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+sc+";border-color:"+sc+";":"")+'" onclick="setField(\'shift\',\''+(sel?"":s)+'\')">'+s+'</div>';
     });

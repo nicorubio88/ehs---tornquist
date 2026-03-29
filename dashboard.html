@@ -216,7 +216,7 @@ function render() {
   // By shift
   var byShift = {};
   filtered.forEach(function(d) { var s = field(d,["Turno","shift"]); if(s) byShift[s]=(byShift[s]||0)+1; });
-  var shiftData = ["Mañana","Tarde","Noche"].map(function(s) { return {label:s,value:byShift[s]||0}; });
+  var shiftData = ["A","B","C","D"].map(function(s) { return {label:s,value:byShift[s]||0}; });
   
   // By sector
   var bySector = {};
@@ -263,7 +263,7 @@ function render() {
   Object.keys(sectors).sort().forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SECTOR===s?' selected':'')+'>'+s+'</option>'; });
   h += '</select>';
   h += '<select onchange="FILTER_SHIFT=this.value;render()"><option value="Todos">Todos los turnos</option>';
-  ["Mañana","Tarde","Noche"].forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SHIFT===s?' selected':'')+'>'+s+'</option>'; });
+  ["A","B","C","D"].forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SHIFT===s?' selected':'')+'>'+s+'</option>'; });
   h += '</select>';
   h += '<a href="index.html" class="refresh-btn" style="text-decoration:none;">🏠 Inicio</a><button class="refresh-btn" onclick="loadData()">🔄 Actualizar</button>';
   h += '</div></div>';
@@ -290,7 +290,7 @@ function render() {
   
   // Bar: By Shift
   h += '<div class="chart-card"><h3>📊 Eventos por turno</h3>';
-  var shiftColors = {Mañana:"#F59E0B",Tarde:"#3B82F6",Noche:"#6366F1"};
+  var shiftColors = {A:"#3B82F6",B:"#F59E0B",C:"#16A34A",D:"#8B5CF6"};
   var shiftMax = Math.max.apply(null,shiftData.map(function(d){return d.value;}).concat([1]));
   shiftData.forEach(function(d) {
     var pct = (d.value/shiftMax*100);
