@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Registro EHS - Planta Tornquist</title>
+<style>
+  :root { --cat-color: #3B82F6; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; background:linear-gradient(135deg,#111827,#1F2937,#111827); color:#E5E7EB; min-height:100vh; }
+  .app { max-width:480px; margin:0 auto; padding:16px; }
+  .header { background:linear-gradient(135deg,var(--cat-color),color-mix(in srgb,var(--cat-color),#000 20%)); border-radius:16px; padding:16px 20px; margin-bottom:16px; box-shadow:0 8px 25px rgba(0,0,0,.3); }
+  .header h1 { font-size:18px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+  .header p { font-size:13px; color:rgba(255,255,255,.7); margin-top:4px; }
+  .steps { display:flex; align-items:center; justify-content:center; gap:4px; margin-bottom:16px; }
+  .step-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; transition:all .3s; }
+  .step-dot.done { background:var(--cat-color); color:#fff; }
+  .step-dot.active { background:var(--cat-color); color:#fff; transform:scale(1.15); box-shadow:0 0 16px color-mix(in srgb,var(--cat-color),transparent 40%); }
+  .step-dot.pending { background:#374151; color:#6B7280; }
+  .step-line { width:20px; height:2px; background:#374151; transition:all .3s; }
+  .step-line.done { background:var(--cat-color); }
+  .step-title { text-align:center; font-size:12px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+  .section { margin-bottom:20px; }
+  .section-title { font-size:15px; font-weight:700; color:#93C5FD; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { padding:10px 16px; border-radius:12px; border:2px solid #4B5563; background:rgba(31,41,55,.5); color:#D1D5DB; font-size:13px; font-weight:500; cursor:pointer; transition:all .2s; user-select:none; }
+  .chip:hover { border-color:#9CA3AF; }
+  .chip.selected { color:#fff; border-color:var(--cat-color); background:var(--cat-color); box-shadow:0 4px 14px color-mix(in srgb,var(--cat-color),transparent 60%); transform:scale(1.05); }
+  .cat-card { padding:20px; border-radius:16px; border:2px solid #4B5563; background:rgba(31,41,55,.4); text-align:center; cursor:pointer; transition:all .3s; }
+  .cat-card:hover { border-color:#9CA3AF; }
+  .cat-card.selected { color:#fff; transform:scale(1.05); box-shadow:0 8px 25px rgba(0,0,0,.3); }
+  .cat-card .icon { font-size:32px; display:block; margin-bottom:8px; }
+  .cat-card .label { font-weight:700; font-size:14px; }
+  .cat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .pri-card { width:100%; padding:14px 16px; border-radius:12px; border:2px solid #4B5563; background:rgba(31,41,55,.5); text-align:left; cursor:pointer; transition:all .2s; margin-bottom:8px; }
+  .pri-card:hover { border-color:#9CA3AF; }
+  .pri-card.selected { color:#fff; transform:scale(1.02); }
+  .pri-card .pri-label { font-weight:700; font-size:14px; }
+  .pri-card .pri-desc { font-size:11px; margin-top:2px; opacity:.8; }
+  .opt-card { width:100%; padding:12px 16px; border-radius:12px; border:2px solid #4B5563; background:rgba(31,41,55,.5); text-align:left; cursor:pointer; transition:all .2s; margin-bottom:8px; }
+  .opt-card:hover { border-color:#9CA3AF; }
+  .opt-card.selected { color:#fff; transform:scale(1.02); }
+  .opt-card .opt-label { font-weight:700; font-size:13px; }
+  .opt-card .opt-desc { font-size:11px; margin-top:2px; opacity:.8; }
+  .pri-result { width:100%; padding:16px; border-radius:12px; text-align:center; font-weight:700; font-size:18px; color:#fff; margin-top:8px; }
+  .field label { display:block; font-size:13px; font-weight:600; color:#D1D5DB; margin-bottom:6px; }
+  .field label .req { color:#F87171; }
+  .field input, .field textarea { width:100%; background:rgba(31,41,55,.6); border:1px solid #4B5563; border-radius:12px; padding:12px 16px; color:#F3F4F6; font-size:14px; font-family:inherit; outline:none; transition:border .2s; }
+  .field input:focus, .field textarea:focus { border-color:#3B82F6; box-shadow:0 0 0 3px rgba(59,130,246,.3); }
+  .field textarea { resize:none; min-height:80px; }
+  .field { margin-bottom:14px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .nav { display:flex; gap:12px; margin-top:20px; }
+  .btn { flex:1; padding:14px; border-radius:12px; font-size:14px; font-weight:700; border:none; cursor:pointer; transition:all .2s; }
+  .btn-back { background:#374151; color:#D1D5DB; }
+  .btn-back:hover { background:#4B5563; }
+  .btn-next { color:#fff; background:var(--cat-color); box-shadow:0 4px 14px color-mix(in srgb,var(--cat-color),transparent 50%); }
+  .btn-next:hover { transform:scale(1.02); }
+  .btn-next:disabled { background:#374151; color:#6B7280; box-shadow:none; cursor:not-allowed; transform:none; }
+  .btn-submit { background:linear-gradient(135deg,var(--cat-color),color-mix(in srgb,var(--cat-color),#000 15%)); color:#fff; box-shadow:0 4px 14px color-mix(in srgb,var(--cat-color),transparent 50%); }
+  .review-box { background:rgba(31,41,55,.5); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .review-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(75,85,99,.5); }
+  .review-row:last-child { border-bottom:none; }
+  .review-label { color:#9CA3AF; font-size:13px; }
+  .review-value { color:#E5E7EB; font-size:13px; font-weight:500; text-align:right; max-width:60%; }
+  .review-center { text-align:center; margin-bottom:12px; }
+  .review-center .icon { font-size:40px; }
+  .review-center h3 { font-size:18px; font-weight:700; color:#fff; margin-top:8px; }
+  .review-center .sub { font-size:13px; color:#9CA3AF; margin-top:2px; }
+  .review-badge { display:inline-block; margin-top:8px; padding:4px 16px; border-radius:20px; font-size:13px; font-weight:700; color:#fff; }
+  .detail-box { background:rgba(31,41,55,.5); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+  .detail-box .dt-label { font-size:11px; font-weight:700; color:#9CA3AF; margin-bottom:4px; text-transform:uppercase; }
+  .detail-box .dt-value { font-size:13px; color:#E5E7EB; line-height:1.5; }
+  .detail-box.orange { background:rgba(120,53,15,.2); border:1px solid rgba(234,88,12,.3); }
+  .detail-box.orange .dt-label { color:#FDBA74; }
+  .detail-box.orange .dt-value { color:#FED7AA; }
+  .success { text-align:center; padding:40px 20px; }
+  .success .icon { font-size:64px; margin-bottom:16px; }
+  .success h2 { font-size:20px; font-weight:700; color:#fff; margin-bottom:8px; }
+  .success p { color:#9CA3AF; font-size:14px; margin-bottom:4px; }
+  .success .id { font-family:monospace; font-size:16px; font-weight:700; color:#60A5FA; margin:12px 0; }
+  .sending { text-align:center; padding:60px 20px; }
+  .sending .spinner { width:48px; height:48px; border:4px solid #374151; border-top-color:var(--cat-color); border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes pulse { 0%,100% { transform:scale(1); } 50% { transform:scale(1.05); } }
+  .hidden { display:none !important; }
+  .welcome { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; background:linear-gradient(180deg,#7F1D1D 0%,#991B1B 40%,#B91C1C 100%); }
+  .welcome .shield { font-size:64px; margin-bottom:16px; animation:fadeIn .8s ease; }
+  .welcome h1 { font-size:36px; font-weight:900; color:#fff; letter-spacing:1px; margin-bottom:12px; animation:fadeIn .8s ease .2s both; }
+  .welcome .msg { font-size:16px; color:rgba(255,255,255,.85); line-height:1.6; max-width:360px; margin-bottom:32px; animation:fadeIn .8s ease .4s both; }
+  .welcome .start-btn { background:#fff; color:#991B1B; border:none; padding:16px 48px; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; animation:fadeIn .8s ease .6s both; transition:all .2s; box-shadow:0 8px 25px rgba(0,0,0,.3); }
+  .welcome .start-btn:hover { transform:scale(1.05); box-shadow:0 12px 30px rgba(0,0,0,.4); }
+  .welcome .plant { font-size:13px; color:rgba(255,255,255,.5); margin-top:16px; animation:fadeIn .8s ease .8s both; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+// =============================================
+// ⚠️ PEGAR TU URL DE APPS SCRIPT ACÁ:
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPVE8sjKNoGgCcQAyqozGMsmg0ygNWahjUOigXr6CWcypygFEKHkMvgGikgmwwxiQX/exec";
+// =============================================
+
+var SECTORS = ["Pulper","Planta de Pasta","Mesas-Prensas","Secado","Estucado","Pope-Sexta","Caldera","Efluente Primario - Hidropolis","Efluente Secundario","Laboratorio","Cellier","Rebobinadora","Alistado","Cortadora - exCarpintería","Despacho","MP Fibrosa","MP Cellier","MP Químicos","Sector Camiones","Taller Eléctrico","Taller Icopro","Taller Mecánico","Administración/oficinas"];
+var SHIFTS = ["Mañana","Tarde","Noche"];
+var BODY_PARTS = ["Cabeza","Ojos","Cara","Cuello","Hombro","Brazo","Mano","Dedos","Tronco","Espalda","Cadera","Pierna","Rodilla","Pie","Múltiples"];
+var EPP_LIST = ["Casco","Anteojos","Protección auditiva","Guantes","Calzado de seguridad","Protección respiratoria","Arnés","Ropa ignífuga","Otro"];
+
+var CATEGORIES = {
+  ACCIDENTE: {
+    label:"Accidente", icon:"🔴", color:"#DC2626",
+    subTypes:["Traslado a centro médico externo","Atención médica en planta","Primeros auxilios en planta"],
+    consequences:[
+      {value:"retiro_planta",label:"Se retiró de planta, no puede continuar con su actividad",priority:"CRITICA"},
+      {value:"reasignar",label:"Se queda en planta, pero se le tiene que reasignar actividad",priority:"ALTA"},
+      {value:"continua",label:"Continúa con su actividad normalmente",priority:"MEDIA"}
+    ],
+    priorities:[{value:"CRITICA",label:"Crítica",color:"#DC2626"},{value:"ALTA",label:"Alta",color:"#EA580C"},{value:"MEDIA",label:"Media",color:"#CA8A04"}],
+    accidentTypes:[
+      {id:"caidas",label:"Caídas, tropiezos y resbalones",icon:"🚶",desc:"Superficies mojadas, desorden, caídas a distinto nivel"},
+      {id:"maquinaria",label:"Accidentes por maquinaria y herramientas",icon:"⚙️",desc:"Atrapamientos, cortes, amputaciones, aplastamientos"},
+      {id:"golpes",label:"Golpes o impactos con objetos",icon:"💥",desc:"Caída de materiales, herramientas o maquinaria en movimiento"},
+      {id:"electricos",label:"Riesgos eléctricos, incendios y explosiones",icon:"⚡",desc:"Fallos eléctricos, fugas de gas, cortocircuitos, inflamables"},
+      {id:"sustancias",label:"Exposición a sustancias peligrosas",icon:"☣️",desc:"Intoxicaciones, quemaduras químicas, problemas respiratorios"},
+      {id:"ergonomicos",label:"Sobreesfuerzos y lesiones ergonómicas",icon:"🏋️",desc:"Lesiones lumbares, esguinces, movimientos repetitivos"},
+      {id:"transporte",label:"Accidentes de transporte interno",icon:"🚜",desc:"Choques o atropellos con montacargas, carretillas u otros"}
+    ]
+  },
+  INCIDENTE: {
+    label:"Incidente", icon:"⚠️", color:"#F59E0B",
+    subTypes:["Condición insegura","Acto inseguro"],
+    priorities:[
+      {value:"ALTA",label:"Alta",color:"#EA580C",desc:"Potencial de lesión grave o daño mayor"},
+      {value:"MEDIA",label:"Media",color:"#CA8A04",desc:"Potencial de lesión leve o daño menor"},
+      {value:"BAJA",label:"Baja",color:"#16A34A",desc:"Sin potencial de lesión, daño mínimo"}
+    ],
+    actosInseguros:["Operar equipos sin autorización o a velocidades peligrosas","No utilizar equipos de protección personal (EPP)","Distracciones, fatiga o exceso de confianza","Uso inadecuado de herramientas o maquinaria","Eliminar dispositivos de seguridad"],
+    condicionesInseguras:["Superficies resbaladizas, irregulares o sucias","Equipos, maquinaria o herramientas defectuosas","Iluminación, ventilación o ruido inadecuados","Falta de orden y limpieza en el área de trabajo","Falta de señalización de seguridad"]
+  },
+  MEDIO_AMBIENTE: {
+    label:"Medio Ambiente", icon:"🌿", color:"#059669",
+    subTypes:["Contaminación Atmosférica","Contaminación Hídrica","Contaminación del Suelo","Contaminación sonora"],
+    consequences:["Impacto contenido internamente","Impacto fuera de planta","Daño ambiental significativo","Impacto grave"],
+    priorities:[
+      {value:"CRITICA",label:"Crítica",color:"#DC2626",desc:"Impacto fuera de planta, notificación a autoridad"},
+      {value:"ALTA",label:"Alta",color:"#EA580C",desc:"Daño ambiental significativo, contención compleja"},
+      {value:"MEDIA",label:"Media",color:"#CA8A04",desc:"Impacto contenido, requiere acción correctiva"},
+      {value:"BAJA",label:"Baja",color:"#16A34A",desc:"Evento menor, contenido rápidamente"}
+    ]
+  }
+};
+
+var state = { step:0, form:{}, counter:0, sending:false, success:false, successId:"", showWelcome:true };
+
+function getSteps() {
+  var c = state.form.eventCategory;
+  if (!c) return ["Tipo de Evento"];
+  if (c==="ACCIDENTE") return ["Tipo de Evento","Consecuencia y Prioridad","Datos del Evento","Persona y EPP","Descripción y Acciones","Revisión"];
+  if (c==="INCIDENTE") return ["Tipo de Evento","Prioridad","Datos del Evento","Detalles","Descripción y Acciones","Revisión"];
+  return ["Tipo de Evento","Consecuencia y Prioridad","Datos del Evento","Detalles Ambientales","Contención y Acciones","Revisión"];
+}
+
+function getCat() { return state.form.eventCategory ? CATEGORIES[state.form.eventCategory] : null; }
+function getColor() { var c=getCat(); return c?c.color:"#3B82F6"; }
+
+function setField(k,v) { state.form[k]=v; render(); }
+function toggleMulti(k,v) {
+  var arr=state.form[k]||[];
+  var idx=arr.indexOf(v);
+  if(idx>=0) arr.splice(idx,1); else arr.push(v);
+  state.form[k]=[...arr];
+  render();
+}
+
+function canNext() {
+  var s=state.step, f=state.form;
+  if(s===0) return !!f.eventCategory && !!f.eventSubType;
+  if(s===1) {
+    if(f.eventCategory==="INCIDENTE") return !!f.priority;
+    return !!f.consequence && !!f.priority;
+  }
+  if(s===2) return !!f.date && !!f.shift && !!f.sector;
+  return true;
+}
+
+function nextStep() { if(canNext()) { state.step++; render(); window.scrollTo(0,0); } }
+function prevStep() { if(state.step>0) { state.step--; render(); window.scrollTo(0,0); } }
+
+function generateId() {
+  state.counter++;
+  var p = state.form.eventCategory==="ACCIDENTE"?"ACC":state.form.eventCategory==="INCIDENTE"?"INC":"MA";
+  return p+"-"+String(state.counter).padStart(3,"0");
+}
+
+function submitForm() {
+  state.sending=true;
+  render();
+  var f=state.form;
+  var id=generateId();
+  
+  // Resolver labels
+  var consequenceLabel = f.consequence;
+  if(f.eventCategory==="ACCIDENTE" && getCat().consequences) {
+    var found = getCat().consequences.find(function(c){return c.value===f.consequence;});
+    if(found) consequenceLabel = found.label;
+  }
+  var accTypeLabel = "";
+  if(f.accidentType && getCat().accidentTypes) {
+    var at = getCat().accidentTypes.find(function(a){return a.id===f.accidentType;});
+    if(at) accTypeLabel = at.label;
+  }
+  
+  var params = new URLSearchParams();
+  params.append("id",id);
+  params.append("eventCategory",f.eventCategory||"");
+  params.append("eventSubType",f.eventSubType||"");
+  params.append("consequence",consequenceLabel||"");
+  params.append("priority",f.priority||"");
+  params.append("date",f.date||"");
+  params.append("time",f.time||"");
+  params.append("shift",f.shift||"");
+  params.append("sector",f.sector||"");
+  params.append("location",f.location||"");
+  params.append("person",f.person||"");
+  params.append("personId",f.personId||"");
+  params.append("bodyPart",(f.bodyPart||[]).join(", "));
+  params.append("epp",(f.epp||[]).join(", "));
+  params.append("accidentType",accTypeLabel);
+  params.append("description",f.description||"");
+  params.append("task",f.task||"");
+  params.append("incidentOption",f.incidentOption||"");
+  params.append("immediateActions",f.immediateActions||"");
+  params.append("areaNotified",f.areaNotified||"");
+  params.append("areaNotifiedTo",f.areaNotifiedTo||"");
+  params.append("artNotified",f.artNotified||"");
+  params.append("substance",f.substance||"");
+  params.append("estimatedVolume",f.estimatedVolume||"");
+  params.append("areaAffected",f.areaAffected||"");
+  params.append("authorityNotified",f.authorityNotified||"");
+  params.append("containmentActions",f.containmentActions||"");
+  params.append("rootCause",f.rootCause||"");
+  params.append("corrActions",(f.corrActions||"").replace(/\n/g," | "));
+  params.append("reportedBy",f.reportedBy||"");
+  params.append("reporterRole",f.reporterRole||"");
+  
+  // Enviar via iframe hidden form
+  var iframe = document.getElementById("submitFrame");
+  if(!iframe) { iframe=document.createElement("iframe"); iframe.id="submitFrame"; iframe.name="submitFrame"; iframe.style.display="none"; document.body.appendChild(iframe); }
+  
+  var form = document.createElement("form");
+  form.method="POST";
+  form.action=APPS_SCRIPT_URL;
+  form.target="submitFrame";
+  
+  for(var pair of params.entries()) {
+    var input=document.createElement("input");
+    input.type="hidden"; input.name=pair[0]; input.value=pair[1];
+    form.appendChild(input);
+  }
+  
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+  
+  setTimeout(function(){
+    state.sending=false;
+    state.success=true;
+    state.successId=id;
+    render();
+  }, 2500);
+}
+
+function resetForm() {
+  state.step=0; state.form={}; state.success=false; state.successId="";
+  render();
+}
+
+// ============ RENDER ============
+function render() {
+  var color=getColor();
+  document.documentElement.style.setProperty("--cat-color",color);
+  var cat=getCat();
+  var steps=getSteps();
+  var f=state.form;
+  var h="";
+  
+  if(state.showWelcome) {
+    h='<div class="welcome">'
+      +'<div class="shield">🛡️</div>'
+      +'<h1>REPORTAR ES PROTEGER</h1>'
+      +'<p class="msg">Cada evento reportado es una oportunidad para que nadie más se lastime.</p>'
+      +'<button class="start-btn" onclick="state.showWelcome=false;render();">Comenzar registro</button>'
+      +'<p class="plant">Planta Tornquist — Papelera del Sur</p>'
+      +'</div>';
+    document.getElementById("app").innerHTML=h;
+    return;
+  }
+  
+  if(state.sending) {
+    h='<div class="sending"><div class="spinner"></div><p style="color:#9CA3AF;">Enviando registro...</p></div>';
+    document.getElementById("app").innerHTML=h;
+    return;
+  }
+  
+  if(state.success) {
+    h='<div class="success">'
+      +'<div class="icon">✅</div>'
+      +'<h2>Registro enviado correctamente</h2>'
+      +'<p>Se guardó en la base de datos y se envió el correo de notificación.</p>'
+      +'<div class="id">'+state.successId+'</div>'
+      +'<button class="btn btn-next" style="width:100%;margin-top:20px;" onclick="resetForm()">Registrar otro evento</button>'
+      +'</div>';
+    document.getElementById("app").innerHTML=h;
+    return;
+  }
+  
+  // Header
+  var grad = cat ? cat.color : "#3B82F6";
+  h='<div class="header" style="background:linear-gradient(135deg,'+grad+',color-mix(in srgb,'+grad+',#000 20%));">'
+    +'<h1>🛡️ Registro de Eventos EHS</h1>'
+    +'<p>Planta Tornquist</p></div><a href="index.html" style="background:rgba(255,255,255,.2);color:#fff;text-decoration:none;padding:6px 14px;border-radius:10px;font-size:12px;font-weight:600;">🏠 Inicio</a>';
+  
+  // Steps
+  h+='<div class="steps">';
+  for(var i=0;i<steps.length;i++) {
+    var cls=i<state.step?"done":i===state.step?"active":"pending";
+    h+='<div class="step-dot '+cls+'">'+(i<state.step?"✓":(i+1))+'</div>';
+    if(i<steps.length-1) h+='<div class="step-line '+(i<state.step?"done":"")+'"></div>';
+  }
+  h+='</div><div class="step-title">'+steps[state.step]+'</div>';
+  
+  // Content
+  h+=renderCurrentStep();
+  
+  // Nav
+  h+='<div class="nav">';
+  if(state.step>0) h+='<button class="btn btn-back" onclick="prevStep()">← Anterior</button>';
+  if(state.step<steps.length-1) {
+    h+='<button class="btn btn-next" onclick="nextStep()" '+(canNext()?"":' disabled')+'>Siguiente →</button>';
+  } else {
+    h+='<button class="btn btn-submit" onclick="submitForm()">✓ Registrar '+(cat?cat.label:"")+'</button>';
+  }
+  h+='</div>';
+  
+  document.getElementById("app").innerHTML=h;
+}
+
+function renderCurrentStep() {
+  var s=state.step, f=state.form, cat=getCat(), color=getColor(), h="";
+  
+  // STEP 0
+  if(s===0) {
+    h+='<div class="section"><div class="section-title" style="color:#FBBF24;">⚡ Tipo de Evento</div><div class="cat-grid">';
+    Object.keys(CATEGORIES).forEach(function(key){
+      var c=CATEGORIES[key]; var sel=f.eventCategory===key;
+      h+='<div class="cat-card'+(sel?" selected":"")+'" style="'+(sel?"background:linear-gradient(135deg,"+c.color+",color-mix(in srgb,"+c.color+",#000 20%));border-color:"+c.color+";":"")
+        +'" onclick="setField(\'eventCategory\',\''+key+'\');setField(\'eventSubType\',\'\');setField(\'consequence\',\'\');setField(\'priority\',\'\');setField(\'accidentType\',\'\');setField(\'incidentOption\',\'\');">'
+        +'<span class="icon">'+c.icon+'</span><span class="label">'+c.label+'</span></div>';
+    });
+    h+='</div></div>';
+    if(cat) {
+      var stLabel = f.eventCategory==="ACCIDENTE"?"Tipo de atención":"Subtipo";
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📋 '+stLabel+'</div><div class="chips">';
+      cat.subTypes.forEach(function(st){
+        var sel=f.eventSubType===st;
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+color+";border-color:"+color+";":"")+'" onclick="setField(\'eventSubType\',\''+(sel?"":st).replace(/'/g,"\\'")+'\')">'+st+'</div>';
+      });
+      h+='</div></div>';
+    }
+    return h;
+  }
+  
+  // STEP 1
+  if(s===1) {
+    if(f.eventCategory==="ACCIDENTE") {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">💥 Consecuencia</div>';
+      cat.consequences.forEach(function(c){
+        var sel=f.consequence===c.value;
+        var pri=cat.priorities.find(function(p){return p.value===c.priority;});
+        h+='<div class="pri-card'+(sel?" selected":"")+'" style="'+(sel?"background:"+pri.color+";border-color:"+pri.color+";":"")+'" onclick="setField(\'consequence\',\''+(sel?"":c.value)+'\');setField(\'priority\',\''+(sel?"":c.priority)+'\');">'
+          +'<div class="pri-label">'+c.label+'</div></div>';
+      });
+      if(f.priority) {
+        var pri=cat.priorities.find(function(p){return p.value===f.priority;});
+        h+='<div class="section-title" style="color:'+color+';margin-top:16px;">🎯 Prioridad asignada</div>';
+        h+='<div class="pri-result" style="background:'+pri.color+';">'+pri.label+'</div>';
+      }
+      h+='</div>';
+    } else if(f.eventCategory==="INCIDENTE") {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🎯 Prioridad</div>';
+      cat.priorities.forEach(function(p){
+        var sel=f.priority===p.value;
+        h+='<div class="pri-card'+(sel?" selected":"")+'" style="'+(sel?"background:"+p.color+";border-color:"+p.color+";":"")+'" onclick="setField(\'priority\',\''+(sel?"":p.value)+'\');">'
+          +'<div class="pri-label">'+p.label+'</div>'+(p.desc?'<div class="pri-desc">'+p.desc+'</div>':'')+'</div>';
+      });
+      h+='</div>';
+    } else {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">💥 Consecuencia</div><div class="chips">';
+      cat.consequences.forEach(function(c){
+        var sel=f.consequence===c;
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+color+";border-color:"+color+";":"")+'" onclick="setField(\'consequence\',\''+(sel?"":c).replace(/'/g,"\\'")+'\')">'+c+'</div>';
+      });
+      h+='</div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🎯 Prioridad</div>';
+      cat.priorities.forEach(function(p){
+        var sel=f.priority===p.value;
+        h+='<div class="pri-card'+(sel?" selected":"")+'" style="'+(sel?"background:"+p.color+";border-color:"+p.color+";":"")+'" onclick="setField(\'priority\',\''+(sel?"":p.value)+'\');">'
+          +'<div class="pri-label">'+p.label+'</div>'+(p.desc?'<div class="pri-desc">'+p.desc+'</div>':'')+'</div>';
+      });
+      h+='</div>';
+    }
+    return h;
+  }
+  
+  // STEP 2 - Datos generales
+  if(s===2) {
+    h+='<div class="section"><div class="section-title" style="color:'+color+';">📅 Fecha y Hora</div><div class="row2">'
+      +'<div class="field"><label>Fecha <span class="req">*</span></label><input type="date" value="'+(f.date||"")+'" onchange="setField(\'date\',this.value)"></div>'
+      +'<div class="field"><label>Hora</label><input type="time" value="'+(f.time||"")+'" onchange="setField(\'time\',this.value)"></div>'
+      +'</div></div>';
+    h+='<div class="section"><div class="section-title" style="color:'+color+';">🔄 Turno</div><div class="chips">';
+    var shiftColors={Mañana:"#F59E0B",Tarde:"#3B82F6",Noche:"#6366F1"};
+    SHIFTS.forEach(function(s){ var sel=f.shift===s; var sc=shiftColors[s];
+      h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+sc+";border-color:"+sc+";":"")+'" onclick="setField(\'shift\',\''+(sel?"":s)+'\')">'+s+'</div>';
+    });
+    h+='</div></div>';
+    h+='<div class="section"><div class="section-title" style="color:'+color+';">🏭 Sector</div>';
+    var sectorGroups = [
+      { area:"Fabricación", sectors:["Pulper","Planta de Pasta","Mesas-Prensas","Secado","Estucado","Pope-Sexta","Caldera","Efluente Primario - Hidropolis","Efluente Secundario","Laboratorio","Cellier"] },
+      { area:"Alistamiento", sectors:["Rebobinadora","Alistado","Cortadora - exCarpintería","Despacho"] },
+      { area:"Playa", sectors:["MP Fibrosa","MP Cellier","MP Químicos","Sector Camiones"] },
+      { area:"Mantenimiento", sectors:["Taller Eléctrico","Taller Icopro","Taller Mecánico"] },
+      { area:"Otros", sectors:["Administración/oficinas"] },
+    ];
+    sectorGroups.forEach(function(g) {
+      h+='<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:'+color+';text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;opacity:.7;">'+g.area+'</div><div class="chips">';
+      g.sectors.forEach(function(s){ var sel=f.sector===s;
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+color+";border-color:"+color+";":"")+'" onclick="setField(\'sector\',\''+(sel?"":s).replace(/'/g,"\\'")+'\')">'+s+'</div>';
+      });
+      h+='</div></div>';
+    });
+    h+='</div></div>';
+    h+='<div class="field"><label>Lugar exacto</label><input type="text" value="'+(f.location||"")+'" placeholder="Ej: Zona de envasado, al lado del tanque 3" onchange="setField(\'location\',this.value)"></div>';
+    return h;
+  }
+  
+  // STEP 3
+  if(s===3) {
+    if(f.eventCategory==="ACCIDENTE") {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">👤 Persona Accidentada</div>'
+        +'<div class="field"><label>Nombre completo <span class="req">*</span></label><input type="text" value="'+(f.person||"")+'" placeholder="Nombre y apellido" onchange="setField(\'person\',this.value)"></div>'
+        +'<div class="field"><label>Legajo / DNI</label><input type="text" value="'+(f.personId||"")+'" placeholder="Número de legajo o documento" onchange="setField(\'personId\',this.value)"></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🩹 Parte del cuerpo afectada</div><div class="chips">';
+      BODY_PARTS.forEach(function(bp){ var sel=(f.bodyPart||[]).includes(bp);
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:#DC2626;border-color:#DC2626;":"")+'" onclick="toggleMulti(\'bodyPart\',\''+bp+'\')">'+bp+'</div>';
+      });
+      h+='</div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🦺 EPP que utilizaba</div><div class="chips">';
+      EPP_LIST.forEach(function(e){ var sel=(f.epp||[]).includes(e);
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:#2563EB;border-color:#2563EB;":"")+'" onclick="toggleMulti(\'epp\',\''+e.replace(/'/g,"\\'")+'\')">'+e+'</div>';
+      });
+      h+='</div></div>';
+    } else if(f.eventCategory==="INCIDENTE") {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">👤 Persona involucrada</div>'
+        +'<div class="field"><label>Nombre</label><input type="text" value="'+(f.person||"")+'" placeholder="Nombre y apellido" onchange="setField(\'person\',this.value)"></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🦺 EPP en la zona</div><div class="chips">';
+      EPP_LIST.forEach(function(e){ var sel=(f.epp||[]).includes(e);
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:#F59E0B;border-color:#F59E0B;":"")+'" onclick="toggleMulti(\'epp\',\''+e.replace(/'/g,"\\'")+'\')">'+e+'</div>';
+      });
+      h+='</div></div>';
+    } else {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🧪 Sustancia involucrada</div>'
+        +'<div class="field"><label>Tipo de sustancia <span class="req">*</span></label><input type="text" value="'+(f.substance||"")+'" placeholder="Ej: Aceite hidráulico, ácido sulfúrico" onchange="setField(\'substance\',this.value)"></div>'
+        +'<div class="field"><label>Volumen estimado</label><input type="text" value="'+(f.estimatedVolume||"")+'" placeholder="Ej: 50 litros, 2 m³" onchange="setField(\'estimatedVolume\',this.value)"></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📍 Área afectada</div>'
+        +'<div class="field"><label>Descripción</label><textarea placeholder="Ej: Piso de planta zona calderas" onchange="setField(\'areaAffected\',this.value)">'+(f.areaAffected||"")+'</textarea></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📞 ¿Se notificó a autoridad ambiental?</div><div class="chips">';
+      ["Sí","No","No aplica"].forEach(function(o){ var sel=f.authorityNotified===o; var oc={Sí:"#DC2626",No:"#F59E0B","No aplica":"#6B7280"}[o];
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+oc+";border-color:"+oc+";":"")+'" onclick="setField(\'authorityNotified\',\''+(sel?"":o)+'\')">'+o+'</div>';
+      });
+      h+='</div></div>';
+    }
+    return h;
+  }
+  
+  // STEP 4
+  if(s===4) {
+    if(f.eventCategory==="ACCIDENTE") {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📝 ¿Qué tipo de accidente ocurrió?</div>';
+      cat.accidentTypes.forEach(function(at){ var sel=f.accidentType===at.id;
+        h+='<div class="opt-card'+(sel?" selected":"")+'" style="'+(sel?"background:"+color+";border-color:"+color+";":"")+'" onclick="setField(\'accidentType\',\''+(sel?"":at.id)+'\');">'
+          +'<div class="opt-label">'+at.icon+' '+at.label+'</div><div class="opt-desc">'+at.desc+'</div></div>';
+      });
+      h+='</div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📄 Descripción detallada</div>'
+        +'<div class="field"><label>¿Qué pasó exactamente? <span class="req">*</span></label><textarea placeholder="Describa en detalle cómo ocurrió" onchange="setField(\'description\',this.value)">'+(f.description||"")+'</textarea></div>'
+        +'<div class="field"><label>Tarea que se realizaba</label><input type="text" value="'+(f.task||"")+'" placeholder="¿Qué actividad se estaba ejecutando?" onchange="setField(\'task\',this.value)"></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:#EA580C;">🚨 Acción inmediata para evitar que se lesione alguien más</div>'
+        +'<div class="field"><textarea placeholder="¿Qué se hizo para proteger a los demás?" onchange="setField(\'immediateActions\',this.value)">'+(f.immediateActions||"")+'</textarea></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📞 ¿Se notificó al responsable del área?</div><div class="chips">';
+      ["Sí","No"].forEach(function(o){ var sel=f.areaNotified===o; var oc=o==="Sí"?"#16A34A":"#DC2626";
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+oc+";border-color:"+oc+";":"")+'" onclick="setField(\'areaNotified\',\''+(sel?"":o)+'\')">'+o+'</div>';
+      });
+      h+='</div>';
+      if(f.areaNotified==="Sí") h+='<div class="field" style="margin-top:8px;"><label>¿A quién?</label><input type="text" value="'+(f.areaNotifiedTo||"")+'" placeholder="Nombre del responsable" onchange="setField(\'areaNotifiedTo\',this.value)"></div>';
+      h+='</div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🏥 ¿Se notificó a la ART / Seguro?</div><div class="chips">';
+      ["Sí","No"].forEach(function(o){ var sel=f.artNotified===o; var oc=o==="Sí"?"#16A34A":"#DC2626";
+        h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:"+oc+";border-color:"+oc+";":"")+'" onclick="setField(\'artNotified\',\''+(sel?"":o)+'\')">'+o+'</div>';
+      });
+      h+='</div></div>';
+    } else if(f.eventCategory==="INCIDENTE") {
+      var isActo=f.eventSubType==="Acto inseguro";
+      var opts=isActo?cat.actosInseguros:cat.condicionesInseguras;
+      var optTitle=isActo?"🚫 ¿Qué acto inseguro se identificó?":"⚠️ ¿Qué condición insegura se identificó?";
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">'+optTitle+'</div>';
+      opts.forEach(function(o){ var sel=f.incidentOption===o;
+        h+='<div class="opt-card'+(sel?" selected":"")+'" style="'+(sel?"background:"+color+";border-color:"+color+";":"")+'" onclick="setField(\'incidentOption\',\''+(sel?"":o).replace(/'/g,"\\'").replace(/\(/g,"\\(").replace(/\)/g,"\\)")+'\');">'
+          +'<div class="opt-label">'+o+'</div></div>';
+      });
+      h+='</div>';
+      h+='<div class="field"><label>Tarea que se realizaba</label><input type="text" value="'+(f.task||"")+'" placeholder="¿Qué actividad se estaba ejecutando?" onchange="setField(\'task\',this.value)"></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🚨 Acciones inmediatas</div>'
+        +'<div class="field"><textarea placeholder="¿Qué se hizo inmediatamente?" onchange="setField(\'immediateActions\',this.value)">'+(f.immediateActions||"")+'</textarea></div></div>';
+    } else {
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📝 Descripción del evento</div>'
+        +'<div class="field"><textarea placeholder="Describa en detalle el evento ambiental" onchange="setField(\'description\',this.value)">'+(f.description||"")+'</textarea></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🛡️ Acciones de contención</div>'
+        +'<div class="field"><textarea placeholder="¿Qué se hizo para contener?" onchange="setField(\'containmentActions\',this.value)">'+(f.containmentActions||"")+'</textarea></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">🔍 Causa raíz</div>'
+        +'<div class="field"><textarea placeholder="¿Por qué ocurrió?" onchange="setField(\'rootCause\',this.value)">'+(f.rootCause||"")+'</textarea></div></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">✅ Acciones correctivas</div>'
+        +'<div class="field"><label>Plan de acción (una por línea)</label><textarea placeholder="Acción 1&#10;Acción 2" onchange="setField(\'corrActions\',this.value)">'+(f.corrActions||"")+'</textarea></div></div>';
+    }
+    return h;
+  }
+  
+  // STEP 5 - Revisión
+  if(s===5) {
+    var pri=cat.priorities.find(function(p){return p.value===f.priority;});
+    h+='<div class="review-center"><div class="icon">'+cat.icon+'</div><h3>'+cat.label+'</h3><div class="sub">'+f.eventSubType+'</div>'
+      +'<div class="review-badge" style="background:'+(pri?pri.color:"#6B7280")+';">'+(f.priority||"")+'</div></div>';
+    
+    h+='<div class="review-box">';
+    h+=reviewRow("Fecha / Hora",(f.date||"—")+" "+(f.time||""));
+    h+=reviewRow("Turno",f.shift);
+    h+=reviewRow("Sector",f.sector);
+    if(f.location) h+=reviewRow("Lugar",f.location);
+    if(f.eventCategory==="ACCIDENTE" && f.consequence) {
+      var cLabel=f.consequence; var found=cat.consequences.find(function(c){return c.value===f.consequence;});
+      if(found) cLabel=found.label;
+      h+=reviewRow("Consecuencia",cLabel);
+    }
+    if(f.person) h+=reviewRow("Persona",f.person);
+    if(f.bodyPart&&f.bodyPart.length) h+=reviewRow("Parte del cuerpo",f.bodyPart.join(", "));
+    if(f.epp&&f.epp.length) h+=reviewRow("EPP",f.epp.join(", "));
+    if(f.accidentType) { var at=cat.accidentTypes?cat.accidentTypes.find(function(a){return a.id===f.accidentType;}):null; if(at) h+=reviewRow("Tipo accidente",at.icon+" "+at.label); }
+    if(f.incidentOption) h+=reviewRow(f.eventSubType==="Acto inseguro"?"Acto inseguro":"Condición insegura",f.incidentOption);
+    if(f.areaNotified) h+=reviewRow("Notif. responsable",f.areaNotified+(f.areaNotifiedTo?" — "+f.areaNotifiedTo:""));
+    if(f.artNotified) h+=reviewRow("Notif. ART/Seguro",f.artNotified);
+    if(f.substance) h+=reviewRow("Sustancia",f.substance);
+    if(f.estimatedVolume) h+=reviewRow("Volumen",f.estimatedVolume);
+    if(f.areaAffected) h+=reviewRow("Área afectada",f.areaAffected);
+    if(f.authorityNotified) h+=reviewRow("Notif. autoridad",f.authorityNotified);
+    h+='</div>';
+    
+    if(f.description) h+='<div class="detail-box"><div class="dt-label">DESCRIPCIÓN</div><div class="dt-value">'+f.description+'</div></div>';
+    if(f.immediateActions) h+='<div class="detail-box orange"><div class="dt-label">'+(f.eventCategory==="ACCIDENTE"?"ACCIÓN PARA PROTEGER A LOS DEMÁS":"ACCIONES INMEDIATAS")+'</div><div class="dt-value">'+f.immediateActions+'</div></div>';
+    if(f.containmentActions) h+='<div class="detail-box"><div class="dt-label">CONTENCIÓN</div><div class="dt-value">'+f.containmentActions+'</div></div>';
+    if(f.corrActions) h+='<div class="detail-box"><div class="dt-label">ACCIONES CORRECTIVAS</div><div class="dt-value">'+f.corrActions+'</div></div>';
+    
+    h+='<div class="field"><label>Reportado por <span class="req">*</span></label><input type="text" value="'+(f.reportedBy||"")+'" placeholder="Tu nombre" onchange="setField(\'reportedBy\',this.value)"></div>';
+    h+='<div class="field"><label>Cargo / Rol</label><input type="text" value="'+(f.reporterRole||"")+'" placeholder="Ej: Supervisor de turno" onchange="setField(\'reporterRole\',this.value)"></div>';
+    return h;
+  }
+  
+  return "";
+}
+
+function reviewRow(label,value) {
+  if(!value) return "";
+  return '<div class="review-row"><span class="review-label">'+label+'</span><span class="review-value">'+value+'</span></div>';
+}
+
+// Init
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema EHS — Planta Tornquist</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,-apple-system,sans-serif; min-height:100vh; background:#0F172A; color:#F1F5F9; overflow-x:hidden; }
+  .hero { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; position:relative; }
+  .hero::before { content:''; position:absolute; top:0; left:0; right:0; bottom:0; background:linear-gradient(180deg,#7F1D1D 0%,#991B1B 30%,#0F172A 100%); z-index:0; }
+  .hero > * { position:relative; z-index:1; }
+  .shield { font-size:72px; margin-bottom:16px; animation:float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  h1 { font-size:clamp(28px,5vw,42px); font-weight:900; color:#fff; letter-spacing:1px; margin-bottom:8px; text-shadow:0 2px 20px rgba(0,0,0,.3); }
+  .subtitle { font-size:clamp(14px,2.5vw,18px); color:rgba(255,255,255,.75); line-height:1.6; max-width:500px; margin-bottom:40px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; max-width:800px; width:100%; }
+  .card { background:rgba(255,255,255,.08); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.15); border-radius:20px; padding:28px 24px; text-align:center; text-decoration:none; color:#fff; transition:all .3s; cursor:pointer; }
+  .card:hover { transform:translateY(-6px); background:rgba(255,255,255,.15); box-shadow:0 20px 40px rgba(0,0,0,.3); }
+  .card .icon { font-size:44px; margin-bottom:12px; display:block; }
+  .card h2 { font-size:18px; font-weight:700; margin-bottom:6px; }
+  .card p { font-size:13px; color:rgba(255,255,255,.6); line-height:1.5; }
+  .card .arrow { display:inline-block; margin-top:12px; background:rgba(255,255,255,.15); padding:6px 20px; border-radius:10px; font-size:13px; font-weight:600; transition:background .2s; }
+  .card:hover .arrow { background:rgba(255,255,255,.25); }
+  .card-form { border-color:rgba(220,38,38,.4); }
+  .card-form:hover { border-color:rgba(220,38,38,.7); box-shadow:0 20px 40px rgba(220,38,38,.15); }
+  .card-dash { border-color:rgba(59,130,246,.4); }
+  .card-dash:hover { border-color:rgba(59,130,246,.7); box-shadow:0 20px 40px rgba(59,130,246,.15); }
+  .footer { position:relative; z-index:1; text-align:center; padding:20px; font-size:12px; color:rgba(255,255,255,.3); }
+  .footer a { color:rgba(255,255,255,.5); text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="shield">🛡️</div>
+  <h1>REPORTAR ES PROTEGER</h1>
+  <p class="subtitle">Sistema de Seguridad, Higiene y Medio Ambiente<br>Planta Tornquist — Papelera del Sur</p>
+  <div class="cards">
+    <a href="formulario.html" class="card card-form">
+      <span class="icon">📱</span>
+      <h2>Registrar Evento</h2>
+      <p>Cargá un accidente, incidente o evento de medio ambiente paso a paso.</p>
+      <span class="arrow">Abrir formulario →</span>
+    </a>
+    <a href="dashboard.html" class="card card-dash">
+      <span class="icon">📊</span>
+      <h2>Dashboard</h2>
+      <p>Indicadores en tiempo real, gráficos, gestión de desvíos y seguimiento.</p>
+      <span class="arrow">Ver dashboard →</span>
+    </a>
+  </div>
+</div>
+<div class="footer">
+  <p>Seguridad e Higiene Industrial — Planta Tornquist — 2026</p>
+</div>
+</body>
+</html>

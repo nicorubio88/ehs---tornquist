@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard EHS - Planta Tornquist</title>
+<style>
+  :root { --bg:#0F172A; --bg2:#1E293B; --bg3:#334155; --border:#475569; --t1:#F1F5F9; --t2:#94A3B8; --t3:#64748B; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--t1); min-height:100vh; }
+  .app { max-width:1200px; margin:0 auto; padding:16px; }
+  
+  /* Header */
+  .header { background:linear-gradient(135deg,#991B1B,#7F1D1D); border-radius:16px; padding:20px 24px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+  .header h1 { font-size:20px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+  .header p { font-size:13px; color:rgba(255,255,255,.6); margin-top:2px; }
+  .filters { display:flex; gap:8px; flex-wrap:wrap; }
+  .filters select { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:8px 12px; font-size:13px; outline:none; cursor:pointer; backdrop-filter:blur(4px); }
+  .filters select option { background:#1E293B; color:#F1F5F9; }
+  .refresh-btn { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:8px 14px; font-size:13px; cursor:pointer; font-weight:600; }
+  .refresh-btn:hover { background:rgba(255,255,255,.25); }
+  
+  /* KPI Cards */
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px; }
+  .kpi { border-radius:14px; padding:16px; position:relative; overflow:hidden; border-left:4px solid; }
+  .kpi .icon { font-size:22px; }
+  .kpi .value { font-size:32px; font-weight:800; margin:4px 0; }
+  .kpi .label { font-size:12px; font-weight:600; color:var(--t2); }
+  .kpi .sub { font-size:11px; color:var(--t3); margin-top:2px; }
+  
+  /* Charts Grid */
+  .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:12px; margin-bottom:16px; }
+  .chart-card { background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:16px; }
+  .chart-card h3 { font-size:14px; font-weight:700; color:var(--t2); margin-bottom:14px; }
+  
+  /* Bar chart */
+  .bar-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .bar-label { font-size:12px; color:var(--t2); width:140px; text-align:right; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bar-track { flex:1; background:var(--bg3); border-radius:10px; height:22px; position:relative; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:10px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; min-width:24px; transition:width .6s ease; }
+  .bar-fill span { font-size:11px; font-weight:700; color:#fff; }
+  
+  /* Donut */
+  .donut-wrap { display:flex; align-items:center; gap:20px; }
+  .donut-svg { width:100px; height:100px; }
+  .donut-legend { flex:1; }
+  .donut-item { display:flex; align-items:center; justify-content:space-between; padding:4px 0; }
+  .donut-dot { width:10px; height:10px; border-radius:50%; margin-right:8px; flex-shrink:0; }
+  .donut-item span { font-size:12px; color:var(--t2); }
+  .donut-item strong { font-size:14px; color:var(--t1); }
+  .donut-center { font-size:18px; font-weight:800; fill:var(--t1); text-anchor:middle; dominant-baseline:central; }
+  
+  /* Trend */
+  .trend-svg { width:100%; height:140px; }
+  
+  /* Table */
+  .table-card { background:var(--bg2); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:16px; }
+  .table-header { padding:14px 16px; border-bottom:1px solid var(--border); background:rgba(51,65,85,.5); display:flex; align-items:center; justify-content:space-between; }
+  .table-header h3 { font-size:14px; font-weight:700; color:var(--t2); }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { padding:10px 12px; text-align:left; font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; border-bottom:1px solid var(--border); background:rgba(51,65,85,.3); }
+  td { padding:10px 12px; border-bottom:1px solid rgba(71,85,105,.3); color:var(--t2); }
+  tr:hover td { background:rgba(59,130,246,.05); }
+  .badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; color:#fff; }
+  .badge-CRITICA { background:#DC2626; }
+  .badge-ALTA { background:#EA580C; }
+  .badge-MEDIA { background:#CA8A04; }
+  .badge-BAJA { background:#16A34A; }
+  .badge-acc { background:#DC2626; }
+  .badge-inc { background:#F59E0B; }
+  .badge-ma { background:#059669; }
+  .cat-icon { font-size:16px; margin-right:4px; }
+  .id-cell { font-family:monospace; font-weight:700; color:#60A5FA; font-size:12px; }
+  
+  /* Loading */
+  .loading { text-align:center; padding:60px 20px; }
+  .spinner { width:40px; height:40px; border:3px solid var(--bg3); border-top-color:#3B82F6; border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 12px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .error-box { text-align:center; padding:40px; color:#F87171; }
+  
+  /* Last update */
+  .last-update { text-align:center; font-size:11px; color:var(--t3); padding:8px; }
+  
+  /* Modal Desvios */
+  .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.7); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px); }
+  .modal { background:var(--bg2); border:1px solid var(--border); border-radius:16px; width:100%; max-width:640px; max-height:90vh; overflow-y:auto; }
+  .modal-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .modal-head h3 { font-size:16px; font-weight:700; color:var(--t1); }
+  .modal-close { background:none; border:none; color:var(--t3); font-size:20px; cursor:pointer; padding:4px 8px; }
+  .modal-close:hover { color:var(--t1); }
+  .modal-body { padding:16px 20px; }
+  .modal-section { margin-bottom:16px; }
+  .modal-section h4 { font-size:13px; font-weight:700; color:var(--t2); margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px; }
+  .modal-field { margin-bottom:12px; }
+  .modal-field label { display:block; font-size:12px; font-weight:600; color:var(--t2); margin-bottom:4px; }
+  .modal-field input, .modal-field textarea, .modal-field select { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:var(--t1); font-size:13px; font-family:inherit; outline:none; }
+  .modal-field input:focus, .modal-field textarea:focus { border-color:#3B82F6; }
+  .modal-field textarea { resize:none; min-height:60px; }
+  .modal-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .action-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
+  .action-card .ac-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .action-card .ac-num { font-size:12px; font-weight:700; color:#3B82F6; }
+  .action-card .ac-desc { font-size:13px; color:var(--t1); margin-bottom:4px; }
+  .action-card .ac-meta { font-size:11px; color:var(--t3); }
+  .action-card .ac-meta span { margin-right:12px; }
+  .badge-estado { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
+  .badge-Abierta { background:#DC2626; color:#fff; }
+  .badge-En-proceso { background:#F59E0B; color:#fff; }
+  .badge-Cerrada { background:#16A34A; color:#fff; }
+  .btn-sm { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; border:none; cursor:pointer; }
+  .btn-add { background:#3B82F6; color:#fff; }
+  .btn-add:hover { background:#2563EB; }
+  .btn-save { background:#16A34A; color:#fff; }
+  .btn-save:hover { background:#15803D; }
+  .btn-desvio { background:rgba(59,130,246,.15); color:#60A5FA; border:1px solid rgba(59,130,246,.3); padding:4px 10px; border-radius:8px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .btn-desvio:hover { background:rgba(59,130,246,.25); }
+  .desvio-count { display:inline-block; background:#3B82F6; color:#fff; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; margin-left:4px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="loading"><div class="spinner"></div><p style="color:#94A3B8;">Cargando datos desde Google Sheets...</p></div>
+</div>
+
+<script>
+// =============================================
+// ⚠️ TU URL DE APPS SCRIPT (la misma del formulario):
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPVE8sjKNoGgCcQAyqozGMsmg0ygNWahjUOigXr6CWcypygFEKHkMvgGikgmwwxiQX/exec";
+// =============================================
+
+var DATA = [];
+var DESVIOS = [];
+var FILTER_SECTOR = "Todos";
+var FILTER_SHIFT = "Todos";
+var FILTER_CAT = "Todos";
+var LAST_UPDATE = null;
+var MODAL_EVENT = null;
+
+function loadData() {
+  document.getElementById("app").innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#94A3B8;">Cargando datos desde Google Sheets...</p></div>';
+  
+  fetch(APPS_SCRIPT_URL + "?tipo=all")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.registros) {
+        DATA = data.registros;
+        DESVIOS = data.desvios || [];
+      } else if (Array.isArray(data)) {
+        DATA = data;
+        DESVIOS = [];
+      } else {
+        DATA = [];
+        DESVIOS = [];
+      }
+      LAST_UPDATE = new Date();
+      render();
+    })
+    .catch(function(err) {
+      DATA = [];
+      DESVIOS = [];
+      LAST_UPDATE = new Date();
+      render();
+    });
+}
+
+function getFiltered() {
+  return DATA.filter(function(d) {
+    var cat = d["Categoría"] || d.eventCategory || "";
+    var sector = d["Sector"] || d.sector || "";
+    var shift = d["Turno"] || d.shift || "";
+    if (FILTER_CAT !== "Todos" && cat !== FILTER_CAT) return false;
+    if (FILTER_SECTOR !== "Todos" && sector !== FILTER_SECTOR) return false;
+    if (FILTER_SHIFT !== "Todos" && shift !== FILTER_SHIFT) return false;
+    return true;
+  });
+}
+
+function field(d, keys) {
+  for (var i = 0; i < keys.length; i++) { if (d[keys[i]]) return d[keys[i]]; }
+  return "";
+}
+
+function render() {
+  var filtered = getFiltered();
+  var sectors = {}, shifts = {}, cats = {};
+  DATA.forEach(function(d) {
+    var s = field(d, ["Sector","sector"]); if (s) sectors[s] = 1;
+    var sh = field(d, ["Turno","shift"]); if (sh) shifts[sh] = 1;
+    var c = field(d, ["Categoría","eventCategory"]); if (c) cats[c] = 1;
+  });
+  
+  // KPIs
+  var total = filtered.length;
+  var accidentes = filtered.filter(function(d) { return field(d,["Categoría","eventCategory"]) === "ACCIDENTE"; }).length;
+  var incidentes = filtered.filter(function(d) { return field(d,["Categoría","eventCategory"]) === "INCIDENTE"; }).length;
+  var medioAmb = filtered.filter(function(d) { return field(d,["Categoría","eventCategory"]) === "MEDIO_AMBIENTE"; }).length;
+  var criticos = filtered.filter(function(d) { return field(d,["Prioridad","priority"]) === "CRITICA"; }).length;
+  
+  // Days safe (desde último accidente)
+  var lastAccDate = null;
+  filtered.forEach(function(d) {
+    if (field(d,["Categoría","eventCategory"]) === "ACCIDENTE") {
+      var dt = field(d,["Fecha","date"]);
+      if (dt && (!lastAccDate || dt > lastAccDate)) lastAccDate = dt;
+    }
+  });
+  var daysSafe = "∞";
+  var daysSafeLabel = "Sin accidentes";
+  if (lastAccDate) {
+    var diff = Math.floor((new Date() - new Date(lastAccDate)) / 86400000);
+    daysSafe = diff;
+    daysSafeLabel = "Último: " + lastAccDate;
+  }
+  
+  // By shift
+  var byShift = {};
+  filtered.forEach(function(d) { var s = field(d,["Turno","shift"]); if(s) byShift[s]=(byShift[s]||0)+1; });
+  var shiftData = ["Mañana","Tarde","Noche"].map(function(s) { return {label:s,value:byShift[s]||0}; });
+  
+  // By sector
+  var bySector = {};
+  filtered.forEach(function(d) { var s = field(d,["Sector","sector"]); if(s) bySector[s]=(bySector[s]||0)+1; });
+  var sectorData = Object.keys(bySector).map(function(k) { return {label:k,value:bySector[k]}; }).sort(function(a,b){return b.value-a.value;});
+  
+  // By type
+  var byType = {};
+  filtered.forEach(function(d) { var t = field(d,["Subtipo","eventSubType"]); if(t) byType[t]=(byType[t]||0)+1; });
+  var typeData = Object.keys(byType).map(function(k) { return {label:k,value:byType[k]}; }).sort(function(a,b){return b.value-a.value;}).slice(0,6);
+  
+  // Monthly trend
+  var byMonth = {};
+  filtered.forEach(function(d) {
+    var dt = field(d,["Fecha","date"]);
+    if (dt) { var m = String(dt).substring(0,7); byMonth[m]=(byMonth[m]||0)+1; }
+  });
+  var monthNames = {'01':'Ene','02':'Feb','03':'Mar','04':'Abr','05':'May','06':'Jun','07':'Jul','08':'Ago','09':'Sep','10':'Oct','11':'Nov','12':'Dic'};
+  var months = Object.keys(byMonth).sort();
+  var trendData = months.map(function(m) { return {label:monthNames[m.split("-")[1]]||m,value:byMonth[m]}; });
+  
+  // By priority
+  var byPri = {CRITICA:0,ALTA:0,MEDIA:0,BAJA:0};
+  filtered.forEach(function(d) { var p = field(d,["Prioridad","priority"]); if(byPri[p]!==undefined) byPri[p]++; });
+  var priTotal = byPri.CRITICA+byPri.ALTA+byPri.MEDIA+byPri.BAJA;
+  
+  // By category for donut
+  var catDonut = [
+    {label:"Accidentes",value:accidentes,color:"#DC2626"},
+    {label:"Incidentes",value:incidentes,color:"#F59E0B"},
+    {label:"Medio Ambiente",value:medioAmb,color:"#059669"}
+  ];
+  
+  // ======= BUILD HTML =======
+  var h = '';
+  
+  // Header
+  h += '<div class="header"><div><h1>🛡️ Dashboard de Seguridad Industrial</h1><p>Planta Tornquist — Sistema EHS 2026</p></div>';
+  h += '<div class="filters">';
+  h += '<select onchange="FILTER_CAT=this.value;render()"><option value="Todos">Todas las categorías</option>';
+  ["ACCIDENTE","INCIDENTE","MEDIO_AMBIENTE"].forEach(function(c) { h+='<option value="'+c+'"'+(FILTER_CAT===c?' selected':'')+'>'+({ACCIDENTE:"Accidente",INCIDENTE:"Incidente",MEDIO_AMBIENTE:"Medio Ambiente"}[c])+'</option>'; });
+  h += '</select>';
+  h += '<select onchange="FILTER_SECTOR=this.value;render()"><option value="Todos">Todos los sectores</option>';
+  Object.keys(sectors).sort().forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SECTOR===s?' selected':'')+'>'+s+'</option>'; });
+  h += '</select>';
+  h += '<select onchange="FILTER_SHIFT=this.value;render()"><option value="Todos">Todos los turnos</option>';
+  ["Mañana","Tarde","Noche"].forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SHIFT===s?' selected':'')+'>'+s+'</option>'; });
+  h += '</select>';
+  h += '<a href="index.html" class="refresh-btn" style="text-decoration:none;">🏠 Inicio</a><button class="refresh-btn" onclick="loadData()">🔄 Actualizar</button>';
+  h += '</div></div>';
+  
+  // KPI Cards
+  var desviosAbiertos = DESVIOS.filter(function(d) { return d.Estado !== "Cerrada"; }).length;
+  var desviosTotal = DESVIOS.length;
+  h += '<div class="kpi-grid">';
+  var kpis = [
+    {icon:"📋",value:total,label:"Total Registros",sub:"Todos los eventos",color:"#3B82F6",bg:"rgba(59,130,246,.1)"},
+    {icon:"🔴",value:accidentes,label:"Accidentes",sub:"Con lesión",color:"#DC2626",bg:"rgba(220,38,38,.1)"},
+    {icon:"⚠️",value:incidentes,label:"Incidentes",sub:"Actos y condiciones",color:"#F59E0B",bg:"rgba(245,158,11,.1)"},
+    {icon:"🌿",value:medioAmb,label:"Medio Ambiente",sub:"Eventos ambientales",color:"#059669",bg:"rgba(5,150,105,.1)"},
+    {icon:"✅",value:daysSafe,label:"Días Sin Accidentes",sub:daysSafeLabel,color:"#16A34A",bg:"rgba(22,163,74,.1)"},
+    {icon:"📌",value:desviosAbiertos,label:"Desvíos Abiertos",sub:desviosTotal+" acciones totales",color:"#8B5CF6",bg:"rgba(139,92,246,.1)"}
+  ];
+  kpis.forEach(function(k) {
+    h+='<div class="kpi" style="background:'+k.bg+';border-left-color:'+k.color+';"><span class="icon">'+k.icon+'</span><div class="value" style="color:'+k.color+';">'+k.value+'</div><div class="label">'+k.label+'</div><div class="sub">'+k.sub+'</div></div>';
+  });
+  h += '</div>';
+  
+  // Charts
+  h += '<div class="charts-grid">';
+  
+  // Bar: By Shift
+  h += '<div class="chart-card"><h3>📊 Eventos por turno</h3>';
+  var shiftColors = {Mañana:"#F59E0B",Tarde:"#3B82F6",Noche:"#6366F1"};
+  var shiftMax = Math.max.apply(null,shiftData.map(function(d){return d.value;}).concat([1]));
+  shiftData.forEach(function(d) {
+    var pct = (d.value/shiftMax*100);
+    h+='<div class="bar-row"><span class="bar-label">'+d.label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(pct,8)+'%;background:'+(shiftColors[d.label]||"#3B82F6")+';"><span>'+d.value+'</span></div></div></div>';
+  });
+  h += '</div>';
+  
+  // Bar: By Sector
+  h += '<div class="chart-card"><h3>🏭 Eventos por sector</h3>';
+  var secMax = Math.max.apply(null,sectorData.map(function(d){return d.value;}).concat([1]));
+  var secColors = ["#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#EF4444","#6366F1","#059669","#EA580C","#CA8A04"];
+  sectorData.forEach(function(d,i) {
+    var pct = (d.value/secMax*100);
+    h+='<div class="bar-row"><span class="bar-label">'+d.label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(pct,8)+'%;background:'+secColors[i%secColors.length]+';"><span>'+d.value+'</span></div></div></div>';
+  });
+  if(!sectorData.length) h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:20px;">Sin datos</p>';
+  h += '</div>';
+  
+  // Bar: By Type
+  h += '<div class="chart-card"><h3>⚡ Tipos de evento</h3>';
+  var typeMax = Math.max.apply(null,typeData.map(function(d){return d.value;}).concat([1]));
+  var typeColors = ["#DC2626","#F59E0B","#3B82F6","#8B5CF6","#059669","#EC4899"];
+  typeData.forEach(function(d,i) {
+    var pct = (d.value/typeMax*100);
+    h+='<div class="bar-row"><span class="bar-label">'+d.label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(pct,8)+'%;background:'+typeColors[i%typeColors.length]+';"><span>'+d.value+'</span></div></div></div>';
+  });
+  if(!typeData.length) h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:20px;">Sin datos</p>';
+  h += '</div>';
+  
+  // Trend
+  h += '<div class="chart-card"><h3>📈 Tendencia mensual</h3>';
+  if (trendData.length > 0) {
+    var tMax = Math.max.apply(null,trendData.map(function(d){return d.value;}).concat([1]));
+    var svgW = 100, svgH = 120;
+    var points = trendData.map(function(d,i) {
+      var x = trendData.length>1 ? (i/(trendData.length-1))*svgW : svgW/2;
+      var y = svgH - (d.value/tMax)*(svgH-30) - 15;
+      return {x:x,y:y};
+    });
+    var pathD = points.map(function(p,i){return (i===0?"M":"L")+" "+p.x+" "+p.y;}).join(" ");
+    h+='<svg viewBox="-10 0 '+(svgW+20)+' '+(svgH+30)+'" style="width:100%;max-height:150px;">';
+    h+='<path d="'+pathD+'" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    points.forEach(function(p,i) {
+      h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#3B82F6" stroke="#0F172A" stroke-width="2"/>';
+      h+='<text x="'+p.x+'" y="'+(p.y-10)+'" text-anchor="middle" font-size="10" fill="#F1F5F9" font-weight="700">'+trendData[i].value+'</text>';
+      h+='<text x="'+p.x+'" y="'+(svgH+18)+'" text-anchor="middle" font-size="9" fill="#64748B">'+trendData[i].label+'</text>';
+    });
+    h+='</svg>';
+  } else {
+    h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:30px;">Sin datos para graficar</p>';
+  }
+  h += '</div>';
+  
+  // Donut: By Priority
+  h += '<div class="chart-card"><h3>🎯 Distribución por prioridad</h3>';
+  var priColors = {CRITICA:"#DC2626",ALTA:"#EA580C",MEDIA:"#CA8A04",BAJA:"#16A34A"};
+  var priLabels = {CRITICA:"Crítica",ALTA:"Alta",MEDIA:"Media",BAJA:"Baja"};
+  if (priTotal > 0) {
+    var offset = 25;
+    h+='<div class="donut-wrap"><svg class="donut-svg" viewBox="0 0 36 36">';
+    h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="#334155" stroke-width="3"/>';
+    ["CRITICA","ALTA","MEDIA","BAJA"].forEach(function(p) {
+      var pct = (byPri[p]/priTotal)*100;
+      if (pct > 0) {
+        h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="'+priColors[p]+'" stroke-width="3" stroke-dasharray="'+pct+' '+(100-pct)+'" stroke-dashoffset="'+(-offset)+'" stroke-linecap="round"/>';
+        offset -= pct;
+      }
+    });
+    h+='<text class="donut-center" x="18" y="18" font-family="Segoe UI,sans-serif">'+priTotal+'</text>';
+    h+='</svg><div class="donut-legend">';
+    ["CRITICA","ALTA","MEDIA","BAJA"].forEach(function(p) {
+      h+='<div class="donut-item"><span style="display:flex;align-items:center;"><span class="donut-dot" style="background:'+priColors[p]+';"></span><span>'+priLabels[p]+'</span></span><strong>'+byPri[p]+'</strong></div>';
+    });
+    h+='</div></div>';
+  } else {
+    h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:30px;">Sin datos</p>';
+  }
+  h += '</div>';
+  
+  // Donut: By Category
+  h += '<div class="chart-card"><h3>📊 Distribución por categoría</h3>';
+  var catTotal = accidentes+incidentes+medioAmb;
+  if (catTotal > 0) {
+    var offset2 = 25;
+    h+='<div class="donut-wrap"><svg class="donut-svg" viewBox="0 0 36 36">';
+    h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="#334155" stroke-width="3"/>';
+    catDonut.forEach(function(c) {
+      var pct = (c.value/catTotal)*100;
+      if (pct > 0) {
+        h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="'+c.color+'" stroke-width="3" stroke-dasharray="'+pct+' '+(100-pct)+'" stroke-dashoffset="'+(-offset2)+'" stroke-linecap="round"/>';
+        offset2 -= pct;
+      }
+    });
+    h+='<text class="donut-center" x="18" y="18" font-family="Segoe UI,sans-serif">'+catTotal+'</text>';
+    h+='</svg><div class="donut-legend">';
+    catDonut.forEach(function(c) {
+      h+='<div class="donut-item"><span style="display:flex;align-items:center;"><span class="donut-dot" style="background:'+c.color+';"></span><span>'+c.label+'</span></span><strong>'+c.value+'</strong></div>';
+    });
+    h+='</div></div>';
+  } else {
+    h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:30px;">Sin datos</p>';
+  }
+  h += '</div>';
+  
+  h += '</div>'; // end charts-grid
+  
+  // Table
+  h += '<div class="table-card"><div class="table-header"><h3>📝 Registro de eventos ('+filtered.length+')</h3></div>';
+  h += '<div class="table-wrap"><table><thead><tr>';
+  ["ID","Fecha","Sector","Categoría","Prioridad","Persona","Descripción","Desvío"].forEach(function(col) {
+    h+='<th>'+col+'</th>';
+  });
+  h += '</tr></thead><tbody>';
+  
+  var catIcons = {ACCIDENTE:"🔴",INCIDENTE:"⚠️",MEDIO_AMBIENTE:"🌿"};
+  var catBadge = {ACCIDENTE:"badge-acc",INCIDENTE:"badge-inc",MEDIO_AMBIENTE:"badge-ma"};
+  var catShort = {ACCIDENTE:"Accidente",INCIDENTE:"Incidente",MEDIO_AMBIENTE:"Medio Amb."};
+  
+  // Reverse to show newest first
+  var tableData = filtered.slice().reverse();
+  
+  tableData.forEach(function(d,i) {
+    var cat = field(d,["Categoría","eventCategory"]);
+    var pri = field(d,["Prioridad","priority"]);
+    var evId = field(d,["ID","id"]);
+    var desviosEvento = DESVIOS.filter(function(dv) { return dv.Evento_ID === evId; });
+    var abiertas = desviosEvento.filter(function(dv) { return dv.Estado !== "Cerrada"; }).length;
+    h+='<tr>';
+    h+='<td class="id-cell">'+evId+'</td>';
+    h+='<td>'+field(d,["Fecha","date"])+'</td>';
+    h+='<td>'+field(d,["Sector","sector"])+'</td>';
+    h+='<td><span class="cat-icon">'+(catIcons[cat]||"")+'</span><span class="badge '+(catBadge[cat]||"")+'">'+(catShort[cat]||cat)+'</span></td>';
+    h+='<td><span class="badge badge-'+(pri||"")+'">'+pri+'</span></td>';
+    h+='<td>'+field(d,["Persona","person"])+'</td>';
+    var desc = field(d,["Descripción","description"]);
+    h+='<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+desc+'</td>';
+    h+='<td><button class="btn-desvio" onclick="openDesvio(\''+evId.replace(/'/g,"\\'")+'\')">'+(desviosEvento.length > 0 ? '📋 '+desviosEvento.length : '+ Abrir')+(abiertas > 0 ? '<span class="desvio-count">'+abiertas+'</span>' : '')+'</button></td>';
+    h+='</tr>';
+  });
+  
+  if (!tableData.length) h+='<tr><td colspan="8" style="text-align:center;padding:30px;color:#64748B;">No hay registros con los filtros seleccionados</td></tr>';
+  
+  h += '</tbody></table></div></div>';
+  
+  // Last update
+  if (LAST_UPDATE) {
+    h += '<div class="last-update">Última actualización: '+LAST_UPDATE.toLocaleString("es-AR")+ ' — Total en base de datos: '+DATA.length+' registros</div>';
+  }
+  
+  document.getElementById("app").innerHTML = h;
+}
+
+// ============ DESVÍOS ============
+function openDesvio(eventoId) {
+  MODAL_EVENT = eventoId;
+  renderModal();
+}
+
+function closeModal() {
+  MODAL_EVENT = null;
+  var m = document.getElementById("modal-overlay");
+  if (m) m.remove();
+}
+
+function renderModal() {
+  var old = document.getElementById("modal-overlay");
+  if (old) old.remove();
+  
+  var evId = MODAL_EVENT;
+  var evento = DATA.find(function(d) { return field(d,["ID","id"]) === evId; });
+  var desvios = DESVIOS.filter(function(dv) { return dv.Evento_ID === evId; });
+  var desvioId = desvios.length > 0 ? desvios[0].Desvio_ID : "DV-" + evId.replace(/[A-Z]+-/, "");
+  
+  var abiertas = desvios.filter(function(d) { return d.Estado === "Abierta"; }).length;
+  var enProceso = desvios.filter(function(d) { return d.Estado === "En proceso"; }).length;
+  var cerradas = desvios.filter(function(d) { return d.Estado === "Cerrada"; }).length;
+  
+  var h = '<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">';
+  h += '<div class="modal">';
+  
+  // Header
+  h += '<div class="modal-head"><h3>📋 Desvío — ' + evId + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>';
+  
+  // Body
+  h += '<div class="modal-body">';
+  
+  // Info del evento
+  if (evento) {
+    var cat = field(evento,["Categoría","eventCategory"]);
+    var catIcons = {ACCIDENTE:"🔴",INCIDENTE:"⚠️",MEDIO_AMBIENTE:"🌿"};
+    h += '<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:16px;border:1px solid var(--border);">';
+    h += '<div style="font-size:12px;color:var(--t3);margin-bottom:4px;">EVENTO ASOCIADO</div>';
+    h += '<div style="font-size:14px;color:var(--t1);font-weight:600;">' + (catIcons[cat]||"") + ' ' + field(evento,["Subtipo","eventSubType"]) + ' — ' + field(evento,["Sector","sector"]) + '</div>';
+    h += '<div style="font-size:12px;color:var(--t3);margin-top:2px;">' + field(evento,["Fecha","date"]) + ' | ' + field(evento,["Turno","shift"]) + ' | Persona: ' + field(evento,["Persona","person"]) + '</div>';
+    var desc = field(evento,["Descripción","description"]);
+    if (desc) h += '<div style="font-size:12px;color:var(--t2);margin-top:6px;line-height:1.4;">' + desc + '</div>';
+    h += '</div>';
+  }
+  
+  // Resumen de acciones
+  if (desvios.length > 0) {
+    h += '<div style="display:flex;gap:8px;margin-bottom:16px;">';
+    h += '<div style="flex:1;text-align:center;padding:8px;background:rgba(220,38,38,.1);border-radius:8px;"><div style="font-size:20px;font-weight:800;color:#DC2626;">' + abiertas + '</div><div style="font-size:10px;color:var(--t3);">Abiertas</div></div>';
+    h += '<div style="flex:1;text-align:center;padding:8px;background:rgba(245,158,11,.1);border-radius:8px;"><div style="font-size:20px;font-weight:800;color:#F59E0B;">' + enProceso + '</div><div style="font-size:10px;color:var(--t3);">En proceso</div></div>';
+    h += '<div style="flex:1;text-align:center;padding:8px;background:rgba(22,163,74,.1);border-radius:8px;"><div style="font-size:20px;font-weight:800;color:#16A34A;">' + cerradas + '</div><div style="font-size:10px;color:var(--t3);">Cerradas</div></div>';
+    h += '</div>';
+  }
+  
+  // Acciones existentes
+  h += '<div class="modal-section"><h4>Acciones cargadas (' + desvios.length + ')</h4>';
+  if (desvios.length === 0) {
+    h += '<div style="text-align:center;padding:20px;color:var(--t3);font-size:13px;">No hay acciones cargadas aún. Agregá la primera acción abajo.</div>';
+  } else {
+    desvios.forEach(function(dv) {
+      var estadoClass = "badge-estado badge-" + (dv.Estado || "Abierta").replace(/ /g, "-");
+      h += '<div class="action-card">';
+      h += '<div class="ac-head"><span class="ac-num">Acción #' + dv.Nro_Accion + '</span><span class="' + estadoClass + '">' + (dv.Estado || "Abierta") + '</span></div>';
+      h += '<div class="ac-desc">' + (dv.Descripcion || "") + '</div>';
+      h += '<div class="ac-meta"><span>👤 ' + (dv.Responsable || "—") + '</span><span>📅 ' + (dv.Fecha_Vencimiento || "—") + '</span></div>';
+      if (dv.Estado !== "Cerrada") {
+        h += '<div style="margin-top:8px;display:flex;gap:6px;">';
+        if (dv.Estado === "Abierta") {
+          h += '<button class="btn-sm" style="background:#F59E0B;color:#fff;" onclick="actualizarEstado(\'' + desvioId + '\',' + dv.Nro_Accion + ',\'En proceso\')">▶ En proceso</button>';
+        }
+        h += '<button class="btn-sm btn-save" onclick="cerrarAccion(\'' + desvioId + '\',' + dv.Nro_Accion + ')">✓ Cerrar</button>';
+        h += '</div>';
+      } else {
+        if (dv.Fecha_Cierre) h += '<div style="font-size:10px;color:#16A34A;margin-top:4px;">Cerrada: ' + String(dv.Fecha_Cierre).substring(0,10) + (dv.Cerrado_Por ? ' por ' + dv.Cerrado_Por : '') + '</div>';
+      }
+      h += '</div>';
+    });
+  }
+  h += '</div>';
+  
+  // Formulario nueva acción
+  h += '<div class="modal-section"><h4>➕ Agregar nueva acción</h4>';
+  h += '<div class="modal-field"><label>Descripción de la acción *</label><textarea id="nac_desc" placeholder="¿Qué hay que hacer?"></textarea></div>';
+  h += '<div class="modal-row">';
+  h += '<div class="modal-field"><label>Responsable *</label><input type="text" id="nac_resp" placeholder="Nombre"></div>';
+  h += '<div class="modal-field"><label>Fecha de vencimiento</label><input type="date" id="nac_fecha"></div>';
+  h += '</div>';
+  h += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">';
+  h += '<button class="btn-sm btn-add" onclick="guardarAccion(\'' + desvioId + '\',\'' + evId + '\',' + (desvios.length + 1) + ')">💾 Guardar acción</button>';
+  h += '</div></div>';
+  
+  h += '</div></div></div>';
+  
+  document.body.insertAdjacentHTML("beforeend", h);
+}
+
+function guardarAccion(desvioId, eventoId, nro) {
+  var desc = document.getElementById("nac_desc").value.trim();
+  var resp = document.getElementById("nac_resp").value.trim();
+  var fecha = document.getElementById("nac_fecha").value;
+  
+  if (!desc || !resp) { alert("Completá descripción y responsable"); return; }
+  
+  var params = new URLSearchParams();
+  params.append("action", "guardar_desvio");
+  params.append("desvio_id", desvioId);
+  params.append("evento_id", eventoId);
+  params.append("nro_accion", nro);
+  params.append("descripcion", desc);
+  params.append("responsable", resp);
+  params.append("fecha_vencimiento", fecha);
+  params.append("estado", "Abierta");
+  
+  // Optimistic update
+  DESVIOS.push({
+    Desvio_ID: desvioId, Evento_ID: eventoId, Nro_Accion: nro,
+    Descripcion: desc, Responsable: resp, Fecha_Vencimiento: fecha,
+    Estado: "Abierta", Fecha_Creacion: new Date().toISOString(), Fecha_Cierre: "", Cerrado_Por: ""
+  });
+  renderModal();
+  render();
+  
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+function actualizarEstado(desvioId, nro, nuevoEstado) {
+  var params = new URLSearchParams();
+  params.append("action", "actualizar_desvio");
+  params.append("desvio_id", desvioId);
+  params.append("nro_accion", nro);
+  params.append("estado", nuevoEstado);
+  
+  // Optimistic update
+  DESVIOS.forEach(function(dv) {
+    if (dv.Desvio_ID === desvioId && String(dv.Nro_Accion) === String(nro)) {
+      dv.Estado = nuevoEstado;
+    }
+  });
+  renderModal();
+  render();
+  
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+function cerrarAccion(desvioId, nro) {
+  var quien = prompt("¿Quién cierra esta acción? (tu nombre)");
+  if (!quien) return;
+  
+  var params = new URLSearchParams();
+  params.append("action", "actualizar_desvio");
+  params.append("desvio_id", desvioId);
+  params.append("nro_accion", nro);
+  params.append("estado", "Cerrada");
+  params.append("cerrado_por", quien);
+  
+  DESVIOS.forEach(function(dv) {
+    if (dv.Desvio_ID === desvioId && String(dv.Nro_Accion) === String(nro)) {
+      dv.Estado = "Cerrada";
+      dv.Fecha_Cierre = new Date().toISOString();
+      dv.Cerrado_Por = quien;
+    }
+  });
+  renderModal();
+  render();
+  
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params }).catch(function(){});
+}
+
+// Auto-load
+loadData();
+</script>
+</body>
+</html>
