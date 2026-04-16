@@ -3,124 +3,400 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard EHS - Planta Tornquist</title>
+<title>Dashboard EHS — Planta Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0F172A; --bg2:#1E293B; --bg3:#334155; --border:#475569; --t1:#F1F5F9; --t2:#94A3B8; --t3:#64748B; }
+  :root {
+    /* Brand */
+    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0;
+    --brand-500:#10B981; --brand-600:#059669; --brand-700:#047857; --brand-800:#065F46;
+    /* Ink (texto y fondos neutros) */
+    --bg:#F8FAFC; --bg2:#FFFFFF; --bg3:#F1F5F9;
+    --border:#E2E8F0; --border-strong:#CBD5E1;
+    --t1:#0F172A; --t2:#475569; --t3:#94A3B8;
+    /* Semántica */
+    --accident:#DC2626; --accident-bg:#FEF2F2; --accident-border:#FECACA;
+    --incident:#F59E0B; --incident-bg:#FFFBEB; --incident-border:#FDE68A;
+    --environment:#059669; --environment-bg:#ECFDF5; --environment-border:#A7F3D0;
+    --info:#2563EB; --info-bg:#EFF6FF;
+    /* Prioridades */
+    --pri-crit:#DC2626; --pri-alta:#EA580C; --pri-media:#CA8A04; --pri-baja:#16A34A;
+    /* Sombras refinadas */
+    --shadow-xs:0 1px 2px rgba(15,23,42,.04);
+    --shadow-sm:0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+    --shadow-md:0 4px 6px rgba(15,23,42,.05), 0 2px 4px rgba(15,23,42,.04);
+    --shadow-lg:0 10px 25px rgba(15,23,42,.08), 0 4px 10px rgba(15,23,42,.04);
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--t1); min-height:100vh; }
-  .app { max-width:1200px; margin:0 auto; padding:16px; }
-  
+  body {
+    font-family:'Inter Tight',system-ui,-apple-system,sans-serif;
+    background:var(--bg); color:var(--t1); min-height:100vh;
+    letter-spacing:-.01em;
+    background-image:
+      radial-gradient(ellipse 60% 40% at 0% 0%, var(--brand-50) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, #EFF6FF 0%, transparent 50%);
+  }
+  .app { max-width:1280px; margin:0 auto; padding:20px 24px 40px; }
+
   /* Header */
-  .header { background:linear-gradient(135deg,#991B1B,#7F1D1D); border-radius:16px; padding:20px 24px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
-  .header h1 { font-size:20px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
-  .header p { font-size:13px; color:rgba(255,255,255,.6); margin-top:2px; }
-  .filters { display:flex; gap:8px; flex-wrap:wrap; }
-  .filters select { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:8px 12px; font-size:13px; outline:none; cursor:pointer; backdrop-filter:blur(4px); }
-  .filters select option { background:#1E293B; color:#F1F5F9; }
-  .refresh-btn { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:10px; padding:8px 14px; font-size:13px; cursor:pointer; font-weight:600; }
-  .refresh-btn:hover { background:rgba(255,255,255,.25); }
-  
-  /* KPI Cards */
-  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px; }
-  .kpi { border-radius:14px; padding:16px; position:relative; overflow:hidden; border-left:4px solid; }
-  .kpi .icon { font-size:22px; }
-  .kpi .value { font-size:32px; font-weight:800; margin:4px 0; }
-  .kpi .label { font-size:12px; font-weight:600; color:var(--t2); }
-  .kpi .sub { font-size:11px; color:var(--t3); margin-top:2px; }
-  
-  /* Charts Grid */
-  .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:12px; margin-bottom:16px; }
-  .chart-card { background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:16px; }
-  .chart-card h3 { font-size:14px; font-weight:700; color:var(--t2); margin-bottom:14px; }
-  
-  /* Bar chart */
-  .bar-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-  .bar-label { font-size:12px; color:var(--t2); width:140px; text-align:right; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .bar-track { flex:1; background:var(--bg3); border-radius:10px; height:22px; position:relative; overflow:hidden; }
-  .bar-fill { height:100%; border-radius:10px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; min-width:24px; transition:width .6s ease; }
-  .bar-fill span { font-size:11px; font-weight:700; color:#fff; }
-  
-  /* Donut */
-  .donut-wrap { display:flex; align-items:center; gap:20px; }
-  .donut-svg { width:100px; height:100px; }
-  .donut-legend { flex:1; }
-  .donut-item { display:flex; align-items:center; justify-content:space-between; padding:4px 0; }
-  .donut-dot { width:10px; height:10px; border-radius:50%; margin-right:8px; flex-shrink:0; }
-  .donut-item span { font-size:12px; color:var(--t2); }
-  .donut-item strong { font-size:14px; color:var(--t1); }
-  .donut-center { font-size:18px; font-weight:800; fill:var(--t1); text-anchor:middle; dominant-baseline:central; }
-  
-  /* Trend */
-  .trend-svg { width:100%; height:140px; }
-  
+  .header {
+    background:var(--bg2); border:1px solid var(--border); border-radius:16px;
+    padding:18px 24px; margin-bottom:20px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+    box-shadow:var(--shadow-sm);
+  }
+  .header-brand { display:flex; align-items:center; gap:14px; }
+  .header-mark {
+    width:42px; height:42px; border-radius:11px;
+    background:linear-gradient(135deg, var(--brand-600), var(--brand-800));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 14px rgba(4,120,87,.28);
+  }
+  .header-mark svg { width:22px; height:22px; color:#fff; }
+  .header-text h1 {
+    font-size:18px; font-weight:700; color:var(--t1); letter-spacing:-.02em;
+  }
+  .header-text p {
+    font-size:12px; color:var(--t2); margin-top:2px;
+    font-family:'JetBrains Mono',monospace; letter-spacing:.03em;
+  }
+  .header-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .btn-action {
+    padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600;
+    border:1px solid var(--border); background:var(--bg2); color:var(--t2);
+    cursor:pointer; transition:all .2s; text-decoration:none;
+    display:inline-flex; align-items:center; gap:6px; font-family:'Inter Tight',sans-serif;
+    letter-spacing:-.005em;
+  }
+  .btn-action:hover { border-color:var(--brand-500); color:var(--brand-700); background:var(--brand-50); }
+  .btn-action svg { width:14px; height:14px; }
+  .btn-action.primary {
+    background:var(--brand-700); border-color:var(--brand-700); color:#fff;
+    box-shadow:0 2px 8px rgba(4,120,87,.25);
+  }
+  .btn-action.primary:hover { background:var(--brand-800); border-color:var(--brand-800); color:#fff; }
+  .refresh-btn {
+    padding:8px 14px; border-radius:10px; font-size:13px; font-weight:600;
+    border:1px solid var(--border); background:var(--bg2); color:var(--t2);
+    cursor:pointer; transition:all .2s; font-family:'Inter Tight',sans-serif;
+  }
+  .refresh-btn:hover { border-color:var(--brand-500); color:var(--brand-700); background:var(--brand-50); }
+
+  /* KPI grid */
+  .kpi-grid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:12px; margin-bottom:18px;
+  }
+  .kpi {
+    background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+    padding:16px 18px; position:relative; overflow:hidden;
+    transition:all .2s ease-out; box-shadow:var(--shadow-xs);
+  }
+  .kpi:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:var(--border-strong); }
+  .kpi::before {
+    content:''; position:absolute; top:0; left:0; bottom:0; width:3px;
+    background:var(--kpi-accent, var(--brand-500));
+  }
+  .kpi-head {
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;
+  }
+  .kpi-label {
+    font-size:11px; font-weight:600; color:var(--t2);
+    text-transform:uppercase; letter-spacing:.08em; font-family:'JetBrains Mono',monospace;
+  }
+  .kpi-icon {
+    width:30px; height:30px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--kpi-bg, var(--brand-50));
+    color:var(--kpi-accent, var(--brand-700));
+  }
+  .kpi-icon svg { width:16px; height:16px; }
+  .kpi-value {
+    font-size:30px; font-weight:800; color:var(--t1);
+    letter-spacing:-.03em; line-height:1; font-variant-numeric:tabular-nums;
+  }
+  .kpi-sub { font-size:12px; color:var(--t3); margin-top:4px; }
+  .kpi.accident { --kpi-accent:var(--accident); --kpi-bg:var(--accident-bg); }
+  .kpi.incident { --kpi-accent:var(--incident); --kpi-bg:var(--incident-bg); }
+  .kpi.environment { --kpi-accent:var(--environment); --kpi-bg:var(--environment-bg); }
+  .kpi.info { --kpi-accent:var(--info); --kpi-bg:var(--info-bg); }
+
+  /* Section titles */
+  .section-head {
+    display:flex; align-items:center; justify-content:space-between;
+    margin:26px 0 12px; gap:12px; flex-wrap:wrap;
+  }
+  .section-head h2 {
+    font-size:15px; font-weight:700; color:var(--t1); letter-spacing:-.015em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-head h2 svg { width:16px; height:16px; color:var(--t2); }
+  .section-head .section-sub {
+    font-size:12px; color:var(--t3); font-family:'JetBrains Mono',monospace;
+  }
+
+  /* Charts */
+  .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; margin-bottom:20px; }
+  .chart-card {
+    background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+    padding:18px; box-shadow:var(--shadow-xs);
+  }
+  .chart-card h3 {
+    font-size:13px; font-weight:700; color:var(--t1); margin-bottom:14px;
+    letter-spacing:-.01em; display:flex; align-items:center; gap:6px;
+  }
+  .chart-card h3 .dot { width:8px; height:8px; border-radius:50%; background:var(--brand-500); }
+  .chart-bar-row {
+    display:grid; grid-template-columns:100px 1fr 40px; gap:10px;
+    align-items:center; margin-bottom:8px; font-size:12px;
+  }
+  .chart-bar-row .label { color:var(--t2); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chart-bar-row .track { height:10px; background:var(--bg3); border-radius:999px; overflow:hidden; }
+  .chart-bar-row .fill { height:100%; border-radius:999px; transition:width .5s ease-out; }
+  .chart-bar-row .val { font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--t1); text-align:right; font-size:12px; }
+
+  /* Filters */
+  .filters {
+    background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+    padding:16px 18px; margin-bottom:18px; box-shadow:var(--shadow-xs);
+  }
+  .filters h3 {
+    font-size:11px; font-weight:700; color:var(--t2); margin-bottom:10px;
+    text-transform:uppercase; letter-spacing:.1em; font-family:'JetBrains Mono',monospace;
+  }
+  .filter-row { display:flex; flex-wrap:wrap; gap:8px; }
+  .filter-chip {
+    padding:7px 14px; border-radius:999px; font-size:12px; font-weight:600;
+    border:1px solid var(--border); background:var(--bg2); color:var(--t2);
+    cursor:pointer; transition:all .2s; user-select:none;
+    font-family:'Inter Tight',sans-serif;
+  }
+  .filter-chip:hover { border-color:var(--brand-500); color:var(--brand-700); }
+  .filter-chip.active { background:var(--brand-700); color:#fff; border-color:var(--brand-700); }
+
   /* Table */
-  .table-card { background:var(--bg2); border:1px solid var(--border); border-radius:14px; overflow:hidden; margin-bottom:16px; }
-  .table-header { padding:14px 16px; border-bottom:1px solid var(--border); background:rgba(51,65,85,.5); display:flex; align-items:center; justify-content:space-between; }
-  .table-header h3 { font-size:14px; font-weight:700; color:var(--t2); }
-  .table-wrap { overflow-x:auto; }
+  .table-wrap {
+    background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; box-shadow:var(--shadow-xs);
+  }
+  .table-scroll { overflow-x:auto; }
   table { width:100%; border-collapse:collapse; font-size:13px; }
-  th { padding:10px 12px; text-align:left; font-size:11px; font-weight:700; color:var(--t3); text-transform:uppercase; border-bottom:1px solid var(--border); background:rgba(51,65,85,.3); }
-  td { padding:10px 12px; border-bottom:1px solid rgba(71,85,105,.3); color:var(--t2); }
-  tr:hover td { background:rgba(59,130,246,.05); }
-  .badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; color:#fff; }
-  .badge-CRITICA { background:#DC2626; }
-  .badge-ALTA { background:#EA580C; }
-  .badge-MEDIA { background:#CA8A04; }
-  .badge-BAJA { background:#16A34A; }
-  .badge-acc { background:#DC2626; }
-  .badge-inc { background:#F59E0B; }
-  .badge-ma { background:#059669; }
-  .cat-icon { font-size:16px; margin-right:4px; }
-  .id-cell { font-family:monospace; font-weight:700; color:#60A5FA; font-size:12px; }
-  
+  thead {
+    background:var(--bg3);
+    border-bottom:1px solid var(--border);
+  }
+  th {
+    text-align:left; padding:12px 16px; font-size:11px; font-weight:700;
+    color:var(--t2); text-transform:uppercase; letter-spacing:.08em;
+    font-family:'JetBrains Mono',monospace; white-space:nowrap;
+  }
+  td {
+    padding:14px 16px; border-bottom:1px solid var(--border); color:var(--t1);
+    vertical-align:middle;
+  }
+  tbody tr { transition:background .15s; }
+  tbody tr:hover { background:var(--bg3); }
+  tbody tr:last-child td { border-bottom:none; }
+  .id-cell {
+    font-family:'JetBrains Mono',monospace; font-weight:600;
+    font-size:12px; color:var(--t2); white-space:nowrap;
+  }
+  .cat-icon { margin-right:6px; }
+
+  /* Badges */
+  .badge {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:3px 10px; border-radius:999px;
+    font-size:11px; font-weight:700; letter-spacing:.02em;
+    font-family:'Inter Tight',sans-serif;
+  }
+  .badge-acc { background:var(--accident-bg); color:var(--accident); border:1px solid var(--accident-border); }
+  .badge-inc { background:var(--incident-bg); color:#B45309; border:1px solid var(--incident-border); }
+  .badge-ma  { background:var(--environment-bg); color:var(--environment); border:1px solid var(--environment-border); }
+  .badge-CRITICA { background:#FEE2E2; color:var(--pri-crit); border:1px solid #FCA5A5; }
+  .badge-ALTA    { background:#FFEDD5; color:var(--pri-alta); border:1px solid #FDBA74; }
+  .badge-MEDIA   { background:#FEF3C7; color:var(--pri-media); border:1px solid #FCD34D; }
+  .badge-BAJA    { background:#DCFCE7; color:var(--pri-baja); border:1px solid #86EFAC; }
+
+  /* Botón desvío */
+  .btn-desvio {
+    padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600;
+    background:var(--brand-50); border:1px solid var(--brand-200); color:var(--brand-700);
+    cursor:pointer; transition:all .2s; position:relative;
+    font-family:'Inter Tight',sans-serif; white-space:nowrap;
+  }
+  .btn-desvio:hover { background:var(--brand-700); color:#fff; border-color:var(--brand-700); }
+  .desvio-count {
+    position:absolute; top:-5px; right:-5px; background:var(--accident); color:#fff;
+    width:17px; height:17px; border-radius:50%; font-size:10px;
+    display:flex; align-items:center; justify-content:center; font-weight:700;
+    border:2px solid var(--bg2);
+  }
+
   /* Loading */
-  .loading { text-align:center; padding:60px 20px; }
-  .spinner { width:40px; height:40px; border:3px solid var(--bg3); border-top-color:#3B82F6; border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 12px; }
+  .loading { text-align:center; padding:80px 20px; }
+  .spinner {
+    width:40px; height:40px;
+    border:3px solid var(--border); border-top-color:var(--brand-600);
+    border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 14px;
+  }
   @keyframes spin { to { transform:rotate(360deg); } }
-  .error-box { text-align:center; padding:40px; color:#F87171; }
-  
-  /* Last update */
-  .last-update { text-align:center; font-size:11px; color:var(--t3); padding:8px; }
-  
-  /* Modal Desvios */
-  .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.7); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(4px); }
-  .modal { background:var(--bg2); border:1px solid var(--border); border-radius:16px; width:100%; max-width:640px; max-height:90vh; overflow-y:auto; }
-  .modal-head { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
-  .modal-head h3 { font-size:16px; font-weight:700; color:var(--t1); }
-  .modal-close { background:none; border:none; color:var(--t3); font-size:20px; cursor:pointer; padding:4px 8px; }
-  .modal-close:hover { color:var(--t1); }
-  .modal-body { padding:16px 20px; }
-  .modal-section { margin-bottom:16px; }
-  .modal-section h4 { font-size:13px; font-weight:700; color:var(--t2); margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px; }
+
+  .last-update {
+    font-size:11px; color:var(--t3); text-align:center; margin-top:20px;
+    font-family:'JetBrains Mono',monospace; letter-spacing:.02em;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(15,23,42,.55);
+    z-index:1000; display:flex; align-items:center; justify-content:center;
+    padding:16px; backdrop-filter:blur(6px);
+    animation:fadeIn .2s ease-out;
+  }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal {
+    background:var(--bg2); border:1px solid var(--border); border-radius:18px;
+    width:100%; max-width:680px; max-height:90vh; overflow-y:auto;
+    box-shadow:0 30px 80px rgba(15,23,42,.3);
+    animation:modalPop .28s cubic-bezier(.34,1.4,.64,1);
+  }
+  @keyframes modalPop { from{opacity:0;transform:translateY(20px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+  .modal-head {
+    padding:16px 22px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .modal-head h3 {
+    font-size:15px; font-weight:700; color:var(--t1); letter-spacing:-.01em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .modal-close {
+    background:var(--bg3); border:1px solid var(--border); color:var(--t2);
+    font-size:18px; cursor:pointer; padding:4px 10px; border-radius:8px;
+    transition:all .2s; line-height:1;
+  }
+  .modal-close:hover { background:var(--accident-bg); color:var(--accident); border-color:var(--accident-border); }
+  .modal-body { padding:20px 22px; }
+  .modal-section { margin-bottom:18px; }
+  .modal-section h4 {
+    font-size:11px; font-weight:700; color:var(--t2); margin-bottom:10px;
+    text-transform:uppercase; letter-spacing:.1em; font-family:'JetBrains Mono',monospace;
+  }
   .modal-field { margin-bottom:12px; }
-  .modal-field label { display:block; font-size:12px; font-weight:600; color:var(--t2); margin-bottom:4px; }
-  .modal-field input, .modal-field textarea, .modal-field select { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:10px 14px; color:var(--t1); font-size:13px; font-family:inherit; outline:none; }
-  .modal-field input:focus, .modal-field textarea:focus { border-color:#3B82F6; }
-  .modal-field textarea { resize:none; min-height:60px; }
+  .modal-field label {
+    display:block; font-size:11px; font-weight:700; color:var(--t2);
+    margin-bottom:5px; text-transform:uppercase; letter-spacing:.08em;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .modal-field input, .modal-field textarea, .modal-field select {
+    width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:10px;
+    padding:10px 14px; color:var(--t1); font-size:14px; font-family:'Inter Tight',sans-serif;
+    outline:none; transition:all .2s;
+  }
+  .modal-field input:focus, .modal-field textarea:focus, .modal-field select:focus {
+    border-color:var(--brand-500); box-shadow:0 0 0 3px var(--brand-100);
+  }
+  .modal-field textarea { resize:vertical; min-height:70px; line-height:1.5; }
   .modal-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .action-card { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
-  .action-card .ac-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-  .action-card .ac-num { font-size:12px; font-weight:700; color:#3B82F6; }
-  .action-card .ac-desc { font-size:13px; color:var(--t1); margin-bottom:4px; }
-  .action-card .ac-meta { font-size:11px; color:var(--t3); }
-  .action-card .ac-meta span { margin-right:12px; }
-  .badge-estado { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:700; }
-  .badge-Abierta { background:#DC2626; color:#fff; }
-  .badge-En-proceso { background:#F59E0B; color:#fff; }
-  .badge-Cerrada { background:#16A34A; color:#fff; }
-  .btn-sm { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; border:none; cursor:pointer; }
-  .btn-add { background:#3B82F6; color:#fff; }
-  .btn-add:hover { background:#2563EB; }
-  .btn-save { background:#16A34A; color:#fff; }
-  .btn-save:hover { background:#15803D; }
-  .btn-desvio { background:rgba(59,130,246,.15); color:#60A5FA; border:1px solid rgba(59,130,246,.3); padding:4px 10px; border-radius:8px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
-  .btn-desvio:hover { background:rgba(59,130,246,.25); }
-  .desvio-count { display:inline-block; background:#3B82F6; color:#fff; font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; margin-left:4px; }
+
+  /* Info pills dentro del modal */
+  .info-pill {
+    background:var(--bg3); padding:10px 14px; border-radius:10px;
+    border:1px solid var(--border);
+  }
+  .info-pill .label {
+    font-size:10px; color:var(--t3); text-transform:uppercase;
+    letter-spacing:.1em; font-family:'JetBrains Mono',monospace; font-weight:600;
+  }
+  .info-pill .value { font-size:13px; color:var(--t1); margin-top:3px; font-weight:500; }
+
+  /* Acción / acciones */
+  .ac-row {
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px; margin-bottom:8px;
+  }
+  .ac-desc { font-size:13px; color:var(--t1); margin-bottom:6px; line-height:1.45; }
+  .ac-meta { font-size:11px; color:var(--t2); display:flex; gap:10px; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; }
+
+  /* Estados */
+  .estado-pill {
+    display:inline-block; padding:2px 9px; border-radius:999px;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .estado-Pendiente { background:var(--incident-bg); color:#B45309; }
+  .estado-En-curso, .estado-En.curso { background:var(--info-bg); color:var(--info); }
+  .estado-Cerrada { background:var(--environment-bg); color:var(--environment); }
+
+  /* Responsive */
+  @media (max-width:768px) {
+    .app { padding:14px; }
+    .header { padding:14px 16px; }
+    .header-text h1 { font-size:16px; }
+    .kpi-value { font-size:26px; }
+    .charts-grid { grid-template-columns:1fr; }
+    th, td { padding:10px 12px; font-size:12px; }
+  }  /* Donuts */
+  .donut-wrap { display:flex; align-items:center; gap:20px; flex-wrap:wrap; justify-content:center; }
+  .donut-svg { width:140px; height:140px; flex-shrink:0; }
+  .donut-svg circle { transition:stroke-dasharray .6s ease-out; }
+  .donut-center {
+    font-size:9px; font-weight:800; fill:var(--t1); text-anchor:middle;
+    dominant-baseline:central; font-family:'JetBrains Mono',monospace;
+  }
+  .donut-legend { flex:1; min-width:140px; display:flex; flex-direction:column; gap:8px; }
+  .donut-item {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:13px; color:var(--t2);
+    padding:6px 10px; background:var(--bg3); border-radius:8px;
+  }
+  .donut-item strong { color:var(--t1); font-family:'JetBrains Mono',monospace; font-weight:700; }
+  .donut-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+
+  /* Selects con estilo filter-chip */
+  select.filter-chip {
+    appearance:none; -webkit-appearance:none;
+    background-image:url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center;
+  }
+  /* Action cards en modal desvíos */
+  .action-card {
+    background:var(--bg2); border:1px solid var(--border); border-radius:11px;
+    padding:12px 14px; margin-bottom:8px; transition:all .2s;
+  }
+  .action-card:hover { border-color:var(--border-strong); }
+  .ac-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .ac-num { font-size:11px; font-weight:700; color:var(--t2); font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+  .badge-estado {
+    display:inline-block; padding:3px 10px; border-radius:999px;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .badge-Abierta { background:var(--accident-bg); color:var(--accident); border:1px solid var(--accident-border); }
+  .badge-En-proceso { background:var(--incident-bg); color:#B45309; border:1px solid var(--incident-border); }
+  .badge-Cerrada { background:var(--environment-bg); color:var(--environment); border:1px solid var(--environment-border); }
+
+  /* Botones pequeños del modal */
+  .btn-sm {
+    padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600;
+    border:none; cursor:pointer; transition:all .2s;
+    font-family:'Inter Tight',sans-serif; letter-spacing:-.005em;
+  }
+  .btn-save { background:var(--brand-700); color:#fff; }
+  .btn-save:hover { background:var(--brand-800); }
+  .btn-add {
+    background:var(--brand-700); color:#fff; padding:10px 20px; font-size:13px;
+    box-shadow:0 2px 8px rgba(4,120,87,.25);
+  }
+  .btn-add:hover { background:var(--brand-800); transform:translateY(-1px); }
+
 </style>
 </head>
 <body>
 <div class="app" id="app">
-  <div class="loading"><div class="spinner"></div><p style="color:#94A3B8;">Cargando datos desde Google Sheets...</p></div>
+  <div class="loading"><div class="spinner"></div><p style="color:var(--t2);font-size:14px;">Cargando datos desde Google Sheets...</p></div>
 </div>
 
 <script>
@@ -138,7 +414,7 @@ var LAST_UPDATE = null;
 var MODAL_EVENT = null;
 
 function loadData() {
-  document.getElementById("app").innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:#94A3B8;">Cargando datos desde Google Sheets...</p></div>';
+  document.getElementById("app").innerHTML = '<div class="loading"><div class="spinner"></div><p style="color:var(--t2);font-size:14px;">Cargando datos desde Google Sheets...</p></div>';
   
   fetch(APPS_SCRIPT_URL + "?tipo=all")
     .then(function(r) { return r.json(); })
@@ -254,18 +530,30 @@ function render() {
   var h = '';
   
   // Header
-  h += '<div class="header"><div><h1>🛡️ Dashboard de Seguridad Industrial</h1><p>Planta Tornquist — Sistema EHS 2026</p></div>';
+  h += '<div class="header">';
+  h += '<div class="header-brand">';
+  h += '<div class="header-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>';
+  h += '<div class="header-text"><h1>Dashboard EHS</h1><p>Planta Tornquist · Papelera del Sur</p></div>';
+  h += '</div>';
+  h += '<div class="header-actions">';
+  h += '<a href="index.html" class="btn-action" title="Inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Inicio</a>';
+  h += '<a href="seguimiento.html" class="btn-action"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Seguimiento</a>';
+  h += '<button class="btn-action primary" onclick="loadData()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Actualizar</button>';
+  h += '</div></div>';
+
+  // Filtros
   h += '<div class="filters">';
-  h += '<select onchange="FILTER_CAT=this.value;render()"><option value="Todos">Todas las categorías</option>';
+  h += '<h3>Filtros</h3>';
+  h += '<div class="filter-row">';
+  h += '<select class="filter-chip" style="padding-right:28px;" onchange="FILTER_CAT=this.value;render()"><option value="Todos">Todas las categorías</option>';
   ["ACCIDENTE","INCIDENTE","MEDIO_AMBIENTE"].forEach(function(c) { h+='<option value="'+c+'"'+(FILTER_CAT===c?' selected':'')+'>'+({ACCIDENTE:"Accidente",INCIDENTE:"Incidente",MEDIO_AMBIENTE:"Medio Ambiente"}[c])+'</option>'; });
   h += '</select>';
-  h += '<select onchange="FILTER_SECTOR=this.value;render()"><option value="Todos">Todos los sectores</option>';
+  h += '<select class="filter-chip" style="padding-right:28px;" onchange="FILTER_SECTOR=this.value;render()"><option value="Todos">Todos los sectores</option>';
   Object.keys(sectors).sort().forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SECTOR===s?' selected':'')+'>'+s+'</option>'; });
   h += '</select>';
-  h += '<select onchange="FILTER_SHIFT=this.value;render()"><option value="Todos">Todos los turnos</option>';
-  ["A","B","C","D"].forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SHIFT===s?' selected':'')+'>'+s+'</option>'; });
+  h += '<select class="filter-chip" style="padding-right:28px;" onchange="FILTER_SHIFT=this.value;render()"><option value="Todos">Todos los turnos</option>';
+  ["A","B","C","D","Diurno"].forEach(function(s) { h+='<option value="'+s+'"'+(FILTER_SHIFT===s?' selected':'')+'>Turno '+s+'</option>'; });
   h += '</select>';
-  h += '<a href="index.html" class="refresh-btn" style="text-decoration:none;">🏠 Inicio</a><button class="refresh-btn" onclick="loadData()">🔄 Actualizar</button>';
   h += '</div></div>';
   
   // KPI Cards
@@ -273,15 +561,15 @@ function render() {
   var desviosTotal = DESVIOS.length;
   h += '<div class="kpi-grid">';
   var kpis = [
-    {icon:"📋",value:total,label:"Total Registros",sub:"Todos los eventos",color:"#3B82F6",bg:"rgba(59,130,246,.1)"},
-    {icon:"🔴",value:accidentes,label:"Accidentes",sub:"Con lesión",color:"#DC2626",bg:"rgba(220,38,38,.1)"},
-    {icon:"⚠️",value:incidentes,label:"Incidentes",sub:"Actos y condiciones",color:"#F59E0B",bg:"rgba(245,158,11,.1)"},
-    {icon:"🌿",value:medioAmb,label:"Medio Ambiente",sub:"Eventos ambientales",color:"#059669",bg:"rgba(5,150,105,.1)"},
-    {icon:"✅",value:daysSafe,label:"Días Sin Accidentes",sub:daysSafeLabel,color:"#16A34A",bg:"rgba(22,163,74,.1)"},
-    {icon:"📌",value:desviosAbiertos,label:"Desvíos Abiertos",sub:desviosTotal+" acciones totales",color:"#8B5CF6",bg:"rgba(139,92,246,.1)"}
+    {cls:"info", svg:'<polyline points="14 2 14 8 20 8"/><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>', value:total, label:"Total registros", sub:"Todos los eventos"},
+    {cls:"accident", svg:'<path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>', value:accidentes, label:"Accidentes", sub:"Con lesión"},
+    {cls:"incident", svg:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>', value:incidentes, label:"Incidentes", sub:"Actos y condiciones"},
+    {cls:"environment", svg:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/>', value:medioAmb, label:"Medio ambiente", sub:"Eventos ambientales"},
+    {cls:"environment", svg:'<polyline points="20 6 9 17 4 12"/>', value:daysSafe, label:"Días sin accidentes", sub:daysSafeLabel},
+    {cls:"info", svg:'<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>', value:desviosAbiertos, label:"Desvíos abiertos", sub:desviosTotal+" acciones totales"}
   ];
   kpis.forEach(function(k) {
-    h+='<div class="kpi" style="background:'+k.bg+';border-left-color:'+k.color+';"><span class="icon">'+k.icon+'</span><div class="value" style="color:'+k.color+';">'+k.value+'</div><div class="label">'+k.label+'</div><div class="sub">'+k.sub+'</div></div>';
+    h+='<div class="kpi '+k.cls+'"><div class="kpi-head"><span class="kpi-label">'+k.label+'</span><div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+k.svg+'</svg></div></div><div class="kpi-value">'+k.value+'</div><div class="kpi-sub">'+k.sub+'</div></div>';
   });
   h += '</div>';
   
@@ -289,39 +577,40 @@ function render() {
   h += '<div class="charts-grid">';
   
   // Bar: By Shift
-  h += '<div class="chart-card"><h3>📊 Eventos por turno</h3>';
-  var shiftColors = {A:"#3B82F6",B:"#F59E0B",C:"#16A34A",D:"#8B5CF6"};
+  h += '<div class="chart-card"><h3><span class="dot"></span>Eventos por turno</h3>';
+  var shiftColors = {A:"#2563EB",B:"#F59E0B",C:"#16A34A",D:"#8B5CF6",Diurno:"#F97316"};
   var shiftMax = Math.max.apply(null,shiftData.map(function(d){return d.value;}).concat([1]));
   shiftData.forEach(function(d) {
     var pct = (d.value/shiftMax*100);
-    h+='<div class="bar-row"><span class="bar-label">'+d.label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(pct,8)+'%;background:'+(shiftColors[d.label]||"#3B82F6")+';"><span>'+d.value+'</span></div></div></div>';
+    h+='<div class="chart-bar-row"><span class="label">Turno '+d.label+'</span><div class="track"><div class="fill" style="width:'+Math.max(pct,4)+'%;background:'+(shiftColors[d.label]||"#2563EB")+';"></div></div><span class="val">'+d.value+'</span></div>';
   });
+  if(!shiftData.length) h+='<p style="color:var(--t3);font-size:13px;text-align:center;padding:20px;">Sin datos</p>';
   h += '</div>';
   
   // Bar: By Sector
-  h += '<div class="chart-card"><h3>🏭 Eventos por sector</h3>';
+  h += '<div class="chart-card"><h3><span class="dot" style="background:#8B5CF6;"></span>Eventos por sector</h3>';
   var secMax = Math.max.apply(null,sectorData.map(function(d){return d.value;}).concat([1]));
-  var secColors = ["#3B82F6","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#EF4444","#6366F1","#059669","#EA580C","#CA8A04"];
+  var secColors = ["#2563EB","#8B5CF6","#EC4899","#14B8A6","#F59E0B","#DC2626","#6366F1","#059669","#EA580C","#CA8A04"];
   sectorData.forEach(function(d,i) {
     var pct = (d.value/secMax*100);
-    h+='<div class="bar-row"><span class="bar-label">'+d.label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(pct,8)+'%;background:'+secColors[i%secColors.length]+';"><span>'+d.value+'</span></div></div></div>';
+    h+='<div class="chart-bar-row"><span class="label">'+d.label+'</span><div class="track"><div class="fill" style="width:'+Math.max(pct,4)+'%;background:'+secColors[i%secColors.length]+';"></div></div><span class="val">'+d.value+'</span></div>';
   });
-  if(!sectorData.length) h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:20px;">Sin datos</p>';
+  if(!sectorData.length) h+='<p style="color:var(--t3);font-size:13px;text-align:center;padding:20px;">Sin datos</p>';
   h += '</div>';
   
   // Bar: By Type
-  h += '<div class="chart-card"><h3>⚡ Tipos de evento</h3>';
+  h += '<div class="chart-card"><h3><span class="dot" style="background:#DC2626;"></span>Tipos de evento</h3>';
   var typeMax = Math.max.apply(null,typeData.map(function(d){return d.value;}).concat([1]));
-  var typeColors = ["#DC2626","#F59E0B","#3B82F6","#8B5CF6","#059669","#EC4899"];
+  var typeColors = ["#DC2626","#F59E0B","#2563EB","#8B5CF6","#059669","#EC4899"];
   typeData.forEach(function(d,i) {
     var pct = (d.value/typeMax*100);
-    h+='<div class="bar-row"><span class="bar-label">'+d.label+'</span><div class="bar-track"><div class="bar-fill" style="width:'+Math.max(pct,8)+'%;background:'+typeColors[i%typeColors.length]+';"><span>'+d.value+'</span></div></div></div>';
+    h+='<div class="chart-bar-row"><span class="label">'+d.label+'</span><div class="track"><div class="fill" style="width:'+Math.max(pct,4)+'%;background:'+typeColors[i%typeColors.length]+';"></div></div><span class="val">'+d.value+'</span></div>';
   });
-  if(!typeData.length) h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:20px;">Sin datos</p>';
+  if(!typeData.length) h+='<p style="color:var(--t3);font-size:13px;text-align:center;padding:20px;">Sin datos</p>';
   h += '</div>';
   
   // Trend
-  h += '<div class="chart-card"><h3>📈 Tendencia mensual</h3>';
+  h += '<div class="chart-card"><h3><span class="dot" style="background:#059669;"></span>Tendencia mensual</h3>';
   if (trendData.length > 0) {
     var tMax = Math.max.apply(null,trendData.map(function(d){return d.value;}).concat([1]));
     var svgW = 100, svgH = 120;
@@ -331,27 +620,31 @@ function render() {
       return {x:x,y:y};
     });
     var pathD = points.map(function(p,i){return (i===0?"M":"L")+" "+p.x+" "+p.y;}).join(" ");
-    h+='<svg viewBox="-10 0 '+(svgW+20)+' '+(svgH+30)+'" style="width:100%;max-height:150px;">';
-    h+='<path d="'+pathD+'" fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+    // Area fill path
+    var areaD = pathD + " L "+points[points.length-1].x+" "+svgH+" L "+points[0].x+" "+svgH+" Z";
+    h+='<svg viewBox="-10 0 '+(svgW+20)+' '+(svgH+30)+'" style="width:100%;max-height:160px;">';
+    h+='<defs><linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10B981" stop-opacity=".25"/><stop offset="100%" stop-color="#10B981" stop-opacity="0"/></linearGradient></defs>';
+    h+='<path d="'+areaD+'" fill="url(#trendGrad)"/>';
+    h+='<path d="'+pathD+'" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
     points.forEach(function(p,i) {
-      h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#3B82F6" stroke="#0F172A" stroke-width="2"/>';
-      h+='<text x="'+p.x+'" y="'+(p.y-10)+'" text-anchor="middle" font-size="10" fill="#F1F5F9" font-weight="700">'+trendData[i].value+'</text>';
-      h+='<text x="'+p.x+'" y="'+(svgH+18)+'" text-anchor="middle" font-size="9" fill="#64748B">'+trendData[i].label+'</text>';
+      h+='<circle cx="'+p.x+'" cy="'+p.y+'" r="3.5" fill="#047857" stroke="#fff" stroke-width="2"/>';
+      h+='<text x="'+p.x+'" y="'+(p.y-8)+'" text-anchor="middle" font-size="9" fill="#0F172A" font-weight="700" font-family="JetBrains Mono, monospace">'+trendData[i].value+'</text>';
+      h+='<text x="'+p.x+'" y="'+(svgH+18)+'" text-anchor="middle" font-size="8" fill="#94A3B8" font-family="JetBrains Mono, monospace">'+trendData[i].label+'</text>';
     });
     h+='</svg>';
   } else {
-    h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:30px;">Sin datos para graficar</p>';
+    h+='<p style="color:var(--t3);font-size:13px;text-align:center;padding:30px;">Sin datos para graficar</p>';
   }
   h += '</div>';
   
   // Donut: By Priority
-  h += '<div class="chart-card"><h3>🎯 Distribución por prioridad</h3>';
+  h += '<div class="chart-card"><h3><span class="dot" style="background:#EA580C;"></span>Distribución por prioridad</h3>';
   var priColors = {CRITICA:"#DC2626",ALTA:"#EA580C",MEDIA:"#CA8A04",BAJA:"#16A34A"};
   var priLabels = {CRITICA:"Crítica",ALTA:"Alta",MEDIA:"Media",BAJA:"Baja"};
   if (priTotal > 0) {
     var offset = 25;
     h+='<div class="donut-wrap"><svg class="donut-svg" viewBox="0 0 36 36">';
-    h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="#334155" stroke-width="3"/>';
+    h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="#F1F5F9" stroke-width="3"/>';
     ["CRITICA","ALTA","MEDIA","BAJA"].forEach(function(p) {
       var pct = (byPri[p]/priTotal)*100;
       if (pct > 0) {
@@ -366,17 +659,17 @@ function render() {
     });
     h+='</div></div>';
   } else {
-    h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:30px;">Sin datos</p>';
+    h+='<p style="color:var(--t3);font-size:13px;text-align:center;padding:30px;">Sin datos</p>';
   }
   h += '</div>';
   
   // Donut: By Category
-  h += '<div class="chart-card"><h3>📊 Distribución por categoría</h3>';
+  h += '<div class="chart-card"><h3><span class="dot" style="background:#8B5CF6;"></span>Distribución por categoría</h3>';
   var catTotal = accidentes+incidentes+medioAmb;
   if (catTotal > 0) {
     var offset2 = 25;
     h+='<div class="donut-wrap"><svg class="donut-svg" viewBox="0 0 36 36">';
-    h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="#334155" stroke-width="3"/>';
+    h+='<circle cx="18" cy="18" r="15.5" fill="none" stroke="#F1F5F9" stroke-width="3"/>';
     catDonut.forEach(function(c) {
       var pct = (c.value/catTotal)*100;
       if (pct > 0) {
@@ -391,15 +684,15 @@ function render() {
     });
     h+='</div></div>';
   } else {
-    h+='<p style="color:#64748B;font-size:13px;text-align:center;padding:30px;">Sin datos</p>';
+    h+='<p style="color:var(--t3);font-size:13px;text-align:center;padding:30px;">Sin datos</p>';
   }
   h += '</div>';
   
   h += '</div>'; // end charts-grid
   
   // Table
-  h += '<div class="table-card"><div class="table-header"><h3>📝 Registro de eventos ('+filtered.length+')</h3></div>';
-  h += '<div class="table-wrap"><table><thead><tr>';
+  h += '<div class="section-head"><h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> Registro de eventos</h2><span class="section-sub">'+filtered.length+' resultados</span></div>';
+  h += '<div class="table-wrap"><div class="table-scroll"><table><thead><tr>';
   ["ID","Fecha","Sector","Categoría","Prioridad","Persona","Descripción","Desvío"].forEach(function(col) {
     h+='<th>'+col+'</th>';
   });
@@ -412,26 +705,32 @@ function render() {
   // Reverse to show newest first
   var tableData = filtered.slice().reverse();
   
+  // Detectar IDs duplicados en DATA para alertar al usuario
+  var idCounts = {};
+  DATA.forEach(function(r){ var id = field(r,["ID","id"]); if(id) idCounts[id] = (idCounts[id]||0)+1; });
+  
   tableData.forEach(function(d,i) {
     var cat = field(d,["Categoría","eventCategory"]);
     var pri = field(d,["Prioridad","priority"]);
     var evId = field(d,["ID","id"]);
+    var dataIdx = DATA.indexOf(d); // índice absoluto en DATA, único por registro
+    var isDup = idCounts[evId] > 1;
     var desviosEvento = DESVIOS.filter(function(dv) { return dv.Evento_ID === evId; });
     var abiertas = desviosEvento.filter(function(dv) { return dv.Estado !== "Cerrada"; }).length;
-    h+='<tr style="cursor:pointer;" onclick="verEvento(\''+evId.replace(/'/g,"\\'")+'\')">';
-    h+='<td class="id-cell">'+evId+'</td>';
+    h+='<tr style="cursor:pointer;'+(isDup?"background:rgba(220,38,38,.08);":"")+'" onclick="verEventoByIdx('+dataIdx+')">';
+    h+='<td class="id-cell">'+evId+(isDup?' <span title="ID duplicado en la base — revisar Sheet" style="color:#F87171;font-size:10px;">⚠️ DUP</span>':'')+'</td>';
     h+='<td>'+field(d,["Fecha","date"])+'</td>';
     h+='<td>'+field(d,["Sector","sector"])+'</td>';
     h+='<td><span class="cat-icon">'+(catIcons[cat]||"")+'</span><span class="badge '+(catBadge[cat]||"")+'">'+(catShort[cat]||cat)+'</span></td>';
     h+='<td><span class="badge badge-'+(pri||"")+'">'+pri+'</span></td>';
     h+='<td>'+field(d,["Persona","person"])+'</td>';
     var desc = field(d,["Descripción","description"]);
-    h+='<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+desc+'</td>';
+    h+='<td style="max-width:240px;line-height:1.4;font-size:12px;color:var(--t2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;" title="'+desc.replace(/"/g,'&quot;')+'">'+desc+'</td>';
     h+='<td><button class="btn-desvio" onclick="event.stopPropagation();openDesvio(\''+evId.replace(/'/g,"\\'")+'\')">'+(desviosEvento.length > 0 ? '📋 '+desviosEvento.length : '+ Abrir')+(abiertas > 0 ? '<span class="desvio-count">'+abiertas+'</span>' : '')+'</button></td>';
     h+='</tr>';
   });
   
-  if (!tableData.length) h+='<tr><td colspan="8" style="text-align:center;padding:30px;color:#64748B;">No hay registros con los filtros seleccionados</td></tr>';
+  if (!tableData.length) h+='<tr><td colspan="8" style="text-align:center;padding:40px 20px;color:var(--t3);">No hay registros con los filtros seleccionados</td></tr>';
   
   h += '</tbody></table></div></div>';
   
@@ -444,12 +743,22 @@ function render() {
 }
 
 // ============ VER DETALLE EVENTO ============
+function verEventoByIdx(idx) {
+  var d = DATA[idx];
+  if (!d) return;
+  var evId = field(d,["ID","id"]);
+  verEventoRender(d, evId);
+}
+
 function verEvento(eventoId) {
-  var old = document.getElementById("evento-overlay");
-  if (old) old.remove();
-  
   var d = DATA.find(function(r) { return field(r,["ID","id"]) === eventoId; });
   if (!d) return;
+  verEventoRender(d, eventoId);
+}
+
+function verEventoRender(d, eventoId) {
+  var old = document.getElementById("evento-overlay");
+  if (old) old.remove();
   
   var cat = field(d,["Categoría","eventCategory"]);
   var catIcons = {ACCIDENTE:"🔴",INCIDENTE:"⚠️",MEDIO_AMBIENTE:"🌿"};
@@ -462,14 +771,14 @@ function verEvento(eventoId) {
   h += '<div class="modal">';
   
   // Header con color de categoría
-  h += '<div class="modal-head" style="background:'+(catColors[cat]||"#3B82F6")+';border-radius:16px 16px 0 0;border-bottom:none;">';
-  h += '<h3 style="color:#fff;">'+(catIcons[cat]||"")+" "+eventoId+' — '+(catLabels[cat]||cat)+'</h3>';
-  h += '<button class="modal-close" style="color:#fff;" onclick="document.getElementById(\'evento-overlay\').remove()">✕</button></div>';
+  h += '<div class="modal-head" style="background:'+(catColors[cat]||"#3B82F6")+';border-radius:18px 18px 0 0;border-bottom:none;">';
+  h += '<h3 style="color:#fff;font-family:\'JetBrains Mono\',monospace;letter-spacing:-.01em;font-size:14px;">'+eventoId+' · '+(catLabels[cat]||cat)+'</h3>';
+  h += '<button class="modal-close" style="color:#fff;background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3);" onclick="document.getElementById(\'evento-overlay\').remove()">✕</button></div>';
   
   h += '<div class="modal-body">';
   
   // Prioridad badge
-  h += '<div style="text-align:center;margin-bottom:14px;"><span class="badge" style="background:'+(priColors[pri]||"#6B7280")+';font-size:14px;padding:6px 20px;">Prioridad: '+pri+'</span></div>';
+  h += '<div style="text-align:center;margin-bottom:18px;"><span class="badge" style="background:'+(priColors[pri]||"#6B7280")+';color:#fff;font-size:13px;padding:6px 18px;border:none;">Prioridad '+pri+'</span></div>';
   
   // Datos generales
   h += '<div class="modal-section"><h4>Datos del evento</h4>';
@@ -483,7 +792,7 @@ function verEvento(eventoId) {
     ["Subtipo", field(d,["Subtipo","eventSubType"])],
   ];
   datos.forEach(function(r) {
-    if (r[1]) h += '<div style="background:var(--bg);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
+    if (r[1]) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
   });
   h += '</div></div>';
   
@@ -499,7 +808,7 @@ function verEvento(eventoId) {
       ["EPP", field(d,["EPP","epp"])],
     ];
     persDatos.forEach(function(r) {
-      if (r[1]) h += '<div style="background:var(--bg);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
+      if (r[1]) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
     });
     h += '</div></div>';
   }
@@ -507,26 +816,26 @@ function verEvento(eventoId) {
   // Consecuencia
   var consec = field(d,["Consecuencia","consequence"]);
   if (consec) {
-    h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid '+(priColors[pri]||"#6B7280")+';"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">Consecuencia</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+consec+'</div></div>';
+    h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid '+(priColors[pri]||"#6B7280")+';"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">Consecuencia</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+consec+'</div></div>';
   }
   
   // Tipo accidente / Acto-Condición
   var tipoAcc = field(d,["Tipo accidente","accidentType"]);
   var actoCondicion = field(d,["Acto/Condición seleccionada","incidentOption"]);
-  if (tipoAcc) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #DC2626;"><div style="font-size:10px;color:var(--t3);">TIPO DE ACCIDENTE</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+tipoAcc+'</div></div>';
-  if (actoCondicion) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #F59E0B;"><div style="font-size:10px;color:var(--t3);">ACTO/CONDICIÓN IDENTIFICADA</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+actoCondicion+'</div></div>';
+  if (tipoAcc) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #DC2626;"><div style="font-size:10px;color:var(--t3);">TIPO DE ACCIDENTE</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+tipoAcc+'</div></div>';
+  if (actoCondicion) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #F59E0B;"><div style="font-size:10px;color:var(--t3);">ACTO/CONDICIÓN IDENTIFICADA</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+actoCondicion+'</div></div>';
   
   // Descripción
   var desc = field(d,["Descripción","description"]);
-  if (desc) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;"><div style="font-size:10px;color:var(--t3);">DESCRIPCIÓN</div><div style="font-size:13px;color:var(--t1);margin-top:4px;line-height:1.5;">'+desc+'</div></div>';
+  if (desc) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:10px 14px;border-radius:8px;margin-bottom:12px;"><div style="font-size:10px;color:var(--t3);">DESCRIPCIÓN</div><div style="font-size:13px;color:var(--t1);margin-top:4px;line-height:1.5;white-space:pre-wrap;">'+desc+'</div></div>';
   
   // Tarea
   var tarea = field(d,["Tarea","task"]);
-  if (tarea) h += '<div style="background:var(--bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;"><div style="font-size:10px;color:var(--t3);">TAREA QUE SE REALIZABA</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+tarea+'</div></div>';
+  if (tarea) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:10px 14px;border-radius:8px;margin-bottom:12px;"><div style="font-size:10px;color:var(--t3);">TAREA QUE SE REALIZABA</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+tarea+'</div></div>';
   
   // Acciones inmediatas
   var accInm = field(d,["Acciones inmediatas","immediateActions"]);
-  if (accInm) h += '<div style="background:rgba(234,88,12,.1);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #EA580C;"><div style="font-size:10px;color:#FDBA74;">ACCIONES INMEDIATAS</div><div style="font-size:13px;color:#FED7AA;margin-top:2px;">'+accInm+'</div></div>';
+  if (accInm) h += '<div style="background:var(--incident-bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #EA580C;"><div style="font-size:10px;color:#B45309;">ACCIONES INMEDIATAS</div><div style="font-size:13px;color:#7C2D12;margin-top:2px;">'+accInm+'</div></div>';
   
   // Notificaciones
   var notifResp = field(d,["Notif. responsable área","areaNotified"]);
@@ -534,9 +843,9 @@ function verEvento(eventoId) {
   var notifAuth = field(d,["Notif. autoridad","authorityNotified"]);
   if (notifResp || notifART || notifAuth) {
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">';
-    if (notifResp) h += '<div style="background:var(--bg);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. responsable: <strong style="color:var(--t1);">'+notifResp+'</strong>'+(field(d,["Responsable notificado","areaNotifiedTo"])?' — '+field(d,["Responsable notificado","areaNotifiedTo"]):'')+'</div>';
-    if (notifART) h += '<div style="background:var(--bg);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. ART: <strong style="color:var(--t1);">'+notifART+'</strong></div>';
-    if (notifAuth) h += '<div style="background:var(--bg);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. autoridad: <strong style="color:var(--t1);">'+notifAuth+'</strong></div>';
+    if (notifResp) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. responsable: <strong style="color:var(--t1);">'+notifResp+'</strong>'+(field(d,["Responsable notificado","areaNotifiedTo"])?' — '+field(d,["Responsable notificado","areaNotifiedTo"]):'')+'</div>';
+    if (notifART) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. ART: <strong style="color:var(--t1);">'+notifART+'</strong></div>';
+    if (notifAuth) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--t2);">Notif. autoridad: <strong style="color:var(--t1);">'+notifAuth+'</strong></div>';
     h += '</div>';
   }
   
@@ -545,22 +854,41 @@ function verEvento(eventoId) {
   if (sustancia) {
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">';
     [["Sustancia",sustancia],["Volumen",field(d,["Volumen estimado","estimatedVolume"])],["Área afectada",field(d,["Área afectada","areaAffected"])],["Contención",field(d,["Contención","containmentActions"])]].forEach(function(r) {
-      if (r[1]) h += '<div style="background:var(--bg);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
+      if (r[1]) h += '<div style="background:var(--bg3);border:1px solid var(--border);padding:8px 12px;border-radius:8px;"><div style="font-size:10px;color:var(--t3);text-transform:uppercase;">'+r[0]+'</div><div style="font-size:13px;color:var(--t1);margin-top:2px;">'+r[1]+'</div></div>';
     });
     h += '</div>';
+  }
+  
+  // Contención (medio ambiente)
+  var contencion = field(d,["Contención","containmentActions"]);
+  if (contencion && !sustancia) {
+    h += '<div style="background:var(--environment-bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #059669;"><div style="font-size:10px;color:#047857;">ACCIONES DE CONTENCIÓN</div><div style="font-size:13px;color:#064E3B;margin-top:2px;line-height:1.5;">'+contencion+'</div></div>';
+  }
+  
+  // Causa raíz
+  var causaRaiz = field(d,["Causa raíz","Causa raiz","rootCause"]);
+  if (causaRaiz) {
+    h += '<div style="background:#F5F3FF;padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #8B5CF6;"><div style="font-size:10px;color:#6D28D9;">CAUSA RAÍZ (5 PORQUÉS)</div><div style="font-size:13px;color:#4C1D95;margin-top:4px;line-height:1.5;white-space:pre-wrap;">'+causaRaiz+'</div></div>';
+  }
+  
+  // Acciones correctivas
+  var accCorr = field(d,["Acciones correctivas","corrActions"]);
+  if (accCorr) {
+    var accHtml = accCorr.split(" | ").map(function(a){ return "• "+a; }).join("<br>");
+    h += '<div style="background:var(--info-bg);padding:10px 14px;border-radius:8px;margin-bottom:12px;border-left:3px solid #3B82F6;"><div style="font-size:10px;color:#1D4ED8;">ACCIONES CORRECTIVAS PROPUESTAS</div><div style="font-size:13px;color:#1E3A8A;margin-top:4px;line-height:1.6;">'+accHtml+'</div></div>';
   }
   
   // Reportado por
   var reportadoPor = field(d,["Reportado por","reportedBy"]);
   if (reportadoPor) {
-    h += '<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;margin-top:8px;"><span style="font-size:11px;color:var(--t3);">Reportado por: </span><span style="font-size:12px;color:var(--t1);font-weight:600;">'+reportadoPor+'</span>';
+    h += '<div style="text-align:center;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-top:8px;"><span style="font-size:11px;color:var(--t3);">Reportado por: </span><span style="font-size:12px;color:var(--t1);font-weight:600;">'+reportadoPor+'</span>';
     var cargo = field(d,["Cargo","reporterRole"]);
     if (cargo) h += '<span style="font-size:11px;color:var(--t3);"> ('+cargo+')</span>';
     h += '</div>';
   }
   
   // Botón abrir desvío
-  h += '<div style="text-align:center;margin-top:14px;"><button class="btn-desvio" style="padding:10px 24px;font-size:14px;" onclick="document.getElementById(\'evento-overlay\').remove();openDesvio(\''+eventoId.replace(/'/g,"\\'")+'\')">📌 Gestionar desvío</button></div>';
+  h += '<div style="text-align:center;margin-top:18px;padding-top:16px;border-top:1px solid var(--border);"><button class="btn-add" onclick="document.getElementById(\'evento-overlay\').remove();openDesvio(\''+eventoId.replace(/'/g,"\\'")+'\')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Gestionar desvío</button></div>';
   
   h += '</div></div></div>';
   
@@ -596,7 +924,7 @@ function renderModal() {
   h += '<div class="modal">';
   
   // Header
-  h += '<div class="modal-head"><h3>📋 Desvío — ' + evId + '</h3><button class="modal-close" onclick="closeModal()">✕</button></div>';
+  h += '<div class="modal-head"><h3><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--brand-700);"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Gestión de desvío — <span style="font-family:\'JetBrains Mono\',monospace;color:var(--t2);">' + evId + '</span></h3><button class="modal-close" onclick="closeModal()">✕</button></div>';
   
   // Body
   h += '<div class="modal-body">';
@@ -605,21 +933,21 @@ function renderModal() {
   if (evento) {
     var cat = field(evento,["Categoría","eventCategory"]);
     var catIcons = {ACCIDENTE:"🔴",INCIDENTE:"⚠️",MEDIO_AMBIENTE:"🌿"};
-    h += '<div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:16px;border:1px solid var(--border);">';
-    h += '<div style="font-size:12px;color:var(--t3);margin-bottom:4px;">EVENTO ASOCIADO</div>';
+    h += '<div style="background:var(--bg3);border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1px solid var(--border);border-left:3px solid var(--brand-600);">';
+    h += '<div style="font-size:10px;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.1em;font-family:\'JetBrains Mono\',monospace;font-weight:700;">Evento asociado</div>';
     h += '<div style="font-size:14px;color:var(--t1);font-weight:600;">' + (catIcons[cat]||"") + ' ' + field(evento,["Subtipo","eventSubType"]) + ' — ' + field(evento,["Sector","sector"]) + '</div>';
-    h += '<div style="font-size:12px;color:var(--t3);margin-top:2px;">' + field(evento,["Fecha","date"]) + ' | ' + field(evento,["Turno","shift"]) + ' | Persona: ' + field(evento,["Persona","person"]) + '</div>';
+    h += '<div style="font-size:12px;color:var(--t2);margin-top:4px;">' + field(evento,["Fecha","date"]) + ' · Turno ' + field(evento,["Turno","shift"]) + ' · ' + field(evento,["Persona","person"]) + '</div>';
     var desc = field(evento,["Descripción","description"]);
-    if (desc) h += '<div style="font-size:12px;color:var(--t2);margin-top:6px;line-height:1.4;">' + desc + '</div>';
+    if (desc) h += '<div style="font-size:12px;color:var(--t2);margin-top:8px;line-height:1.5;padding-top:8px;border-top:1px solid var(--border);">' + desc + '</div>';
     h += '</div>';
   }
   
   // Resumen de acciones
   if (desvios.length > 0) {
-    h += '<div style="display:flex;gap:8px;margin-bottom:16px;">';
-    h += '<div style="flex:1;text-align:center;padding:8px;background:rgba(220,38,38,.1);border-radius:8px;"><div style="font-size:20px;font-weight:800;color:#DC2626;">' + abiertas + '</div><div style="font-size:10px;color:var(--t3);">Abiertas</div></div>';
-    h += '<div style="flex:1;text-align:center;padding:8px;background:rgba(245,158,11,.1);border-radius:8px;"><div style="font-size:20px;font-weight:800;color:#F59E0B;">' + enProceso + '</div><div style="font-size:10px;color:var(--t3);">En proceso</div></div>';
-    h += '<div style="flex:1;text-align:center;padding:8px;background:rgba(22,163,74,.1);border-radius:8px;"><div style="font-size:20px;font-weight:800;color:#16A34A;">' + cerradas + '</div><div style="font-size:10px;color:var(--t3);">Cerradas</div></div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">';
+    h += '<div style="text-align:center;padding:12px 8px;background:var(--accident-bg);border:1px solid var(--accident-border);border-radius:10px;"><div style="font-size:22px;font-weight:800;color:var(--accident);font-variant-numeric:tabular-nums;">' + abiertas + '</div><div style="font-size:10px;color:var(--t2);margin-top:2px;text-transform:uppercase;letter-spacing:.08em;font-family:\'JetBrains Mono\',monospace;font-weight:600;">Abiertas</div></div>';
+    h += '<div style="text-align:center;padding:12px 8px;background:var(--incident-bg);border:1px solid var(--incident-border);border-radius:10px;"><div style="font-size:22px;font-weight:800;color:#B45309;font-variant-numeric:tabular-nums;">' + enProceso + '</div><div style="font-size:10px;color:var(--t2);margin-top:2px;text-transform:uppercase;letter-spacing:.08em;font-family:\'JetBrains Mono\',monospace;font-weight:600;">En proceso</div></div>';
+    h += '<div style="text-align:center;padding:12px 8px;background:var(--environment-bg);border:1px solid var(--environment-border);border-radius:10px;"><div style="font-size:22px;font-weight:800;color:var(--environment);font-variant-numeric:tabular-nums;">' + cerradas + '</div><div style="font-size:10px;color:var(--t2);margin-top:2px;text-transform:uppercase;letter-spacing:.08em;font-family:\'JetBrains Mono\',monospace;font-weight:600;">Cerradas</div></div>';
     h += '</div>';
   }
   
