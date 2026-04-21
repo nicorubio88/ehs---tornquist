@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Evaluación Asakai — Planta Tornquist</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --blue: #1F4E79;
+    --blue-light: #D9E2F3;
+    --blue-dark: #0E2E4D;
+    --green: #548235;
+    --amber: #BF8F00;
+    --red: #C00000;
+    --gray-50: #F8F9FA;
+    --gray-100: #F2F2F2;
+    --gray-300: #D1D5DB;
+    --gray-500: #6B7280;
+    --gray-700: #374151;
+    --gray-900: #111827;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(180deg, var(--blue-light) 0%, #F5F7FB 200px);
+    min-height: 100vh;
+    color: var(--gray-900);
+    padding-bottom: 120px;
+  }
+  header {
+    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-dark) 100%);
+    color: white;
+    padding: 20px 16px 24px;
+    box-shadow: var(--shadow);
+  }
+  header h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  header p { font-size: 13px; opacity: 0.85; }
+  .container { max-width: 640px; margin: 0 auto; padding: 16px; }
+  .card {
+    background: white;
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--blue);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--blue-light);
+  }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-700);
+    margin-bottom: 6px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 12px 14px;
+    font-size: 15px;
+    border: 1.5px solid var(--gray-300);
+    border-radius: 10px;
+    background: white;
+    transition: border-color 0.15s;
+    font-family: inherit;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--blue);
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ITEM CARD */
+  .item {
+    background: white;
+    border-radius: 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border-left: 4px solid var(--gray-300);
+    transition: border-color 0.2s;
+  }
+  .item.answered-yes { border-left-color: var(--green); }
+  .item.answered-no { border-left-color: var(--red); }
+  .item-header {
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .item-num {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    background: var(--blue);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .item-body { flex: 1; }
+  .item-dim {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--blue);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
+  }
+  .item-txt {
+    font-size: 14px;
+    color: var(--gray-900);
+    line-height: 1.4;
+  }
+  .item-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 0 16px 14px;
+  }
+  .btn-answer {
+    padding: 11px;
+    border: 2px solid var(--gray-300);
+    background: white;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gray-700);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn-answer:active { transform: scale(0.97); }
+  .btn-yes.active {
+    background: var(--green);
+    border-color: var(--green);
+    color: white;
+  }
+  .btn-no.active {
+    background: var(--red);
+    border-color: var(--red);
+    color: white;
+  }
+  .item-obs {
+    padding: 0 16px 14px;
+    display: none;
+  }
+  .item-obs.show { display: block; }
+  .item-obs textarea {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 13px;
+    border: 1.5px solid var(--gray-300);
+    border-radius: 8px;
+    resize: vertical;
+    min-height: 60px;
+    font-family: inherit;
+  }
+  .item-obs textarea:focus { outline: none; border-color: var(--blue); }
+
+  /* PROGRESS BAR FIJO ABAJO */
+  .score-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid var(--gray-300);
+    padding: 12px 16px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+    z-index: 100;
+  }
+  .score-inner { max-width: 640px; margin: 0 auto; }
+  .score-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .score-label { font-size: 12px; color: var(--gray-500); font-weight: 600; }
+  .score-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--blue);
+  }
+  .score-value.excellent { color: var(--green); }
+  .score-value.acceptable { color: var(--amber); }
+  .score-value.poor { color: var(--red); }
+  .progress-track {
+    height: 8px;
+    background: var(--gray-100);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--blue-dark));
+    transition: width 0.3s, background 0.3s;
+    border-radius: 4px;
+  }
+  .progress-fill.excellent { background: linear-gradient(90deg, var(--green), #3D6024); }
+  .progress-fill.acceptable { background: linear-gradient(90deg, var(--amber), #8A6800); }
+  .progress-fill.poor { background: linear-gradient(90deg, var(--red), #8B0000); }
+
+  .btn-submit {
+    width: 100%;
+    padding: 13px;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+  }
+  .btn-submit:active { background: var(--blue-dark); }
+  .btn-submit:disabled {
+    background: var(--gray-300);
+    cursor: not-allowed;
+  }
+
+  /* SUCCESS SCREEN */
+  .success {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+  }
+  .success.show { display: block; }
+  .success-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--green);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 40px;
+  }
+  .success h2 {
+    color: var(--blue);
+    margin-bottom: 8px;
+    font-size: 22px;
+  }
+  .success .final-score {
+    font-size: 48px;
+    font-weight: 700;
+    margin: 16px 0;
+  }
+  .success p { color: var(--gray-500); margin-bottom: 20px; }
+  .btn-new {
+    padding: 12px 24px;
+    background: var(--blue);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .loading {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .loading.show { display: flex; }
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid white;
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📋 Evaluación Asakai</h1>
+  <p>Planta Tornquist — Reunión Diaria</p>
+</header>
+
+<div class="container" id="formView">
+
+  <div class="card">
+    <div class="card-title">Datos de la Reunión</div>
+    <div class="row">
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="fecha" required>
+      </div>
+      <div class="field">
+        <label>Turno</label>
+        <select id="turno" required>
+          <option value="">—</option>
+          <option value="Mañana">Mañana</option>
+          <option value="Tarde">Tarde</option>
+          <option value="Noche">Noche</option>
+          <option value="General">General</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Facilitador</label>
+      <input type="text" id="facilitador" placeholder="Quién lideró la reunión" required>
+    </div>
+    <div class="field">
+      <label>Evaluador</label>
+      <input type="text" id="evaluador" placeholder="Tu nombre" required>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Hora inicio</label>
+        <input type="time" id="horaInicio">
+      </div>
+      <div class="field">
+        <label>Duración (min)</label>
+        <input type="number" id="duracion" min="0" max="120" placeholder="Ej: 12">
+      </div>
+    </div>
+  </div>
+
+  <div id="itemsContainer"></div>
+
+</div>
+
+<div class="container success" id="successView">
+  <div class="success-icon">✓</div>
+  <h2>¡Evaluación registrada!</h2>
+  <p>Los datos fueron guardados correctamente.</p>
+  <div class="final-score" id="finalScore">—</div>
+  <p id="finalMsg"></p>
+  <button class="btn-new" onclick="resetForm()">Nueva evaluación</button>
+</div>
+
+<div class="score-bar" id="scoreBar">
+  <div class="score-inner">
+    <div class="score-top">
+      <span class="score-label">PUNTAJE ACTUAL</span>
+      <span class="score-value" id="scoreValue">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+    </div>
+    <button class="btn-submit" id="btnSubmit" onclick="submitForm()" disabled>
+      Registrar evaluación
+    </button>
+  </div>
+</div>
+
+<div class="loading" id="loading"><div class="spinner"></div></div>
+
+<script>
+// ==== CONFIG ====
+// Reemplazar con la URL del Apps Script deploy
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbydz-2IQ3pLZ-gSs137505cCrMwiB96jOElYTjmpskIHS9HPE6rGMblVtDhk02m1kL-DQ/exec';
+
+const items = [
+  { n: 1, dim: "PREPARACIÓN", txt: "Inició puntual la reunión" },
+  { n: 2, dim: "PREPARACIÓN", txt: "Asistencia de responsables clave (Producción, Mantenimiento, Calidad, EHS)" },
+  { n: 3, dim: "PREPARACIÓN", txt: "Se completaron todos los indicadores antes de comenzar la reunión" },
+  { n: 4, dim: "CONTENIDO", txt: "Revisión de Seguridad: incidentes, desvíos, condiciones inseguras del turno anterior" },
+  { n: 5, dim: "CONTENIDO", txt: "Revisión de indicadores PQCDSM (producción, calidad, costos, entregas)" },
+  { n: 6, dim: "CONTENIDO", txt: "Seguimiento de acciones del Asakai anterior (estado y responsable)" },
+  { n: 7, dim: "CONTENIDO", txt: "Identificación de problemas/anomalías del día anterior con datos concretos" },
+  { n: 8, dim: "DINÁMICA", txt: "Duración ≤ 15 minutos" },
+  { n: 9, dim: "CIERRE", txt: "Acciones del día definidas con responsable y fecha (5W1H mínimo)" },
+  { n: 10, dim: "CIERRE", txt: "Top 3 del día definido, claro para todos los participantes y con responsable" }
+];
+
+const answers = {};
+
+// Render items
+function renderItems() {
+  const container = document.getElementById('itemsContainer');
+  container.innerHTML = items.map(it => `
+    <div class="item" id="item-${it.n}">
+      <div class="item-header">
+        <div class="item-num">${it.n}</div>
+        <div class="item-body">
+          <div class="item-dim">${it.dim}</div>
+          <div class="item-txt">${it.txt}</div>
+        </div>
+      </div>
+      <div class="item-actions">
+        <button class="btn-answer btn-yes" onclick="answer(${it.n}, 'yes')">✓ Sí</button>
+        <button class="btn-answer btn-no" onclick="answer(${it.n}, 'no')">✗ No</button>
+      </div>
+      <div class="item-obs" id="obs-${it.n}">
+        <textarea placeholder="Observación (¿por qué no se cumplió?)" id="obsText-${it.n}"></textarea>
+      </div>
+    </div>
+  `).join('');
+}
+
+function answer(n, val) {
+  answers[n] = val;
+  const item = document.getElementById(`item-${n}`);
+  const btnYes = item.querySelector('.btn-yes');
+  const btnNo = item.querySelector('.btn-no');
+  const obs = document.getElementById(`obs-${n}`);
+
+  btnYes.classList.toggle('active', val === 'yes');
+  btnNo.classList.toggle('active', val === 'no');
+  item.classList.remove('answered-yes', 'answered-no');
+  item.classList.add(val === 'yes' ? 'answered-yes' : 'answered-no');
+
+  // Mostrar observación si es NO
+  obs.classList.toggle('show', val === 'no');
+
+  updateScore();
+}
+
+function updateScore() {
+  const answered = Object.keys(answers).length;
+  const yesCount = Object.values(answers).filter(v => v === 'yes').length;
+  const score = yesCount * 10;
+  const percent = (answered / items.length) * 100;
+
+  const scoreValue = document.getElementById('scoreValue');
+  const progressFill = document.getElementById('progressFill');
+  const btnSubmit = document.getElementById('btnSubmit');
+
+  scoreValue.textContent = score + '%';
+  progressFill.style.width = percent + '%';
+
+  // Color según puntaje
+  scoreValue.classList.remove('excellent', 'acceptable', 'poor');
+  progressFill.classList.remove('excellent', 'acceptable', 'poor');
+  if (answered === items.length) {
+    if (score >= 80) { scoreValue.classList.add('excellent'); progressFill.classList.add('excellent'); }
+    else if (score >= 60) { scoreValue.classList.add('acceptable'); progressFill.classList.add('acceptable'); }
+    else { scoreValue.classList.add('poor'); progressFill.classList.add('poor'); }
+  }
+
+  btnSubmit.disabled = answered !== items.length;
+  btnSubmit.textContent = answered === items.length
+    ? `Registrar evaluación (${score}%)`
+    : `Completar todos los ítems (${answered}/${items.length})`;
+}
+
+async function submitForm() {
+  // Validar datos generales
+  const fecha = document.getElementById('fecha').value;
+  const turno = document.getElementById('turno').value;
+  const facilitador = document.getElementById('facilitador').value.trim();
+  const evaluador = document.getElementById('evaluador').value.trim();
+
+  if (!fecha || !turno || !facilitador || !evaluador) {
+    alert('Por favor completá todos los datos de la reunión.');
+    return;
+  }
+
+  const yesCount = Object.values(answers).filter(v => v === 'yes').length;
+  const score = yesCount * 10;
+
+  const payload = {
+    timestamp: new Date().toISOString(),
+    fecha,
+    turno,
+    facilitador,
+    evaluador,
+    horaInicio: document.getElementById('horaInicio').value,
+    duracion: document.getElementById('duracion').value,
+    score,
+    clasificacion: score >= 80 ? 'Excelente' : (score >= 60 ? 'Aceptable' : 'Requiere Mejora'),
+    items: items.map(it => ({
+      n: it.n,
+      dim: it.dim,
+      txt: it.txt,
+      respuesta: answers[it.n] === 'yes' ? 'Sí' : 'No',
+      observacion: document.getElementById(`obsText-${it.n}`).value.trim()
+    }))
+  };
+
+  document.getElementById('loading').classList.add('show');
+
+  try {
+    // Para Apps Script, usamos text/plain para evitar preflight CORS
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (data.status === 'ok') {
+      showSuccess(score);
+    } else {
+      alert('Error al guardar: ' + (data.message || 'desconocido'));
+    }
+  } catch (err) {
+    alert('Error de conexión: ' + err.message);
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+  }
+}
+
+function showSuccess(score) {
+  document.getElementById('formView').style.display = 'none';
+  document.getElementById('scoreBar').style.display = 'none';
+  document.getElementById('successView').classList.add('show');
+  const finalScore = document.getElementById('finalScore');
+  const finalMsg = document.getElementById('finalMsg');
+  finalScore.textContent = score + '%';
+
+  if (score >= 80) {
+    finalScore.style.color = 'var(--green)';
+    finalMsg.textContent = '🟢 Excelente — mantener el estándar';
+  } else if (score >= 60) {
+    finalScore.style.color = 'var(--amber)';
+    finalMsg.textContent = '🟡 Aceptable — hay oportunidades de mejora';
+  } else {
+    finalScore.style.color = 'var(--red)';
+    finalMsg.textContent = '🔴 Requiere mejora urgente — revisar causas';
+  }
+}
+
+function resetForm() {
+  location.reload();
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fecha').valueAsDate = new Date();
+  renderItems();
+});
+</script>
+
+</body>
+</html>
