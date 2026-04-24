@@ -334,6 +334,7 @@
 <div class="app" id="app"></div>
 
 
+<script src="personal.js"></script>
 <script>
 // =============================================
 // ⚠️ PEGAR TU URL DE APPS SCRIPT ACÁ:
@@ -419,7 +420,30 @@ function canNext() {
     return !!f.consequence && !!f.priority;
   }
   if(s===2) return !!f.date && !!f.shift && !!f.sector;
+  if(s===4) {
+    // Descripción obligatoria en ACCIDENTE e INCIDENTE
+    if(f.eventCategory==="ACCIDENTE") return !!(f.description && f.description.trim().length>0);
+    if(f.eventCategory==="INCIDENTE") return !!(f.description && f.description.trim().length>0);
+  }
   return true;
+}
+
+// Autocompletado persona <-> legajo (convenio)
+function onPersonChange(v) {
+  state.form.person = v;
+  var key = (v||"").trim().toUpperCase();
+  if (typeof PERSONAL_BY_NOMBRE !== "undefined" && PERSONAL_BY_NOMBRE[key]) {
+    state.form.personId = String(PERSONAL_BY_NOMBRE[key]);
+  }
+  render();
+}
+function onLegajoChange(v) {
+  state.form.personId = v;
+  var key = String((v||"").trim());
+  if (typeof PERSONAL_BY_LEGAJO !== "undefined" && PERSONAL_BY_LEGAJO[key]) {
+    state.form.person = PERSONAL_BY_LEGAJO[key];
+  }
+  render();
 }
 
 function nextStep() { if(canNext()) { state.step++; render(); window.scrollTo(0,0); } }
@@ -698,8 +722,8 @@ function renderCurrentStep() {
   if(s===3) {
     if(f.eventCategory==="ACCIDENTE") {
       h+='<div class="section"><div class="section-title" style="color:'+color+';">👤 Persona Accidentada</div>'
-        +'<div class="field"><label>Nombre completo <span class="req">*</span></label><input type="text" value="'+(f.person||"")+'" placeholder="Nombre y apellido" onchange="setField(\'person\',this.value)"></div>'
-        +'<div class="field"><label>Legajo / DNI</label><input type="text" value="'+(f.personId||"")+'" placeholder="Número de legajo o documento" onchange="setField(\'personId\',this.value)"></div></div>';
+        +'<div class="field"><label>Nombre completo <span class="req">*</span></label><input type="text" list="dlPersonas" value="'+(f.person||"")+'" placeholder="Empezá a escribir apellido..." onchange="onPersonChange(this.value)"></div>'
+        +'<div class="field"><label>Legajo</label><input type="text" list="dlLegajos" value="'+(f.personId||"")+'" placeholder="Número de legajo" onchange="onLegajoChange(this.value)"></div></div>';
       h+='<div class="section"><div class="section-title" style="color:'+color+';">🩹 Parte del cuerpo afectada</div><div class="chips">';
       BODY_PARTS.forEach(function(bp){ var sel=(f.bodyPart||[]).includes(bp);
         h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:#DC2626;border-color:#DC2626;":"")+'" onclick="toggleMulti(\'bodyPart\',\''+bp+'\')">'+bp+'</div>';
@@ -712,7 +736,8 @@ function renderCurrentStep() {
       h+='</div></div>';
     } else if(f.eventCategory==="INCIDENTE") {
       h+='<div class="section"><div class="section-title" style="color:'+color+';">👤 Persona involucrada</div>'
-        +'<div class="field"><label>Nombre</label><input type="text" value="'+(f.person||"")+'" placeholder="Nombre y apellido" onchange="setField(\'person\',this.value)"></div></div>';
+        +'<div class="field"><label>Nombre</label><input type="text" list="dlPersonas" value="'+(f.person||"")+'" placeholder="Empezá a escribir apellido..." onchange="onPersonChange(this.value)"></div>'
+        +'<div class="field"><label>Legajo</label><input type="text" list="dlLegajos" value="'+(f.personId||"")+'" placeholder="Número de legajo" onchange="onLegajoChange(this.value)"></div></div>';
       h+='<div class="section"><div class="section-title" style="color:'+color+';">🦺 EPP en la zona</div><div class="chips">';
       EPP_LIST.forEach(function(e){ var sel=(f.epp||[]).includes(e);
         h+='<div class="chip'+(sel?" selected":"")+'" style="'+(sel?"background:#F59E0B;border-color:#F59E0B;":"")+'" onclick="toggleMulti(\'epp\',\''+e.replace(/'/g,"\\'")+'\')">'+e+'</div>';
@@ -769,7 +794,9 @@ function renderCurrentStep() {
           +'<div class="opt-label">'+o+'</div></div>';
       });
       h+='</div>';
-      h+='<div class="field"><label>Tarea que se realizaba</label><input type="text" value="'+(f.task||"")+'" placeholder="¿Qué actividad se estaba ejecutando?" onchange="setField(\'task\',this.value)"></div>';
+      h+='<div class="section"><div class="section-title" style="color:'+color+';">📄 Descripción detallada</div>'
+        +'<div class="field"><label>¿Qué pasó exactamente? <span class="req">*</span></label><textarea placeholder="Describa en detalle qué se observó (acto o condición insegura)" onchange="setField(\'description\',this.value)">'+(f.description||"")+'</textarea></div>'
+        +'<div class="field"><label>Tarea que se realizaba</label><input type="text" value="'+(f.task||"")+'" placeholder="¿Qué actividad se estaba ejecutando?" onchange="setField(\'task\',this.value)"></div></div>';
       h+='<div class="section"><div class="section-title" style="color:'+color+';">🚨 Acciones inmediatas</div>'
         +'<div class="field"><textarea placeholder="¿Qué se hizo inmediatamente?" onchange="setField(\'immediateActions\',this.value)">'+(f.immediateActions||"")+'</textarea></div></div>';
     } else {
@@ -801,7 +828,7 @@ function renderCurrentStep() {
       if(found) cLabel=found.label;
       h+=reviewRow("Consecuencia",cLabel);
     }
-    if(f.person) h+=reviewRow("Persona",f.person);
+    if(f.person) h+=reviewRow("Persona",f.person + (f.personId?" (Leg. "+f.personId+")":""));
     if(f.bodyPart&&f.bodyPart.length) h+=reviewRow("Parte del cuerpo",f.bodyPart.join(", "));
     if(f.epp&&f.epp.length) h+=reviewRow("EPP",f.epp.join(", "));
     if(f.accidentType) { var at=cat.accidentTypes?cat.accidentTypes.find(function(a){return a.id===f.accidentType;}):null; if(at) h+=reviewRow("Tipo accidente",at.icon+" "+at.label); }
@@ -832,7 +859,20 @@ function reviewRow(label,value) {
   return '<div class="review-row"><span class="review-label">'+label+'</span><span class="review-value">'+value+'</span></div>';
 }
 
+// Datalists de personal (se insertan una sola vez al body)
+function initDatalists() {
+  if (typeof PERSONAL === "undefined" || !PERSONAL.length) return;
+  if (document.getElementById("dlPersonas")) return;
+  var html = '<datalist id="dlPersonas">';
+  PERSONAL.forEach(function(p){ html += '<option value="'+p.nombre+'">'; });
+  html += '</datalist><datalist id="dlLegajos">';
+  PERSONAL.forEach(function(p){ html += '<option value="'+p.legajo+'">'+p.nombre+'</option>'; });
+  html += '</datalist>';
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
 // Init
+initDatalists();
 render();
 </script>
 </body>

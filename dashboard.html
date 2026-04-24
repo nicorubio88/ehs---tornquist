@@ -405,6 +405,20 @@
 var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzPVE8sjKNoGgCcQAyqozGMsmg0ygNWahjUOigXr6CWcypygFEKHkMvgGikgmwwxiQX/exec";
 // =============================================
 
+// =============================================
+// 👥 LISTA DE RESPONSABLES — EDITAR ACÁ
+// Agregar/quitar nombres en este array. Se usa en el dashboard (asignar acción)
+// y en seguimiento (cambiar responsable). Mantener nombres consistentes
+// (ej: "Nicolás Rubio" y no "N. Rubio" / "NRubio") para que los filtros funcionen.
+var RESPONSABLES = [
+  "Nicolás Rubio",
+  "A. Zanotto",
+  "Ignacio Issaly",
+  "Silvana Stoessel",
+  "José Luis Vallejos"
+];
+// =============================================
+
 var DATA = [];
 var DESVIOS = [];
 var FILTER_SECTOR = "Todos";
@@ -981,7 +995,9 @@ function renderModal() {
   h += '<div class="modal-section"><h4>➕ Agregar nueva acción</h4>';
   h += '<div class="modal-field"><label>Descripción de la acción *</label><textarea id="nac_desc" placeholder="¿Qué hay que hacer?"></textarea></div>';
   h += '<div class="modal-row">';
-  h += '<div class="modal-field"><label>Responsable *</label><input type="text" id="nac_resp" placeholder="Nombre"></div>';
+  h += '<div class="modal-field"><label>Responsable *</label><select id="nac_resp"><option value="">— Seleccionar responsable —</option>';
+  RESPONSABLES.forEach(function(r){ h += '<option value="'+r+'">'+r+'</option>'; });
+  h += '</select></div>';
   h += '<div class="modal-field"><label>Fecha de vencimiento</label><input type="date" id="nac_fecha"></div>';
   h += '</div>';
   h += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">';
