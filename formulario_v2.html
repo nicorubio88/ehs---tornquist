@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrar Evento — EHS Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0;
+    --brand-400:#34D399; --brand-500:#10B981; --brand-600:#059669;
+    --brand-700:#047857; --brand-800:#065F46; --brand-900:#064E3B;
+    --ink-50:#F8FAFC; --ink-100:#F1F5F9; --ink-200:#E2E8F0;
+    --ink-400:#94A3B8; --ink-500:#64748B; --ink-700:#334155;
+    --ink-800:#1E293B; --ink-900:#0F172A;
+    --observation:#1E40AF; --conversation:#0F766E; --incident:#B45309;
+    --accident:#B91C1C; --environment:#15803D;
+    --shadow-sm:0 1px 2px rgba(15,23,42,.06);
+    --shadow-md:0 4px 12px rgba(15,23,42,.08);
+    --shadow-lg:0 20px 40px rgba(4,120,87,.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Inter Tight',system-ui,sans-serif;
+    background:var(--ink-50); color:var(--ink-800);
+    min-height:100vh; letter-spacing:-.01em; padding:0;
+  }
+  .topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 20px; border-bottom:1px solid var(--ink-200);
+    background:#fff; position:sticky; top:0; z-index:10;
+  }
+  .topbar-back { font-size:13px; color:var(--ink-500); text-decoration:none; }
+  .topbar-back:hover { color:var(--ink-800); }
+  .topbar-title { font-size:14px; font-weight:600; color:var(--ink-900); }
+  .container { max-width:680px; margin:0 auto; padding:20px 16px 80px; }
+
+  .progress {
+    display:flex; gap:6px; margin-bottom:24px;
+  }
+  .progress-step {
+    flex:1; height:4px; background:var(--ink-200); border-radius:2px; transition:all .3s;
+  }
+  .progress-step.active { background:var(--brand-600); }
+  .progress-step.done { background:var(--brand-400); }
+
+  .step-label {
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600;
+    color:var(--ink-500); text-transform:uppercase; letter-spacing:.1em;
+    margin-bottom:8px;
+  }
+  h1 {
+    font-size:24px; font-weight:700; color:var(--ink-900);
+    margin-bottom:8px; letter-spacing:-.02em;
+  }
+  .subtitle { color:var(--ink-500); font-size:14px; margin-bottom:24px; }
+
+  .section {
+    background:#fff; border:1px solid var(--ink-200); border-radius:14px;
+    padding:18px; margin-bottom:14px; box-shadow:var(--shadow-sm);
+  }
+  .section-title {
+    font-size:15px; font-weight:700; margin-bottom:14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .field { margin-bottom:14px; }
+  .field:last-child { margin-bottom:0; }
+  .field label {
+    display:block; font-size:12px; font-weight:600; color:var(--ink-700);
+    margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .req { color:var(--accident); margin-left:2px; }
+  .field input, .field textarea, .field select {
+    width:100%; padding:10px 12px; border:1px solid var(--ink-200);
+    border-radius:8px; font:inherit; font-size:14px; color:var(--ink-900);
+    background:#fff; transition:all .15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline:none; border-color:var(--brand-500);
+    box-shadow:0 0 0 3px var(--brand-100);
+  }
+  .field textarea { resize:vertical; min-height:80px; line-height:1.5; }
+  .field-hint { font-size:11px; color:var(--ink-400); margin-top:4px; }
+  .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:520px) { .field-row { grid-template-columns:1fr; } }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip {
+    padding:9px 14px; border:1.5px solid var(--ink-200); border-radius:999px;
+    background:#fff; font-size:13px; font-weight:500; color:var(--ink-700);
+    cursor:pointer; transition:all .15s;
+  }
+  .chip:hover { border-color:var(--ink-400); }
+  .chip.active {
+    background:var(--brand-50); border-color:var(--brand-600);
+    color:var(--brand-800); font-weight:600;
+  }
+  .chip.danger.active { background:#FEF2F2; border-color:var(--accident); color:var(--accident); }
+  .chip.warn.active { background:#FFFBEB; border-color:var(--incident); color:var(--incident); }
+
+  .type-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  }
+  .type-card {
+    border:1.5px solid var(--ink-200); border-radius:12px;
+    padding:14px 12px; cursor:pointer; background:#fff;
+    transition:all .15s; text-align:left;
+  }
+  .type-card:hover { transform:translateY(-1px); box-shadow:var(--shadow-md); }
+  .type-card.active { border-width:2px; padding:13px 11px; }
+  .type-card.active.observation { border-color:var(--observation); background:#EFF6FF; }
+  .type-card.active.conversation { border-color:var(--conversation); background:#F0FDFA; }
+  .type-card.active.incident { border-color:var(--incident); background:#FFFBEB; }
+  .type-card.active.accident { border-color:var(--accident); background:#FEF2F2; }
+  .type-card.active.environment { border-color:var(--environment); background:#F0FDF4; }
+  .type-icon {
+    font-size:24px; margin-bottom:6px; display:block;
+  }
+  .type-name { font-size:13px; font-weight:700; color:var(--ink-900); margin-bottom:2px; }
+  .type-desc { font-size:11px; color:var(--ink-500); line-height:1.3; }
+
+  .nav-buttons {
+    display:flex; gap:10px; margin-top:20px; padding-top:14px;
+    border-top:1px solid var(--ink-200);
+  }
+  .btn {
+    flex:1; padding:12px 18px; border-radius:10px; border:none;
+    font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
+    transition:all .15s;
+  }
+  .btn-prev { background:#fff; color:var(--ink-700); border:1.5px solid var(--ink-200); }
+  .btn-prev:hover { border-color:var(--ink-400); }
+  .btn-next, .btn-submit {
+    background:var(--brand-600); color:#fff;
+  }
+  .btn-next:hover, .btn-submit:hover { background:var(--brand-700); }
+  .btn-next:disabled, .btn-submit:disabled {
+    background:var(--ink-200); cursor:not-allowed;
+  }
+
+  .review-row {
+    display:flex; padding:8px 0; border-bottom:1px solid var(--ink-100);
+    font-size:13px;
+  }
+  .review-row:last-child { border-bottom:none; }
+  .review-label {
+    flex:0 0 40%; font-weight:600; color:var(--ink-500);
+    text-transform:uppercase; font-size:11px; letter-spacing:.04em;
+  }
+  .review-value { flex:1; color:var(--ink-900); }
+
+  .loading-overlay {
+    position:fixed; inset:0; background:rgba(255,255,255,.95);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; flex-direction:column; gap:14px;
+  }
+  .spinner {
+    width:40px; height:40px; border:3px solid var(--ink-200);
+    border-top-color:var(--brand-600); border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .success-screen {
+    text-align:center; padding:40px 20px;
+  }
+  .success-icon {
+    width:64px; height:64px; border-radius:50%;
+    background:var(--brand-100); color:var(--brand-700);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 16px; font-size:32px;
+  }
+  .success-screen h2 { font-size:20px; margin-bottom:8px; }
+  .success-screen p { color:var(--ink-500); margin-bottom:20px; }
+  .success-id {
+    display:inline-block; font-family:'JetBrains Mono',monospace;
+    font-size:13px; padding:6px 12px; background:var(--ink-100);
+    border-radius:6px; margin-bottom:20px;
+  }
+
+  .error-banner {
+    background:#FEF2F2; border:1px solid #FECACA; color:#991B1B;
+    padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px;
+  }
+
+  /* Banner inspiracional no-punitivo */
+  .culture-banner {
+    background:linear-gradient(135deg, var(--brand-50) 0%, #ECFDF5 100%);
+    border:1px solid var(--brand-200); border-radius:12px;
+    padding:14px 18px; margin-bottom:16px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .culture-banner-icon {
+    width:36px; height:36px; flex:0 0 36px;
+    border-radius:50%; background:var(--brand-600);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:18px;
+  }
+  .culture-banner-text {
+    font-size:13px; line-height:1.45; color:var(--brand-900);
+    font-weight:500;
+  }
+  .culture-banner-text strong { color:var(--brand-700); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html" class="topbar-back">← Inicio</a>
+  <span class="topbar-title">Registrar Evento</span>
+  <span style="width:50px;"></span>
+</div>
+
+<div class="container" id="app">
+  <div style="text-align:center;padding:40px 20px;">
+    <div class="spinner" style="margin:0 auto 14px;"></div>
+    <p style="color:var(--ink-500);font-size:13px;">Cargando datos maestros...</p>
+  </div>
+</div>
+
+<script>
+// =============================================
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMoQM2DkE0FNwWKQwfJNluPqc0pg2TKv6MQs0tYUFpRSb3fk8E6vxtePJ0SKs0mkY/exec";
+// =============================================
+
+// =============================================
+// 💚 MENSAJE DE CULTURA (no punitivo) — EDITAR ACÁ
+// Aparece en el formulario al elegir Observación o Conversación.
+// Refuerza la cultura BBS de reporte sin culpa.
+var CULTURE_MESSAGE = "Cada observación que cargás cuida a un compañero. Este sistema es para <strong>aprender y mejorar</strong>, no para sancionar.";
+// =============================================
+
+// Subtipos válidos por tipo
+var SUBTIPOS = {
+  "OBSERVACION":  ["Acto inseguro", "Condición insegura", "Casi accidente"],
+  "CONVERSACION": ["Refuerzo positivo", "Coaching correctivo", "Charla preventiva", "Diálogo 5 minutos"],
+  "INCIDENTE":    ["Daño material", "Cuasi accidente", "Falla equipo con riesgo"],
+  "ACCIDENTE":    ["Lesión leve sin baja", "Lesión leve con baja", "Lesión grave", "Fatal"],
+  "AMBIENTE":     ["Derrame", "Fuga gas/vapor", "Emisión no controlada", "Residuo mal gestionado", "Ruido fuera de norma"]
+};
+
+var TIPO_META = {
+  "OBSERVACION":  { icon:"👁", label:"Observación", desc:"Acto/condición insegura, casi accidente", className:"observation" },
+  "CONVERSACION": { icon:"💬", label:"Conversación", desc:"Diálogo de seguridad", className:"conversation" },
+  "INCIDENTE":    { icon:"⚠️", label:"Incidente", desc:"Daño material, cuasi accidente", className:"incident" },
+  "ACCIDENTE":    { icon:"🔴", label:"Accidente", desc:"Lesión a persona", className:"accident" },
+  "AMBIENTE":     { icon:"🌿", label:"Medio Ambiente", desc:"Derrame, fuga, emisión", className:"environment" }
+};
+
+var TURNOS = ["A","B","C","D","Diurno"];
+var BODY_PARTS = ["Cabeza","Ojos","Cara","Cuello","Hombro","Brazo","Mano","Dedos","Tronco","Espalda","Cadera","Pierna","Rodilla","Pie","Múltiples"];
+var TIPO_LESION = ["Corte","Golpe","Quemadura","Aplastamiento","Esguince","Fractura","Atrapamiento","Caída","Proyección","Eléctrico","Químico","Otro"];
+var MEDIOS = ["Suelo","Agua","Aire","Múltiple"];
+var UNIDADES = ["L","kg","m³","ppm","unidades"];
+
+// Estado global
+var MAESTROS = { personal:[], sectores:[], responsables:[], sustancias:[] };
+var PERSONAL_BY_LEGAJO = {};
+var PERSONAL_BY_NOMBRE = {};
+
+var state = {
+  step: 0,
+  totalSteps: 5,
+  form: {
+    tipo:"", subtipo:"",
+    fecha_evento:"", hora_evento:"", sector:"", turno:"",
+    reportado_por_legajo:"", reportado_por_nombre:"",
+    persona_legajo:"", persona_nombre:"",
+    descripcion:"", prioridad:"",
+    // Específicos
+    obs_tipo_acto_condicion:"", obs_accion_inmediata:"",
+    obs_hablo_persona:"", obs_causa_acto:"",
+    obs_genera_ot:"", obs_parada_equipo:"",
+    conv_tema:"", conv_compromiso:"",
+    inc_equipo_afectado:"", inc_dano_estimado_ars:"", inc_accion_inmediata:"",
+    inc_notif_responsable:"", inc_notif_a_quien:"",
+    acc_parte_cuerpo:"", acc_tipo_lesion:"", acc_mecanismo:"",
+    acc_testigo1_legajo:"", acc_testigo2_legajo:"",
+    acc_notif_art:"", acc_hora_notif_art:"", acc_dias_baja_estimados:"",
+    acc_accion_inmediata:"", acc_notif_responsable:"", acc_notif_a_quien:"",
+    amb_sustancia:"", amb_cantidad:"", amb_unidad:"",
+    amb_medio_impactado:"", amb_contencion_aplicada:"", amb_notif_autoridad:""
+  },
+  saving: false,
+  saved: null,
+  error: null
+};
+
+// =============================================
+// CARGA INICIAL DE MAESTROS
+// =============================================
+// =============================================
+// HELPERS
+// =============================================
+// Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
+function escapeHTML(s) {
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function loadMaestros() {
+  fetch(APPS_SCRIPT_URL + "?tipo=maestros")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      MAESTROS = data || MAESTROS;
+      // Construir índices
+      (MAESTROS.personal || []).forEach(function(p){
+        if (p.legajo) PERSONAL_BY_LEGAJO[String(p.legajo)] = p.nombre;
+        if (p.nombre) PERSONAL_BY_NOMBRE[String(p.nombre).toUpperCase()] = p.legajo;
+      });
+      // Pre-llenar fecha y hora con valores actuales
+      var now = new Date();
+      state.form.fecha_evento = now.toISOString().substring(0,10);
+      state.form.hora_evento = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+      injectDatalists();
+      render();
+    })
+    .catch(function(err){
+      document.getElementById("app").innerHTML =
+        '<div class="error-banner">No pude cargar los datos maestros desde el servidor. Reintentá en unos segundos. Detalle: '+err.message+'</div>'+
+        '<button class="btn btn-next" onclick="loadMaestros()">Reintentar</button>';
+    });
+}
+
+function injectDatalists() {
+  if (document.getElementById("dlPersonas")) return;
+  var html = '<datalist id="dlPersonas">';
+  (MAESTROS.personal||[]).forEach(function(p){
+    if (p.nombre) html += '<option value="'+p.nombre+'">';
+  });
+  html += '</datalist><datalist id="dlLegajos">';
+  (MAESTROS.personal||[]).forEach(function(p){
+    if (p.legajo) html += '<option value="'+p.legajo+'">'+(p.nombre||"")+'</option>';
+  });
+  html += '</datalist>';
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
+// =============================================
+// HELPERS
+// =============================================
+function setField(field, value) { state.form[field] = value; render(); }
+function setType(tipo) {
+  state.form.tipo = tipo;
+  state.form.subtipo = ""; // reset subtipo al cambiar tipo
+  render();
+}
+function setSubtipo(sub) { state.form.subtipo = sub; render(); }
+
+function onPersonaChange(field, v) {
+  state.form[field] = v;
+  // Auto-fill complementario
+  var key = String(v||"").trim().toUpperCase();
+  if (PERSONAL_BY_NOMBRE[key]) {
+    var legajoField = field.replace("nombre","legajo");
+    if (state.form.hasOwnProperty(legajoField)) state.form[legajoField] = String(PERSONAL_BY_NOMBRE[key]);
+  }
+  render();
+}
+function onLegajoChange(field, v) {
+  state.form[field] = v;
+  var key = String(v||"").trim();
+  if (PERSONAL_BY_LEGAJO[key]) {
+    var nombreField = field.replace("legajo","nombre");
+    if (state.form.hasOwnProperty(nombreField)) state.form[nombreField] = PERSONAL_BY_LEGAJO[key];
+  }
+  render();
+}
+
+function canNext() {
+  var s = state.step, f = state.form;
+  if (s === 0) return !!f.tipo && !!f.subtipo;
+  if (s === 1) return !!f.fecha_evento && !!f.hora_evento && !!f.sector && !!f.turno && !!f.prioridad;
+  if (s === 2) return !!f.reportado_por_legajo && !!f.reportado_por_nombre;
+  if (s === 3) return !!(f.descripcion && f.descripcion.trim().length >= 10);
+  return true;
+}
+
+function nextStep() { if (canNext()) { state.step++; render(); window.scrollTo(0,0); } }
+function prevStep() { if (state.step > 0) { state.step--; render(); window.scrollTo(0,0); } }
+
+// =============================================
+// RENDER
+// =============================================
+function render() {
+  if (state.saved) return renderSuccess();
+  var html = '';
+  // Progress bar
+  html += '<div class="progress">';
+  for (var i=0; i<state.totalSteps; i++) {
+    var cls = '';
+    if (i < state.step) cls = 'done';
+    else if (i === state.step) cls = 'active';
+    html += '<div class="progress-step '+cls+'"></div>';
+  }
+  html += '</div>';
+  html += '<div class="step-label">Paso '+(state.step+1)+' de '+state.totalSteps+'</div>';
+
+  if (state.error) html += '<div class="error-banner">'+state.error+'</div>';
+
+  if (state.step === 0) html += renderStep0();
+  else if (state.step === 1) html += renderStep1();
+  else if (state.step === 2) html += renderStep2();
+  else if (state.step === 3) html += renderStep3();
+  else if (state.step === 4) html += renderReview();
+
+  // Nav buttons
+  html += '<div class="nav-buttons">';
+  if (state.step > 0) html += '<button class="btn btn-prev" onclick="prevStep()">← Anterior</button>';
+  if (state.step < state.totalSteps - 1) {
+    html += '<button class="btn btn-next" onclick="nextStep()" '+(canNext()?"":"disabled")+'>Siguiente →</button>';
+  } else {
+    html += '<button class="btn btn-submit" onclick="submitForm()" '+(state.saving?"disabled":"")+'>'+(state.saving?"Enviando...":"✓ Enviar registro")+'</button>';
+  }
+  html += '</div>';
+
+  document.getElementById("app").innerHTML = html;
+}
+
+// PASO 0: Tipo y subtipo
+function renderStep0() {
+  var f = state.form;
+  var html = '<h1>¿Qué tipo de evento querés registrar?</h1>';
+  html += '<p class="subtitle">Elegí el tipo y luego el subtipo correspondiente.</p>';
+
+  html += '<div class="section"><div class="section-title">Tipo de evento</div>';
+  html += '<div class="type-grid">';
+  Object.keys(TIPO_META).forEach(function(tipo){
+    var meta = TIPO_META[tipo];
+    var active = f.tipo === tipo ? 'active '+meta.className : '';
+    html += '<div class="type-card '+active+'" onclick="setType(\''+tipo+'\')">'
+      + '<span class="type-icon">'+meta.icon+'</span>'
+      + '<div class="type-name">'+meta.label+'</div>'
+      + '<div class="type-desc">'+meta.desc+'</div>'
+      + '</div>';
+  });
+  html += '</div></div>';
+
+  if (f.tipo) {
+    // Banner inspiracional para Observación y Conversación
+    if (f.tipo === "OBSERVACION" || f.tipo === "CONVERSACION") {
+      html += '<div class="culture-banner">'
+        + '<div class="culture-banner-icon">💚</div>'
+        + '<div class="culture-banner-text">'+CULTURE_MESSAGE+'</div>'
+        + '</div>';
+    }
+    html += '<div class="section"><div class="section-title">Subtipo</div>';
+    html += '<div class="chips">';
+    SUBTIPOS[f.tipo].forEach(function(s){
+      var cls = (f.subtipo===s) ? 'chip active' : 'chip';
+      html += '<div class="'+cls+'" onclick="setSubtipo(\''+s+'\')">'+s+'</div>';
+    });
+    html += '</div></div>';
+  }
+  return html;
+}
+
+// PASO 1: Cuándo, dónde y prioridad
+function renderStep1() {
+  var f = state.form;
+  var html = '<h1>¿Cuándo y dónde ocurrió?</h1>';
+  html += '<p class="subtitle">Datos básicos del evento.</p>';
+
+  html += '<div class="section"><div class="section-title">📅 Fecha y hora</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Fecha <span class="req">*</span></label><input type="date" value="'+f.fecha_evento+'" onchange="setField(\'fecha_evento\',this.value)"></div>';
+  html += '<div class="field"><label>Hora <span class="req">*</span></label><input type="time" value="'+f.hora_evento+'" onchange="setField(\'hora_evento\',this.value)"></div>';
+  html += '</div></div>';
+
+  html += '<div class="section"><div class="section-title">📍 Ubicación</div>';
+  html += '<div class="field"><label>Sector <span class="req">*</span></label>';
+  html += '<select onchange="setField(\'sector\',this.value)"><option value="">— Elegir sector —</option>';
+  (MAESTROS.sectores||[]).forEach(function(s){
+    var sel = (f.sector===s.nombre)?' selected':'';
+    html += '<option value="'+s.nombre+'"'+sel+'>'+s.nombre+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>Turno <span class="req">*</span></label><div class="chips">';
+  TURNOS.forEach(function(t){
+    var cls = (f.turno===t)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'turno\',\''+t+'\')">'+t+'</div>';
+  });
+  html += '</div></div></div>';
+
+  html += '<div class="section"><div class="section-title">🚦 Prioridad</div>';
+  html += '<div class="chips">';
+  ["Alta","Media","Baja"].forEach(function(p){
+    var clsBase = 'chip';
+    if (p==="Alta") clsBase += ' danger';
+    else if (p==="Media") clsBase += ' warn';
+    var cls = (f.prioridad===p)? clsBase+' active' : clsBase;
+    html += '<div class="'+cls+'" onclick="setField(\'prioridad\',\''+p+'\')">'+p+'</div>';
+  });
+  html += '</div>';
+  html += '<div class="field-hint">Alta = requiere acción inmediata. Media = en el turno. Baja = puede esperar.</div>';
+  html += '</div>';
+  return html;
+}
+
+// PASO 2: Quién reporta y persona involucrada
+function renderStep2() {
+  var f = state.form;
+  var html = '<h1>¿Quién reporta?</h1>';
+  html += '<p class="subtitle">Identificación del reporte y de la persona involucrada (si aplica).</p>';
+
+  html += '<div class="section"><div class="section-title">👤 Reportado por</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Nombre <span class="req">*</span></label><input type="text" list="dlPersonas" value="'+escapeHTML(f.reportado_por_nombre)+'" placeholder="Apellido, Nombre" onchange="onPersonaChange(\'reportado_por_nombre\',this.value)"></div>';
+  html += '<div class="field"><label>Legajo <span class="req">*</span></label><input type="text" list="dlLegajos" value="'+escapeHTML(f.reportado_por_legajo)+'" placeholder="Número" onchange="onLegajoChange(\'reportado_por_legajo\',this.value)"></div>';
+  html += '</div></div>';
+
+  // Persona involucrada solo aplica para algunos tipos
+  if (["OBSERVACION","CONVERSACION","INCIDENTE","ACCIDENTE"].indexOf(f.tipo) >= 0) {
+    var labelPersona = "Persona involucrada";
+    if (f.tipo === "ACCIDENTE") labelPersona = "Persona accidentada";
+    else if (f.tipo === "CONVERSACION") labelPersona = "Persona con quien se habló";
+    else if (f.tipo === "OBSERVACION") labelPersona = "Persona observada (opcional)";
+
+    var req = (f.tipo === "ACCIDENTE" || f.tipo === "CONVERSACION") ? '<span class="req">*</span>' : '';
+
+    html += '<div class="section"><div class="section-title">👥 '+labelPersona+'</div>';
+    html += '<div class="field-row">';
+    html += '<div class="field"><label>Nombre '+req+'</label><input type="text" list="dlPersonas" value="'+escapeHTML(f.persona_nombre)+'" placeholder="Apellido, Nombre" onchange="onPersonaChange(\'persona_nombre\',this.value)"></div>';
+    html += '<div class="field"><label>Legajo</label><input type="text" list="dlLegajos" value="'+escapeHTML(f.persona_legajo)+'" placeholder="Número" onchange="onLegajoChange(\'persona_legajo\',this.value)"></div>';
+    html += '</div></div>';
+  }
+  return html;
+}
+
+// PASO 3: Detalle específico del tipo
+function renderStep3() {
+  var f = state.form;
+  var html = '<h1>Detalles del '+(TIPO_META[f.tipo]||{label:""}).label+'</h1>';
+  html += '<p class="subtitle">Contanos qué pasó. Mientras más detalle, mejor el análisis posterior.</p>';
+
+  html += '<div class="section"><div class="section-title">📄 Descripción</div>';
+  html += '<div class="field"><label>¿Qué pasó exactamente? <span class="req">*</span></label>'
+    + '<textarea placeholder="Describí en detalle el evento..." onchange="setField(\'descripcion\',this.value)">'+escapeHTML(f.descripcion)+'</textarea>'
+    + '<div class="field-hint">Mínimo 10 caracteres.</div></div></div>';
+
+  // Bloques específicos por tipo
+  if (f.tipo === "OBSERVACION") html += renderObservacion(f);
+  else if (f.tipo === "CONVERSACION") html += renderConversacion(f);
+  else if (f.tipo === "INCIDENTE") html += renderIncidente(f);
+  else if (f.tipo === "ACCIDENTE") html += renderAccidente(f);
+  else if (f.tipo === "AMBIENTE") html += renderAmbiente(f);
+
+  return html;
+}
+
+function renderObservacion(f) {
+  var html = '<div class="section"><div class="section-title">👁 Observación</div>';
+  html += '<div class="field"><label>Tipo de acto/condición</label><select onchange="setField(\'obs_tipo_acto_condicion\',this.value)">'
+    + '<option value="">— Elegir —</option>';
+  ["Acto inseguro","Condición insegura","Casi accidente"].forEach(function(o){
+    html += '<option value="'+o+'"'+(f.obs_tipo_acto_condicion===o?' selected':'')+'>'+o+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>Acción inmediata tomada</label><textarea placeholder="¿Qué se hizo en el momento?" onchange="setField(\'obs_accion_inmediata\',this.value)">'+escapeHTML(f.obs_accion_inmediata)+'</textarea></div>';
+  html += '</div>';
+
+  // Bloque condicional: Acto inseguro → conversación con la persona
+  if (f.obs_tipo_acto_condicion === "Acto inseguro") {
+    html += '<div class="section" style="background:linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);border-color:#BFDBFE;">'
+      + '<div class="section-title" style="color:#1E40AF;">💬 Conversación con la persona</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">El acto inseguro se aborda con diálogo. Estos datos son opcionales pero ayudan a aprender mejor.</div>'
+      + '<div class="field"><label>¿Hablaste con la persona?</label><div class="chips">';
+    ["Sí","No","La persona reportó por sí misma"].forEach(function(o){
+      var cls = (f.obs_hablo_persona===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_hablo_persona\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div>';
+    html += '<div class="field"><label>Causa más probable del acto</label><div class="chips">';
+    ["Desconocimiento","Costumbre","Presión por tiempo","Distracción","Otro"].forEach(function(o){
+      var cls = (f.obs_causa_acto===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_causa_acto\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div></div>';
+  }
+
+  // Bloque condicional: Condición insegura → acción de mantenimiento
+  if (f.obs_tipo_acto_condicion === "Condición insegura") {
+    html += '<div class="section" style="background:linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);border-color:#FDE68A;">'
+      + '<div class="section-title" style="color:#B45309;">🔧 Acción de mantenimiento</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">La condición insegura se elimina con barreras físicas o ingeniería. Datos opcionales para gestión.</div>'
+      + '<div class="field"><label>¿Genera orden de trabajo a Mantenimiento?</label><div class="chips">';
+    ["Sí","No","Ya está en curso"].forEach(function(o){
+      var cls = (f.obs_genera_ot===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_genera_ot\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div>';
+    html += '<div class="field"><label>¿Necesita parada de equipo?</label><div class="chips">';
+    ["Sí","No","Solo paro programado"].forEach(function(o){
+      var cls = (f.obs_parada_equipo===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_parada_equipo\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div></div>';
+  }
+
+  return html;
+}
+
+function renderConversacion(f) {
+  var html = '<div class="section"><div class="section-title">💬 Conversación</div>';
+  html += '<div class="field"><label>Tema tratado <span class="req">*</span></label><input type="text" value="'+escapeHTML(f.conv_tema)+'" placeholder="Ej: Uso de EPP en zona X" onchange="setField(\'conv_tema\',this.value)"></div>';
+  html += '<div class="field"><label>Compromiso asumido</label><textarea placeholder="¿Qué compromiso se asumió?" onchange="setField(\'conv_compromiso\',this.value)">'+escapeHTML(f.conv_compromiso)+'</textarea></div>';
+  html += '</div>';
+  return html;
+}
+
+function renderIncidente(f) {
+  var html = '<div class="section"><div class="section-title">⚠️ Incidente</div>';
+  html += '<div class="field"><label>Equipo o instalación afectada</label><input type="text" value="'+escapeHTML(f.inc_equipo_afectado)+'" placeholder="Ej: Bomba P-101, Cinta 3" onchange="setField(\'inc_equipo_afectado\',this.value)"></div>';
+  html += '<div class="field"><label>Daño material estimado (ARS)</label><input type="number" value="'+f.inc_dano_estimado_ars+'" placeholder="0" onchange="setField(\'inc_dano_estimado_ars\',this.value)"></div>';
+  html += '<div class="field"><label>Acción inmediata</label><textarea placeholder="¿Qué se hizo?" onchange="setField(\'inc_accion_inmediata\',this.value)">'+escapeHTML(f.inc_accion_inmediata)+'</textarea></div>';
+  html += '<div class="field"><label>¿Se notificó al responsable del área?</label><div class="chips">';
+  ["Sí","No"].forEach(function(o){
+    var cls = (f.inc_notif_responsable===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'inc_notif_responsable\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  if (f.inc_notif_responsable === "Sí") {
+    html += '<div class="field"><label>¿A quién?</label><input type="text" value="'+escapeHTML(f.inc_notif_a_quien)+'" placeholder="Nombre del responsable" onchange="setField(\'inc_notif_a_quien\',this.value)"></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderAccidente(f) {
+  var html = '<div class="section"><div class="section-title">🔴 Accidente</div>';
+  html += '<div class="field"><label>Parte del cuerpo afectada <span class="req">*</span></label><select onchange="setField(\'acc_parte_cuerpo\',this.value)"><option value="">— Elegir —</option>';
+  BODY_PARTS.forEach(function(b){
+    html += '<option value="'+b+'"'+(f.acc_parte_cuerpo===b?' selected':'')+'>'+b+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>Tipo de lesión <span class="req">*</span></label><select onchange="setField(\'acc_tipo_lesion\',this.value)"><option value="">— Elegir —</option>';
+  TIPO_LESION.forEach(function(b){
+    html += '<option value="'+b+'"'+(f.acc_tipo_lesion===b?' selected':'')+'>'+b+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>Mecanismo (cómo se produjo) <span class="req">*</span></label><input type="text" value="'+escapeHTML(f.acc_mecanismo)+'" placeholder="Caída desde altura, atrapamiento, etc." onchange="setField(\'acc_mecanismo\',this.value)"></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Testigo 1 (legajo)</label><input type="text" list="dlLegajos" value="'+f.acc_testigo1_legajo+'" onchange="setField(\'acc_testigo1_legajo\',this.value)"></div>';
+  html += '<div class="field"><label>Testigo 2 (legajo)</label><input type="text" list="dlLegajos" value="'+f.acc_testigo2_legajo+'" onchange="setField(\'acc_testigo2_legajo\',this.value)"></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Días de baja estimados</label><input type="number" value="'+f.acc_dias_baja_estimados+'" placeholder="0" onchange="setField(\'acc_dias_baja_estimados\',this.value)"></div>';
+  html += '<div class="field"><label>Acción inmediata <span class="req">*</span></label><textarea placeholder="Atención brindada, derivación, etc." onchange="setField(\'acc_accion_inmediata\',this.value)">'+escapeHTML(f.acc_accion_inmediata)+'</textarea></div>';
+  html += '<div class="field"><label>¿Se notificó a la ART? <span class="req">*</span></label><div class="chips">';
+  ["Sí","No","En curso"].forEach(function(o){
+    var cls = (f.acc_notif_art===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'acc_notif_art\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  if (f.acc_notif_art === "Sí") {
+    html += '<div class="field"><label>Hora de notificación ART</label><input type="time" value="'+f.acc_hora_notif_art+'" onchange="setField(\'acc_hora_notif_art\',this.value)"></div>';
+  }
+  html += '<div class="field"><label>¿Se notificó al responsable del área?</label><div class="chips">';
+  ["Sí","No"].forEach(function(o){
+    var cls = (f.acc_notif_responsable===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'acc_notif_responsable\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  if (f.acc_notif_responsable === "Sí") {
+    html += '<div class="field"><label>¿A quién?</label><input type="text" value="'+escapeHTML(f.acc_notif_a_quien)+'" placeholder="Nombre" onchange="setField(\'acc_notif_a_quien\',this.value)"></div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderAmbiente(f) {
+  var html = '<div class="section"><div class="section-title">🌿 Medio Ambiente</div>';
+  html += '<div class="field"><label>Sustancia <span class="req">*</span></label><select onchange="setField(\'amb_sustancia\',this.value)"><option value="">— Elegir —</option>';
+  (MAESTROS.sustancias||[]).forEach(function(s){
+    html += '<option value="'+s.nombre+'"'+(f.amb_sustancia===s.nombre?' selected':'')+'>'+s.nombre+(s.tipo_riesgo?' ('+s.tipo_riesgo+')':'')+'</option>';
+  });
+  html += '<option value="Otra"'+(f.amb_sustancia==="Otra"?' selected':'')+'>Otra (especificar en descripción)</option>';
+  html += '</select></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Cantidad estimada</label><input type="number" step="0.01" value="'+f.amb_cantidad+'" placeholder="0" onchange="setField(\'amb_cantidad\',this.value)"></div>';
+  html += '<div class="field"><label>Unidad</label><select onchange="setField(\'amb_unidad\',this.value)"><option value="">—</option>';
+  UNIDADES.forEach(function(u){
+    html += '<option value="'+u+'"'+(f.amb_unidad===u?' selected':'')+'>'+u+'</option>';
+  });
+  html += '</select></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Medio impactado <span class="req">*</span></label><div class="chips">';
+  MEDIOS.forEach(function(m){
+    var cls = (f.amb_medio_impactado===m)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'amb_medio_impactado\',\''+m+'\')">'+m+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field"><label>Contención aplicada</label><textarea placeholder="¿Qué contención se aplicó?" onchange="setField(\'amb_contencion_aplicada\',this.value)">'+escapeHTML(f.amb_contencion_aplicada)+'</textarea></div>';
+  html += '<div class="field"><label>¿Se notificó autoridad ambiental?</label><div class="chips">';
+  ["Sí","No","No corresponde"].forEach(function(o){
+    var cls = (f.amb_notif_autoridad===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'amb_notif_autoridad\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '</div>';
+  return html;
+}
+
+// PASO 4: Revisión
+function renderReview() {
+  var f = state.form;
+  var meta = TIPO_META[f.tipo] || {};
+  var html = '<h1>Revisá antes de enviar</h1>';
+  html += '<p class="subtitle">Si hay algo mal, volvé atrás. Una vez enviado queda registrado.</p>';
+
+  html += '<div class="section"><div class="section-title">'+meta.icon+' '+meta.label+' — '+escapeHTML(f.subtipo)+'</div>';
+  html += reviewRow("Fecha / Hora", f.fecha_evento + ' ' + f.hora_evento);
+  html += reviewRow("Sector", f.sector);
+  html += reviewRow("Turno", f.turno);
+  html += reviewRow("Prioridad", f.prioridad);
+  html += reviewRow("Reportado por", f.reportado_por_nombre + (f.reportado_por_legajo?' (Leg. '+escapeHTML(f.reportado_por_legajo)+')':''));
+  if (f.persona_nombre) html += reviewRow("Persona", f.persona_nombre + (f.persona_legajo?' (Leg. '+escapeHTML(f.persona_legajo)+')':''));
+  html += reviewRow("Descripción", f.descripcion);
+  html += '</div>';
+
+  // Específicos
+  if (f.tipo === "OBSERVACION") {
+    if (f.obs_tipo_acto_condicion || f.obs_accion_inmediata || f.obs_hablo_persona || f.obs_causa_acto || f.obs_genera_ot || f.obs_parada_equipo) {
+      html += '<div class="section">';
+      if (f.obs_tipo_acto_condicion) html += reviewRow("Tipo", f.obs_tipo_acto_condicion);
+      if (f.obs_accion_inmediata) html += reviewRow("Acción inmediata", f.obs_accion_inmediata);
+      if (f.obs_hablo_persona) html += reviewRow("Hablaste con la persona", f.obs_hablo_persona);
+      if (f.obs_causa_acto) html += reviewRow("Causa probable", f.obs_causa_acto);
+      if (f.obs_genera_ot) html += reviewRow("Genera OT mantenimiento", f.obs_genera_ot);
+      if (f.obs_parada_equipo) html += reviewRow("Parada de equipo", f.obs_parada_equipo);
+      html += '</div>';
+    }
+  }
+  if (f.tipo === "CONVERSACION") {
+    html += '<div class="section">';
+    if (f.conv_tema) html += reviewRow("Tema", f.conv_tema);
+    if (f.conv_compromiso) html += reviewRow("Compromiso", f.conv_compromiso);
+    html += '</div>';
+  }
+  if (f.tipo === "INCIDENTE") {
+    html += '<div class="section">';
+    if (f.inc_equipo_afectado) html += reviewRow("Equipo", f.inc_equipo_afectado);
+    if (f.inc_dano_estimado_ars) html += reviewRow("Daño estimado", '$'+f.inc_dano_estimado_ars);
+    if (f.inc_accion_inmediata) html += reviewRow("Acción inmediata", f.inc_accion_inmediata);
+    if (f.inc_notif_responsable) html += reviewRow("Notif. responsable", f.inc_notif_responsable + (f.inc_notif_a_quien?' — '+f.inc_notif_a_quien:''));
+    html += '</div>';
+  }
+  if (f.tipo === "ACCIDENTE") {
+    html += '<div class="section">';
+    if (f.acc_parte_cuerpo) html += reviewRow("Parte del cuerpo", f.acc_parte_cuerpo);
+    if (f.acc_tipo_lesion) html += reviewRow("Tipo de lesión", f.acc_tipo_lesion);
+    if (f.acc_mecanismo) html += reviewRow("Mecanismo", f.acc_mecanismo);
+    if (f.acc_testigo1_legajo) html += reviewRow("Testigo 1", f.acc_testigo1_legajo);
+    if (f.acc_testigo2_legajo) html += reviewRow("Testigo 2", f.acc_testigo2_legajo);
+    if (f.acc_dias_baja_estimados) html += reviewRow("Días de baja", f.acc_dias_baja_estimados);
+    if (f.acc_accion_inmediata) html += reviewRow("Acción inmediata", f.acc_accion_inmediata);
+    if (f.acc_notif_art) html += reviewRow("Notif. ART", f.acc_notif_art + (f.acc_hora_notif_art?' a las '+f.acc_hora_notif_art:''));
+    if (f.acc_notif_responsable) html += reviewRow("Notif. responsable", f.acc_notif_responsable + (f.acc_notif_a_quien?' — '+f.acc_notif_a_quien:''));
+    html += '</div>';
+  }
+  if (f.tipo === "AMBIENTE") {
+    html += '<div class="section">';
+    if (f.amb_sustancia) html += reviewRow("Sustancia", f.amb_sustancia);
+    if (f.amb_cantidad) html += reviewRow("Cantidad", f.amb_cantidad+' '+(f.amb_unidad||''));
+    if (f.amb_medio_impactado) html += reviewRow("Medio impactado", f.amb_medio_impactado);
+    if (f.amb_contencion_aplicada) html += reviewRow("Contención", f.amb_contencion_aplicada);
+    if (f.amb_notif_autoridad) html += reviewRow("Notif. autoridad", f.amb_notif_autoridad);
+    html += '</div>';
+  }
+
+  return html;
+}
+
+function reviewRow(label, value) {
+  if (!value || value === "undefined") return "";
+  return '<div class="review-row"><span class="review-label">'+escapeHTML(label)+'</span><span class="review-value">'+escapeHTML(value)+'</span></div>';
+}
+
+function renderSuccess() {
+  var html = '<div class="success-screen">'
+    + '<div class="success-icon">✓</div>'
+    + '<h2>Evento registrado</h2>'
+    + '<p>El registro se guardó correctamente y se envió la notificación por email.</p>'
+    + '<div class="success-id">ID: '+state.saved+'</div>'
+    + '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
+    + '<a href="formulario_v2.html" class="btn btn-next" style="text-decoration:none;display:inline-block;flex:0 0 auto;">+ Cargar otro evento</a>'
+    + '<a href="dashboard_v2.html" class="btn btn-prev" style="text-decoration:none;display:inline-block;flex:0 0 auto;">Ver dashboard</a>'
+    + '</div></div>';
+  document.getElementById("app").innerHTML = html;
+}
+
+// =============================================
+// SUBMIT
+// =============================================
+function submitForm() {
+  state.saving = true;
+  state.error = null;
+  render();
+
+  var params = new URLSearchParams();
+  params.append("action","save_evento");
+  Object.keys(state.form).forEach(function(k){
+    if (state.form[k] !== "" && state.form[k] !== null && state.form[k] !== undefined) {
+      params.append(k, state.form[k]);
+    }
+  });
+
+  fetch(APPS_SCRIPT_URL, { method:"POST", body: params })
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (resp.ok) {
+        state.saved = resp.evento_id;
+        state.saving = false;
+        renderSuccess();
+      } else {
+        state.error = "Error al guardar: " + (resp.error || "desconocido");
+        state.saving = false;
+        render();
+      }
+    })
+    .catch(function(err){
+      state.error = "Error de red: " + err.message;
+      state.saving = false;
+      render();
+    });
+}
+
+// Init
+loadMaestros();
+</script>
+</body>
+</html>

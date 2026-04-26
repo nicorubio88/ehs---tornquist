@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard EHS — Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0; --brand-600:#059669;
+    --brand-700:#047857; --brand-800:#065F46; --brand-900:#064E3B;
+    --bg:#F8FAFC; --bg2:#FFFFFF; --bg3:#F1F5F9;
+    --border:#E2E8F0; --border-strong:#CBD5E1;
+    --t1:#0F172A; --t2:#475569; --t3:#94A3B8;
+    --observation:#1E40AF; --conversation:#0F766E; --incident:#B45309;
+    --accident:#B91C1C; --environment:#15803D;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Inter Tight',system-ui,sans-serif;
+    background:var(--bg); color:var(--t1); min-height:100vh;
+    letter-spacing:-.01em;
+  }
+  .topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 20px; border-bottom:1px solid var(--border);
+    background:#fff; position:sticky; top:0; z-index:10;
+  }
+  .topbar a { font-size:13px; color:var(--t2); text-decoration:none; }
+  .topbar a:hover { color:var(--t1); }
+  .topbar-title { font-size:14px; font-weight:600; }
+  .container { max-width:1200px; margin:0 auto; padding:20px 16px; }
+  h1 { font-size:24px; font-weight:700; margin-bottom:4px; letter-spacing:-.02em; }
+  .last-update { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); }
+
+  .kpis {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:10px; margin:18px 0;
+  }
+  .kpi {
+    background:#fff; border:1px solid var(--border); border-radius:12px;
+    padding:14px; transition:transform .15s;
+  }
+  .kpi:hover { transform:translateY(-1px); }
+  .kpi-label {
+    font-size:11px; color:var(--t2); font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .kpi-value { font-size:28px; font-weight:700; color:var(--t1); }
+  .kpi-sub { font-size:11px; color:var(--t3); margin-top:2px; }
+  .kpi.observation { border-top:3px solid var(--observation); }
+  .kpi.conversation { border-top:3px solid var(--conversation); }
+  .kpi.incident { border-top:3px solid var(--incident); }
+  .kpi.accident { border-top:3px solid var(--accident); }
+  .kpi.environment { border-top:3px solid var(--environment); }
+
+  .grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;
+  }
+  @media (max-width:768px) { .grid { grid-template-columns:1fr; } }
+  .card {
+    background:#fff; border:1px solid var(--border); border-radius:12px;
+    padding:18px;
+  }
+  .card h2 {
+    font-size:15px; font-weight:700; margin-bottom:12px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+
+  /* Pirámide */
+  .pyramid { display:flex; flex-direction:column; gap:6px; }
+  .pyramid-row {
+    display:flex; align-items:center; gap:10px;
+  }
+  .pyramid-bar {
+    height:30px; border-radius:6px; padding:0 12px;
+    display:flex; align-items:center; color:#fff; font-weight:600; font-size:13px;
+    transition:width .3s;
+  }
+  .pyramid-label {
+    font-size:12px; font-weight:600; color:var(--t2); min-width:110px;
+  }
+  .pyramid-row.observation .pyramid-bar { background:var(--observation); }
+  .pyramid-row.conversation .pyramid-bar { background:var(--conversation); }
+  .pyramid-row.incident .pyramid-bar { background:var(--incident); }
+  .pyramid-row.accident .pyramid-bar { background:var(--accident); }
+  .pyramid-row.environment .pyramid-bar { background:var(--environment); }
+
+  /* Filtros */
+  .filters {
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;
+  }
+  .filter-group {
+    display:flex; align-items:center; gap:6px;
+    background:#fff; border:1px solid var(--border); border-radius:8px;
+    padding:6px 10px;
+  }
+  .filter-label { font-size:11px; color:var(--t2); font-weight:600; }
+  .filter-group select {
+    border:none; background:transparent; font:inherit; font-size:13px;
+    color:var(--t1); cursor:pointer; padding:2px 4px;
+  }
+  .filter-group select:focus { outline:none; }
+
+  /* Tabla */
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); }
+  th {
+    font-size:11px; font-weight:600; text-transform:uppercase;
+    letter-spacing:.04em; color:var(--t2); background:var(--bg3);
+  }
+  tr.row-clickable { cursor:pointer; transition:background .1s; }
+  tr.row-clickable:hover { background:var(--bg3); }
+  .badge {
+    display:inline-block; padding:2px 8px; border-radius:999px;
+    font-size:11px; font-weight:600; letter-spacing:.02em;
+  }
+  .badge.observation { background:#DBEAFE; color:var(--observation); }
+  .badge.conversation { background:#CCFBF1; color:var(--conversation); }
+  .badge.incident { background:#FEF3C7; color:var(--incident); }
+  .badge.accident { background:#FEE2E2; color:var(--accident); }
+  .badge.environment { background:#D1FAE5; color:var(--environment); }
+  .badge.estado.abierto { background:#FEE2E2; color:#991B1B; }
+  .badge.estado.tratamiento { background:#FEF3C7; color:#92400E; }
+  .badge.estado.cerrado { background:#D1FAE5; color:#065F46; }
+
+  /* Modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(15,23,42,.55);
+    backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999; padding:16px;
+    animation:fadeIn .15s;
+  }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal-box {
+    background:#fff; border-radius:16px; padding:0;
+    width:100%; max-width:560px; max-height:90vh; overflow-y:auto;
+    box-shadow:0 20px 50px rgba(15,23,42,.3);
+  }
+  .modal-header {
+    padding:18px 22px; border-bottom:1px solid var(--border);
+    display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; background:#fff; z-index:1;
+  }
+  .modal-header h3 { font-size:16px; font-weight:700; }
+  .modal-close {
+    background:transparent; border:none; font-size:22px; cursor:pointer;
+    color:var(--t3); width:30px; height:30px; border-radius:6px;
+  }
+  .modal-close:hover { background:var(--bg3); color:var(--t1); }
+  .modal-body { padding:18px 22px; }
+  .modal-field {
+    padding:8px 0; border-bottom:1px solid var(--bg3); font-size:13px;
+    display:flex; gap:12px;
+  }
+  .modal-field:last-child { border-bottom:none; }
+  .modal-field-label {
+    flex:0 0 38%; font-weight:600; color:var(--t2);
+    text-transform:uppercase; font-size:11px; letter-spacing:.04em;
+  }
+  .modal-field-value { flex:1; color:var(--t1); }
+  .modal-actions {
+    padding:14px 22px; border-top:1px solid var(--border);
+    background:var(--bg3); display:flex; gap:8px; justify-content:flex-end;
+  }
+  .btn {
+    padding:8px 14px; border-radius:8px; border:1px solid transparent;
+    font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .btn-primary { background:var(--brand-600); color:#fff; }
+  .btn-primary:hover { background:var(--brand-700); }
+  .btn-secondary { background:#fff; color:var(--t2); border-color:var(--border); }
+  .btn-secondary:hover { border-color:var(--border-strong); }
+
+  .actions-list {
+    margin-top:10px;
+  }
+  .action-item {
+    background:var(--bg3); border-radius:8px; padding:10px 12px;
+    margin-bottom:6px; font-size:12px; display:flex; justify-content:space-between;
+    align-items:center; gap:8px;
+  }
+  .action-info { flex:1; min-width:0; }
+  .action-desc { font-weight:600; color:var(--t1); margin-bottom:2px; word-break:break-word; }
+  .action-meta { font-size:11px; color:var(--t2); }
+
+  .empty {
+    text-align:center; padding:40px 20px; color:var(--t3); font-size:13px;
+  }
+  .spinner {
+    width:36px; height:36px; border:3px solid var(--border);
+    border-top-color:var(--brand-600); border-radius:50%;
+    animation:spin .8s linear infinite; margin:40px auto;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Sección Leading KPIs (Cultura BBS) */
+  .culture-section {
+    background:linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);
+    border:1px solid var(--brand-200); border-radius:14px;
+    padding:18px; margin:18px 0;
+  }
+  .culture-section-title {
+    font-size:14px; font-weight:700; color:var(--brand-800);
+    text-transform:uppercase; letter-spacing:.06em;
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:14px;
+  }
+  .culture-section-title::before {
+    content:""; display:inline-block; width:6px; height:18px;
+    background:var(--brand-600); border-radius:3px;
+  }
+  .culture-section-subtitle {
+    font-size:12px; color:var(--t2); margin-bottom:14px; line-height:1.4;
+  }
+  .leading-kpis {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+    gap:10px;
+  }
+  .leading-kpi {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:14px; position:relative; overflow:hidden;
+  }
+  .leading-kpi::before {
+    content:""; position:absolute; left:0; top:0; bottom:0;
+    width:3px; background:var(--status, var(--brand-600));
+  }
+  .leading-kpi-label {
+    font-size:11px; color:var(--t2); font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
+    line-height:1.3;
+  }
+  .leading-kpi-value {
+    font-size:24px; font-weight:700; color:var(--t1);
+    font-variant-numeric:tabular-nums;
+  }
+  .leading-kpi-target {
+    font-size:11px; color:var(--t3); margin-top:4px;
+    font-family:'JetBrains Mono',monospace;
+  }
+  .leading-kpi.green { --status:#16A34A; }
+  .leading-kpi.amber { --status:#D97706; }
+  .leading-kpi.red { --status:#DC2626; }
+  .leading-kpi.gray { --status:#94A3B8; }
+  .leading-kpi-status {
+    display:inline-block; padding:2px 6px; border-radius:4px;
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.04em; margin-top:6px;
+  }
+  .leading-kpi.green .leading-kpi-status { background:#D1FAE5; color:#065F46; }
+  .leading-kpi.amber .leading-kpi-status { background:#FEF3C7; color:#92400E; }
+  .leading-kpi.red .leading-kpi-status { background:#FEE2E2; color:#991B1B; }
+  .leading-kpi.gray .leading-kpi-status { background:#F1F5F9; color:#64748B; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html">← Inicio</a>
+  <span class="topbar-title">Dashboard EHS</span>
+  <a href="formulario_v2.html">+ Nuevo</a>
+</div>
+
+<div class="container" id="app">
+  <div class="spinner"></div>
+</div>
+
+<script>
+// =============================================
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMoQM2DkE0FNwWKQwfJNluPqc0pg2TKv6MQs0tYUFpRSb3fk8E6vxtePJ0SKs0mkY/exec";
+// =============================================
+
+var TIPO_META = {
+  "OBSERVACION":  { icon:"👁", label:"Observación", className:"observation" },
+  "CONVERSACION": { icon:"💬", label:"Conversación", className:"conversation" },
+  "INCIDENTE":    { icon:"⚠️", label:"Incidente", className:"incident" },
+  "ACCIDENTE":    { icon:"🔴", label:"Accidente", className:"accident" },
+  "AMBIENTE":     { icon:"🌿", label:"Ambiente", className:"environment" }
+};
+
+var EVENTOS = [];
+var ACCIONES = [];
+var MAESTROS = { personal:[], sectores:[], responsables:[] };
+var PERSONAL_BY_LEGAJO = {};
+var PERSONAL_BY_NOMBRE = {};
+
+var FILTERS = { tipo:"Todos", sector:"Todos", prioridad:"Todos", estado:"Todos" };
+var MODAL_EVENT = null;
+
+// Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
+function escapeHTML(s) {
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function loadData() {
+  fetch(APPS_SCRIPT_URL + "?tipo=all")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      EVENTOS = data.eventos || [];
+      ACCIONES = data.acciones || [];
+      MAESTROS = data.maestros || MAESTROS;
+      (MAESTROS.personal||[]).forEach(function(p){
+        if(p.legajo) PERSONAL_BY_LEGAJO[String(p.legajo)] = p.nombre;
+        if(p.nombre) PERSONAL_BY_NOMBRE[String(p.nombre).toUpperCase()] = p.legajo;
+      });
+      render();
+    })
+    .catch(function(err){
+      document.getElementById("app").innerHTML =
+        '<div class="empty">Error al cargar datos: '+err.message+
+        '<br><br><button class="btn btn-primary" onclick="loadData()">Reintentar</button></div>';
+    });
+}
+
+function applyFilters(eventos) {
+  return eventos.filter(function(e){
+    if (FILTERS.tipo !== "Todos" && e.tipo !== FILTERS.tipo) return false;
+    if (FILTERS.sector !== "Todos" && e.sector !== FILTERS.sector) return false;
+    if (FILTERS.prioridad !== "Todos" && e.prioridad !== FILTERS.prioridad) return false;
+    if (FILTERS.estado !== "Todos" && e.estado !== FILTERS.estado) return false;
+    return true;
+  });
+}
+
+function setFilter(key, value) {
+  FILTERS[key] = value;
+  render();
+}
+
+// =============================================
+// LEADING KPIs (BBS / DSS+ Bradley Curve)
+// =============================================
+// Detecta si un legajo es supervisor (figura en tabla Responsables)
+function esSupervisor(legajo, nombre) {
+  if (!legajo && !nombre) return false;
+  return (MAESTROS.responsables||[]).some(function(r){
+    if (legajo && r.legajo && String(r.legajo) === String(legajo)) return true;
+    if (nombre && r.nombre && String(r.nombre).toUpperCase() === String(nombre).toUpperCase()) return true;
+    return false;
+  });
+}
+
+function inLast30Days(fechaStr) {
+  if (!fechaStr) return false;
+  // Comparación como strings YYYY-MM-DD para evitar problemas de timezone
+  // (ARG es UTC-3; new Date('2026-04-26') interpreta UTC, daría off-by-one al filo del día)
+  var fechaEvento = String(fechaStr).substring(0,10);
+  var hoy = new Date();
+  var hace30 = new Date(hoy.getTime() - 30*24*60*60*1000);
+  // Construimos string YYYY-MM-DD usando getFullYear/Month/Date locales
+  var hoyStr = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
+  var hace30Str = hace30.getFullYear() + "-" + String(hace30.getMonth()+1).padStart(2,"0") + "-" + String(hace30.getDate()).padStart(2,"0");
+  return fechaEvento >= hace30Str && fechaEvento <= hoyStr;
+}
+
+function calculateLeadingKPIs() {
+  // Universo: últimos 30 días
+  var ultimoMes = EVENTOS.filter(function(e){ return inLast30Days(e.fecha_evento); });
+  var observacionesMes = ultimoMes.filter(function(e){ return e.tipo === "OBSERVACION"; });
+  var accidentesMes = ultimoMes.filter(function(e){ return e.tipo === "ACCIDENTE"; });
+
+  // KPI 1 — % cargado por operarios
+  var totalReportes = ultimoMes.length;
+  var deOperarios = ultimoMes.filter(function(e){
+    return !esSupervisor(e.reportado_por_legajo, e.reportado_por_nombre);
+  }).length;
+  var pctOperarios = totalReportes > 0 ? Math.round((deOperarios / totalReportes) * 100) : 0;
+
+  // KPI 2 — Ratio cultura: observaciones / accidentes
+  var ratioCultura = accidentesMes.length > 0
+    ? Math.round((observacionesMes.length / accidentesMes.length) * 10) / 10
+    : (observacionesMes.length > 0 ? "∞" : 0);
+
+  // KPI 3 — Observaciones por trabajador (denominador = personal del convenio)
+  var totalPersonal = (MAESTROS.personal||[]).length;
+  var obsPorTrabajador = totalPersonal > 0
+    ? Math.round((observacionesMes.length / totalPersonal) * 100) / 100
+    : 0;
+
+  // KPI 4 — % acciones cerradas en término
+  var accionesCerradas = ACCIONES.filter(function(a){ return a.estado === "Cerrada"; });
+  var enTermino = accionesCerradas.filter(function(a){
+    if (!a.fecha_vencimiento || !a.fecha_cierre) return false;
+    return String(a.fecha_cierre).substring(0,10) <= String(a.fecha_vencimiento).substring(0,10);
+  }).length;
+  var pctEnTermino = accionesCerradas.length > 0
+    ? Math.round((enTermino / accionesCerradas.length) * 100)
+    : null;
+
+  // KPI 5 — Tiempo promedio observación → cierre
+  // Buscamos acciones cerradas que provengan de observaciones, calculamos días
+  // Usamos Date solo para diferencia, parseando con T00:00:00 explícito para fijar timezone local
+  var tiempos = [];
+  ACCIONES.forEach(function(a){
+    if (a.estado !== "Cerrada" || !a.fecha_creacion || !a.fecha_cierre) return;
+    var ev = EVENTOS.filter(function(e){return String(e.evento_id) === String(a.evento_id);})[0];
+    if (!ev || ev.tipo !== "OBSERVACION") return;
+    // Parsear con T00:00:00 fuerza interpretación como hora local, no UTC
+    var creacionStr = String(a.fecha_creacion).substring(0,10);
+    var cierreStr = String(a.fecha_cierre).substring(0,10);
+    var creacion = new Date(creacionStr + "T00:00:00");
+    var cierre = new Date(cierreStr + "T00:00:00");
+    var dias = Math.floor((cierre - creacion) / (1000*60*60*24));
+    if (dias >= 0) tiempos.push(dias);
+  });
+  var tiempoPromedio = tiempos.length > 0
+    ? Math.round(tiempos.reduce(function(a,b){return a+b;}, 0) / tiempos.length)
+    : null;
+
+  return {
+    pctOperarios: { value: pctOperarios, target: 50, unit: "%" },
+    ratioCultura: { value: ratioCultura, target: 100, unit: ":1" },
+    obsPorTrabajador: { value: obsPorTrabajador, target: 1, unit: "" },
+    pctEnTermino: { value: pctEnTermino, target: 80, unit: "%" },
+    tiempoPromedio: { value: tiempoPromedio, target: 14, unit: " días", invert: true } // menos es mejor
+  };
+}
+
+function kpiStatus(value, target, invert) {
+  if (value === null || value === undefined) return "gray";
+  if (value === "∞") return "green";
+  var v = Number(value);
+  if (isNaN(v)) return "gray";
+  if (invert) {
+    // Tiempo: menor es mejor
+    if (v <= target) return "green";
+    if (v <= target * 1.5) return "amber";
+    return "red";
+  }
+  if (v >= target) return "green";
+  if (v >= target * 0.6) return "amber";
+  return "red";
+}
+
+function kpiStatusLabel(status) {
+  if (status === "green") return "✓ En target";
+  if (status === "amber") return "Cerca";
+  if (status === "red") return "Brecha";
+  return "Sin datos";
+}
+
+function renderLeadingKPIs() {
+  var k = calculateLeadingKPIs();
+
+  var html = '<div class="culture-section">';
+  html += '<div class="culture-section-title">Indicadores de cultura BBS</div>';
+  html += '<div class="culture-section-subtitle">Últimos 30 días · Cuantos más arriba estos números, más cerca de "Interdependiente" en la curva de Bradley.</div>';
+  html += '<div class="leading-kpis">';
+
+  // KPI 1
+  var s1 = kpiStatus(k.pctOperarios.value, k.pctOperarios.target);
+  html += '<div class="leading-kpi '+s1+'">'
+    + '<div class="leading-kpi-label">Reportes de operarios</div>'
+    + '<div class="leading-kpi-value">'+k.pctOperarios.value+'%</div>'
+    + '<div class="leading-kpi-target">target ≥ '+k.pctOperarios.target+'%</div>'
+    + '<span class="leading-kpi-status">'+kpiStatusLabel(s1)+'</span>'
+    + '</div>';
+
+  // KPI 2
+  var s2 = kpiStatus(k.ratioCultura.value, k.ratioCultura.target);
+  var ratioDisplay = (k.ratioCultura.value === "∞") ? "∞" : (k.ratioCultura.value + ":1");
+  html += '<div class="leading-kpi '+s2+'">'
+    + '<div class="leading-kpi-label">Ratio cultura (obs / accid)</div>'
+    + '<div class="leading-kpi-value">'+ratioDisplay+'</div>'
+    + '<div class="leading-kpi-target">target ≥ '+k.ratioCultura.target+':1</div>'
+    + '<span class="leading-kpi-status">'+kpiStatusLabel(s2)+'</span>'
+    + '</div>';
+
+  // KPI 3
+  var s3 = kpiStatus(k.obsPorTrabajador.value, k.obsPorTrabajador.target);
+  html += '<div class="leading-kpi '+s3+'">'
+    + '<div class="leading-kpi-label">Observ. por trabajador / mes</div>'
+    + '<div class="leading-kpi-value">'+k.obsPorTrabajador.value+'</div>'
+    + '<div class="leading-kpi-target">target ≥ '+k.obsPorTrabajador.target+'</div>'
+    + '<span class="leading-kpi-status">'+kpiStatusLabel(s3)+'</span>'
+    + '</div>';
+
+  // KPI 4
+  var s4 = kpiStatus(k.pctEnTermino.value, k.pctEnTermino.target);
+  var v4 = k.pctEnTermino.value === null ? "—" : k.pctEnTermino.value+"%";
+  html += '<div class="leading-kpi '+s4+'">'
+    + '<div class="leading-kpi-label">Acciones cerradas en término</div>'
+    + '<div class="leading-kpi-value">'+v4+'</div>'
+    + '<div class="leading-kpi-target">target ≥ '+k.pctEnTermino.target+'%</div>'
+    + '<span class="leading-kpi-status">'+kpiStatusLabel(s4)+'</span>'
+    + '</div>';
+
+  // KPI 5
+  var s5 = kpiStatus(k.tiempoPromedio.value, k.tiempoPromedio.target, true);
+  var v5 = k.tiempoPromedio.value === null ? "—" : k.tiempoPromedio.value+" días";
+  html += '<div class="leading-kpi '+s5+'">'
+    + '<div class="leading-kpi-label">Tiempo obs → cierre</div>'
+    + '<div class="leading-kpi-value">'+v5+'</div>'
+    + '<div class="leading-kpi-target">target ≤ '+k.tiempoPromedio.target+' días</div>'
+    + '<span class="leading-kpi-status">'+kpiStatusLabel(s5)+'</span>'
+    + '</div>';
+
+  html += '</div></div>';
+  return html;
+}
+
+function render() {
+  var filtered = applyFilters(EVENTOS);
+  var html = '';
+
+  // Header
+  html += '<h1>Dashboard EHS</h1>';
+  html += '<div class="last-update">Última actualización: '+new Date().toLocaleString("es-AR")+' · '+EVENTOS.length+' eventos · '+ACCIONES.length+' acciones</div>';
+
+  // Leading KPIs (cultura BBS) — siempre visibles, no se ven afectados por filtros
+  html += renderLeadingKPIs();
+
+  // KPIs por tipo (afectados por filtros)
+  var counts = { OBSERVACION:0, CONVERSACION:0, INCIDENTE:0, ACCIDENTE:0, AMBIENTE:0 };
+  filtered.forEach(function(e){ if(counts[e.tipo]!==undefined) counts[e.tipo]++; });
+
+  html += '<div class="kpis">';
+  Object.keys(TIPO_META).forEach(function(t){
+    var meta = TIPO_META[t];
+    html += '<div class="kpi '+meta.className+'">'
+      + '<div class="kpi-label">'+meta.icon+' '+meta.label+'</div>'
+      + '<div class="kpi-value">'+counts[t]+'</div>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Pirámide y acciones pendientes
+  html += '<div class="grid">';
+  html += '<div class="card"><h2>Pirámide de seguridad</h2>'+renderPyramid(counts)+'</div>';
+  html += '<div class="card"><h2>Acciones correctivas <span style="font-weight:400;font-size:13px;color:var(--t2);">('+ACCIONES.length+' totales)</span></h2>'+renderActionsSummary()+'</div>';
+  html += '</div>';
+
+  // Filtros
+  html += '<div class="filters">';
+  html += filterSelect("tipo","Tipo",["Todos"].concat(Object.keys(TIPO_META)));
+  html += filterSelect("sector","Sector",["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;})));
+  html += filterSelect("prioridad","Prioridad",["Todos","Alta","Media","Baja"]);
+  html += filterSelect("estado","Estado",["Todos","Abierto","En tratamiento","Cerrado","Sin acciones"]);
+  html += '</div>';
+
+  // Tabla de eventos
+  html += '<div class="card" style="padding:0;overflow-x:auto;">';
+  html += '<table><thead><tr>'
+    + '<th>ID</th><th>Fecha</th><th>Tipo</th><th>Sector</th>'
+    + '<th>Prioridad</th><th>Persona</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+  if (filtered.length === 0) {
+    html += '<tr><td colspan="8" class="empty">No hay eventos con estos filtros.</td></tr>';
+  } else {
+    // Ordenar por fecha descendente
+    filtered.slice().sort(function(a,b){
+      return String(b.timestamp_carga||"").localeCompare(String(a.timestamp_carga||""));
+    }).forEach(function(e){
+      var meta = TIPO_META[e.tipo] || {label:e.tipo, className:"", icon:"📋"};
+      var estadoClass = "tratamiento";
+      if (e.estado === "Abierto") estadoClass = "abierto";
+      else if (e.estado === "Cerrado") estadoClass = "cerrado";
+      else if (e.estado === "Sin acciones") estadoClass = "tratamiento";
+      html += '<tr class="row-clickable" onclick="openModal(\''+escapeHTML(e.evento_id)+'\')">'
+        + '<td><code style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code></td>'
+        + '<td>'+formatDate(e.fecha_evento)+'</td>'
+        + '<td><span class="badge '+meta.className+'">'+meta.icon+' '+meta.label+'</span></td>'
+        + '<td>'+(e.sector||"—")+'</td>'
+        + '<td>'+(e.prioridad||"—")+'</td>'
+        + '<td>'+(e.persona_nombre||"—")+'</td>'
+        + '<td><span class="badge estado '+estadoClass+'">'+(e.estado||"Sin acciones")+'</span></td>'
+        + '<td>'+(e.cant_acciones_cerradas||0)+'/'+(e.cant_acciones||0)+'</td>'
+        + '</tr>';
+    });
+  }
+  html += '</tbody></table></div>';
+
+  // Footer cultural no-punitivo
+  html += '<div style="margin-top:20px;padding:14px 18px;background:linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);border:1px solid var(--brand-200);border-radius:12px;font-size:12px;color:var(--brand-800);text-align:center;">'
+    + '<strong>Cada observación que se carga acá cuida a un compañero.</strong> Este sistema es para aprender y mejorar, no para sancionar.'
+    + '</div>';
+
+  document.getElementById("app").innerHTML = html;
+}
+
+function renderPyramid(counts) {
+  var max = Math.max(counts.OBSERVACION, counts.CONVERSACION, counts.INCIDENTE, counts.ACCIDENTE, counts.AMBIENTE, 1);
+  var html = '<div class="pyramid">';
+  ["OBSERVACION","CONVERSACION","INCIDENTE","ACCIDENTE","AMBIENTE"].forEach(function(t){
+    var meta = TIPO_META[t];
+    var pct = (counts[t] / max) * 100;
+    if (pct < 8 && counts[t] > 0) pct = 8; // mínimo visible
+    html += '<div class="pyramid-row '+meta.className+'">'
+      + '<div class="pyramid-label">'+meta.icon+' '+meta.label+'</div>'
+      + '<div class="pyramid-bar" style="width:'+pct+'%;">'+counts[t]+'</div>'
+      + '</div>';
+  });
+  html += '</div>';
+  html += '<div style="margin-top:10px;font-size:11px;color:var(--t3);line-height:1.4;">Más observaciones que accidentes = cultura proactiva. Si la pirámide está invertida, hay que reportar más antes de que pase.</div>';
+  return html;
+}
+
+function renderActionsSummary() {
+  var abiertas = ACCIONES.filter(function(a){return a.estado==="Abierta"}).length;
+  var enProceso = ACCIONES.filter(function(a){return a.estado==="En proceso"}).length;
+  var cerradas = ACCIONES.filter(function(a){return a.estado==="Cerrada"}).length;
+  var vencidas = 0;
+  // Hoy en formato YYYY-MM-DD usando timezone LOCAL (no UTC)
+  var d = new Date();
+  var hoy = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  ACCIONES.forEach(function(a){
+    if (a.estado !== "Cerrada" && a.fecha_vencimiento && String(a.fecha_vencimiento).substring(0,10) < hoy) vencidas++;
+  });
+  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">';
+  html += '<div style="padding:10px;background:#FEE2E2;border-radius:8px;"><div style="font-size:11px;color:#991B1B;font-weight:600;text-transform:uppercase;">Abiertas</div><div style="font-size:22px;font-weight:700;color:#991B1B;">'+abiertas+'</div></div>';
+  html += '<div style="padding:10px;background:#FEF3C7;border-radius:8px;"><div style="font-size:11px;color:#92400E;font-weight:600;text-transform:uppercase;">En proceso</div><div style="font-size:22px;font-weight:700;color:#92400E;">'+enProceso+'</div></div>';
+  html += '<div style="padding:10px;background:#D1FAE5;border-radius:8px;"><div style="font-size:11px;color:#065F46;font-weight:600;text-transform:uppercase;">Cerradas</div><div style="font-size:22px;font-weight:700;color:#065F46;">'+cerradas+'</div></div>';
+  html += '<div style="padding:10px;background:'+(vencidas>0?'#FEE2E2':'#F1F5F9')+';border-radius:8px;"><div style="font-size:11px;color:'+(vencidas>0?'#991B1B':'var(--t2)')+';font-weight:600;text-transform:uppercase;">Vencidas</div><div style="font-size:22px;font-weight:700;color:'+(vencidas>0?'#991B1B':'var(--t2)')+';">'+vencidas+'</div></div>';
+  html += '</div>';
+  html += '<div style="margin-top:10px;text-align:center;"><a href="seguimiento_v2.html" style="font-size:12px;color:var(--brand-700);text-decoration:none;font-weight:600;">Ver seguimiento completo →</a></div>';
+  return html;
+}
+
+function filterSelect(key, label, options) {
+  var html = '<div class="filter-group"><span class="filter-label">'+label+':</span><select onchange="setFilter(\''+key+'\',this.value)">';
+  options.forEach(function(o){
+    html += '<option value="'+o+'"'+(FILTERS[key]===o?' selected':'')+'>'+o+'</option>';
+  });
+  html += '</select></div>';
+  return html;
+}
+
+function formatDate(s) {
+  if (!s) return "—";
+  var str = String(s);
+  if (str.length >= 10) {
+    var parts = str.substring(0,10).split("-");
+    if (parts.length === 3) return parts[2]+'/'+parts[1]+'/'+parts[0];
+  }
+  return str;
+}
+
+// =============================================
+// MODAL
+// =============================================
+function openModal(eventoId) {
+  var ev = EVENTOS.filter(function(e){return e.evento_id === eventoId})[0];
+  if (!ev) return;
+  MODAL_EVENT = ev;
+  var meta = TIPO_META[ev.tipo] || {label:ev.tipo, icon:"📋", className:""};
+  var acciones = ACCIONES.filter(function(a){return String(a.evento_id) === String(eventoId)});
+
+  var html = '<div class="modal-overlay" id="modalOverlay" onclick="if(event.target.id===\'modalOverlay\')closeModal()">';
+  html += '<div class="modal-box">';
+  html += '<div class="modal-header">';
+  html += '<h3><span class="badge '+meta.className+'">'+meta.icon+' '+meta.label+'</span> &nbsp; '+escapeHTML(ev.evento_id)+'</h3>';
+  html += '<button class="modal-close" onclick="closeModal()">×</button>';
+  html += '</div>';
+  html += '<div class="modal-body">';
+
+  html += modalRow("Subtipo", ev.subtipo);
+  html += modalRow("Fecha / Hora", formatDate(ev.fecha_evento) + ' ' + (ev.hora_evento||""));
+  html += modalRow("Sector", ev.sector);
+  html += modalRow("Turno", ev.turno);
+  html += modalRow("Prioridad", ev.prioridad);
+  html += modalRow("Reportado por", (ev.reportado_por_nombre||"") + (ev.reportado_por_legajo?' (Leg. '+escapeHTML(ev.reportado_por_legajo)+')':''));
+  if (ev.persona_nombre) html += modalRow("Persona", ev.persona_nombre + (ev.persona_legajo?' (Leg. '+escapeHTML(ev.persona_legajo)+')':''));
+  html += modalRow("Descripción", ev.descripcion);
+
+  // Específicos
+  if (ev.tipo === "OBSERVACION") {
+    if (ev.obs_tipo_acto_condicion) html += modalRow("Tipo", ev.obs_tipo_acto_condicion);
+    if (ev.obs_accion_inmediata) html += modalRow("Acción inmediata", ev.obs_accion_inmediata);
+  } else if (ev.tipo === "CONVERSACION") {
+    if (ev.conv_tema) html += modalRow("Tema", ev.conv_tema);
+    if (ev.conv_compromiso) html += modalRow("Compromiso", ev.conv_compromiso);
+  } else if (ev.tipo === "INCIDENTE") {
+    if (ev.inc_equipo_afectado) html += modalRow("Equipo", ev.inc_equipo_afectado);
+    if (ev.inc_dano_estimado_ars) html += modalRow("Daño estimado", "$"+ev.inc_dano_estimado_ars);
+    if (ev.inc_accion_inmediata) html += modalRow("Acción inmediata", ev.inc_accion_inmediata);
+    if (ev.inc_notif_responsable) html += modalRow("Notif. responsable", ev.inc_notif_responsable + (ev.inc_notif_a_quien?' — '+ev.inc_notif_a_quien:''));
+  } else if (ev.tipo === "ACCIDENTE") {
+    if (ev.acc_parte_cuerpo) html += modalRow("Parte del cuerpo", ev.acc_parte_cuerpo);
+    if (ev.acc_tipo_lesion) html += modalRow("Tipo de lesión", ev.acc_tipo_lesion);
+    if (ev.acc_mecanismo) html += modalRow("Mecanismo", ev.acc_mecanismo);
+    if (ev.acc_accion_inmediata) html += modalRow("Acción inmediata", ev.acc_accion_inmediata);
+    if (ev.acc_notif_art) html += modalRow("Notif. ART", ev.acc_notif_art);
+    if (ev.acc_dias_baja_estimados) html += modalRow("Días baja", ev.acc_dias_baja_estimados);
+  } else if (ev.tipo === "AMBIENTE") {
+    if (ev.amb_sustancia) html += modalRow("Sustancia", ev.amb_sustancia);
+    if (ev.amb_cantidad) html += modalRow("Cantidad", ev.amb_cantidad+' '+(ev.amb_unidad||""));
+    if (ev.amb_medio_impactado) html += modalRow("Medio impactado", ev.amb_medio_impactado);
+    if (ev.amb_contencion_aplicada) html += modalRow("Contención", ev.amb_contencion_aplicada);
+    if (ev.amb_notif_autoridad) html += modalRow("Notif. autoridad", ev.amb_notif_autoridad);
+  }
+
+  // Foto
+  if (ev.foto_url) {
+    html += '<div style="margin-top:12px;text-align:center;"><img src="'+ev.foto_url+'" style="max-width:100%;max-height:300px;border-radius:8px;" alt="Foto"/></div>';
+  }
+
+  // Acciones
+  html += '<h4 style="margin-top:18px;font-size:13px;font-weight:700;color:var(--t1);">Acciones correctivas ('+acciones.length+')</h4>';
+  if (acciones.length === 0) {
+    html += '<div style="margin-top:8px;font-size:12px;color:var(--t3);">Este evento no tiene acciones correctivas asignadas.</div>';
+  } else {
+    html += '<div class="actions-list">';
+    acciones.forEach(function(a){
+      var estadoClass = a.estado === "Cerrada" ? "cerrado" : (a.estado === "En proceso" ? "tratamiento" : "abierto");
+      html += '<div class="action-item">'
+        + '<div class="action-info">'
+        + '<div class="action-desc">'+escapeHTML(a.descripcion)+'</div>'
+        + '<div class="action-meta">👤 '+(a.responsable_nombre||"—")+' · 📅 '+formatDate(a.fecha_vencimiento)+'</div>'
+        + '</div>'
+        + '<span class="badge estado '+estadoClass+'">'+a.estado+'</span>'
+        + '</div>';
+    });
+    html += '</div>';
+  }
+
+  html += '<button class="btn btn-secondary" style="margin-top:12px;width:100%;" onclick="abrirNuevaAccion(\''+escapeHTML(ev.evento_id)+'\')">+ Nueva acción correctiva</button>';
+
+  html += '</div>'; // body
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>';
+  html += '</div></div></div>';
+
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
+function modalRow(label, value) {
+  if (!value || value === "undefined" || value === "") return "";
+  return '<div class="modal-field"><span class="modal-field-label">'+escapeHTML(label)+'</span><span class="modal-field-value">'+escapeHTML(value)+'</span></div>';
+}
+
+function closeModal() {
+  var m = document.getElementById("modalOverlay");
+  if (m) m.remove();
+  var n = document.getElementById("nuevaAccionOverlay");
+  if (n) n.remove();
+}
+
+// =============================================
+// NUEVA ACCIÓN CORRECTIVA
+// =============================================
+function abrirNuevaAccion(eventoId) {
+  var acciones = ACCIONES.filter(function(a){return String(a.evento_id) === String(eventoId)});
+  var nro = acciones.length + 1;
+
+  var html = '<div class="modal-overlay" id="nuevaAccionOverlay" onclick="if(event.target.id===\'nuevaAccionOverlay\')cerrarNuevaAccion()">';
+  html += '<div class="modal-box" style="max-width:480px;">';
+  html += '<div class="modal-header"><h3>Nueva acción correctiva</h3>'
+    + '<button class="modal-close" onclick="cerrarNuevaAccion()">×</button></div>';
+  html += '<div class="modal-body">';
+  html += '<div style="margin-bottom:14px;font-size:12px;color:var(--t2);">Evento: <code style="font-family:JetBrains Mono,monospace;">'+eventoId+'</code> · Acción #'+nro+'</div>';
+
+  html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Descripción de la acción *</label>'
+    + '<textarea id="nac_desc" placeholder="¿Qué hay que hacer?" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;min-height:70px;"></textarea></div>';
+
+  html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Responsable *</label>'
+    + '<select id="nac_resp" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;">'
+    + '<option value="">— Seleccionar responsable —</option>';
+  (MAESTROS.responsables||[]).forEach(function(r){
+    html += '<option value="'+(r.nombre||"")+'" data-legajo="'+(r.legajo||"")+'">'+(r.nombre||"")+(r.rol?' ('+r.rol+')':'')+'</option>';
+  });
+  html += '</select></div>';
+
+  html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Fecha de vencimiento</label>'
+    + '<input type="date" id="nac_fecha" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;"></div>';
+
+  html += '</div>'; // body
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-secondary" onclick="cerrarNuevaAccion()">Cancelar</button>';
+  html += '<button class="btn btn-primary" onclick="guardarAccion(\''+eventoId+'\','+nro+')">Guardar acción</button>';
+  html += '</div></div></div>';
+
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
+function cerrarNuevaAccion() {
+  var m = document.getElementById("nuevaAccionOverlay");
+  if (m) m.remove();
+}
+
+function guardarAccion(eventoId, nro) {
+  var desc = document.getElementById("nac_desc").value.trim();
+  var sel = document.getElementById("nac_resp");
+  var resp = sel.value.trim();
+  var legajo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].getAttribute("data-legajo") : "";
+  var fecha = document.getElementById("nac_fecha").value;
+
+  if (!desc || !resp) {
+    alert("Completá descripción y responsable");
+    return;
+  }
+
+  var params = new URLSearchParams();
+  params.append("action","save_accion");
+  params.append("evento_id", eventoId);
+  params.append("nro_accion", nro);
+  params.append("descripcion", desc);
+  params.append("responsable_legajo", legajo || "");
+  params.append("responsable_nombre", resp);
+  params.append("fecha_vencimiento", fecha);
+  params.append("estado","Abierta");
+
+  // Optimistic
+  ACCIONES.push({
+    accion_id: "TEMP-"+Date.now(),
+    evento_id: eventoId,
+    nro_accion: nro,
+    descripcion: desc,
+    responsable_legajo: legajo,
+    responsable_nombre: resp,
+    fecha_vencimiento: fecha,
+    estado: "Abierta"
+  });
+
+  cerrarNuevaAccion();
+  closeModal();
+  render();
+
+  fetch(APPS_SCRIPT_URL, { method:"POST", body:params })
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      // Recargar para tener el ID real
+      loadData();
+    })
+    .catch(function(err){ console.error(err); });
+}
+
+// Init
+loadData();
+</script>
+</body>
+</html>

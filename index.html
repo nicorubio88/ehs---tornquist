@@ -58,6 +58,13 @@
   .status-dot { width:6px; height:6px; border-radius:50%; background:var(--brand-500); animation:pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
+  .v2-tag {
+    display:inline-block; font-family:'JetBrains Mono',monospace;
+    font-size:10px; font-weight:600; letter-spacing:.1em;
+    padding:3px 8px; background:var(--brand-700); color:#fff;
+    border-radius:4px; margin-left:8px; vertical-align:middle;
+  }
+
   .hero {
     flex:1; display:flex; flex-direction:column;
     align-items:center; justify-content:center;
@@ -146,7 +153,7 @@
         </svg>
       </div>
       <div class="brand-text">
-        <span class="brand-name">EHS Tornquist</span>
+        <span class="brand-name">EHS Tornquist <span class="v2-tag">v2</span></span>
         <span class="brand-sub">Papelera del Sur</span>
       </div>
     </div>
@@ -158,10 +165,10 @@
   <div class="hero">
     <div class="eyebrow">Seguridad · Higiene · Medio Ambiente</div>
     <h1>Reportar es <span class="accent">proteger.</span></h1>
-    <p class="lead">Cada evento que cargamos es una oportunidad para que nadie más se lastime. Gestión integral de seguridad para Planta Tornquist.</p>
+    <p class="lead">Cada evento que cargamos es una oportunidad para que nadie más se lastime. Observación, conversación, incidente, accidente, ambiente — todos los reportes cuentan.</p>
 
     <div class="cards">
-      <a href="formulario.html" class="card card-form">
+      <a href="formulario_v2.html" class="card card-form">
         <div class="card-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 9v4"/><path d="M12 17h.01"/>
@@ -169,26 +176,26 @@
           </svg>
         </div>
         <h2>Registrar evento</h2>
-        <p>Cargá un accidente, incidente o evento ambiental paso a paso desde cualquier dispositivo.</p>
+        <p>Cargá una observación, conversación, incidente, accidente o evento ambiental.</p>
         <span class="card-cta">Abrir formulario
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </span>
       </a>
 
-      <a href="dashboard.html" class="card card-dash">
+      <a href="dashboard_v2.html" class="card card-dash">
         <div class="card-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
           </svg>
         </div>
         <h2>Dashboard</h2>
-        <p>Indicadores en tiempo real, gráficos interactivos y gestión centralizada de desvíos.</p>
+        <p>KPIs por tipo, pirámide de seguridad y gestión centralizada de acciones correctivas.</p>
         <span class="card-cta">Ver dashboard
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </span>
       </a>
 
-      <a href="seguimiento.html" class="card card-seg">
+      <a href="seguimiento_v2.html" class="card card-seg">
         <div class="card-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="9 11 12 14 22 4"/>
@@ -196,7 +203,7 @@
           </svg>
         </div>
         <h2>Seguimiento</h2>
-        <p>Acciones pendientes, vencidas y en término. Control por responsable, sector y vencimiento.</p>
+        <p>Acciones correctivas pendientes, vencidas y en término. Filtros por responsable, sector y estado.</p>
         <span class="card-cta">Ver pendientes
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </span>

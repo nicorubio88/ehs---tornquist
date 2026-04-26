@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seguimiento de Acciones — EHS Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-600:#059669;
+    --brand-700:#047857; --brand-800:#065F46;
+    --bg:#F8FAFC; --bg2:#FFFFFF; --bg3:#F1F5F9;
+    --border:#E2E8F0; --border-strong:#CBD5E1;
+    --t1:#0F172A; --t2:#475569; --t3:#94A3B8;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Inter Tight',system-ui,sans-serif;
+    background:var(--bg); color:var(--t1); min-height:100vh;
+    letter-spacing:-.01em;
+  }
+  .topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 20px; border-bottom:1px solid var(--border);
+    background:#fff; position:sticky; top:0; z-index:10;
+  }
+  .topbar a { font-size:13px; color:var(--t2); text-decoration:none; }
+  .topbar a:hover { color:var(--t1); }
+  .topbar-title { font-size:14px; font-weight:600; }
+  .container { max-width:1100px; margin:0 auto; padding:20px 16px; }
+  h1 { font-size:24px; font-weight:700; margin-bottom:4px; letter-spacing:-.02em; }
+  .last-update { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); margin-bottom:18px; }
+
+  .kpis {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px; margin-bottom:18px;
+  }
+  .kpi {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:14px; text-align:center;
+  }
+  .kpi-label {
+    font-size:10px; font-weight:600; text-transform:uppercase;
+    letter-spacing:.04em; color:var(--t2); margin-bottom:4px;
+  }
+  .kpi-value { font-size:26px; font-weight:700; }
+  .kpi.abiertas .kpi-value { color:#991B1B; }
+  .kpi.proceso .kpi-value { color:#92400E; }
+  .kpi.cerradas .kpi-value { color:#065F46; }
+  .kpi.vencidas .kpi-value { color:#7F1D1D; }
+
+  .filters {
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;
+  }
+  .filter-group {
+    display:flex; align-items:center; gap:6px;
+    background:#fff; border:1px solid var(--border); border-radius:8px;
+    padding:6px 10px;
+  }
+  .filter-label { font-size:11px; color:var(--t2); font-weight:600; }
+  .filter-group select {
+    border:none; background:transparent; font:inherit; font-size:13px;
+    color:var(--t1); cursor:pointer;
+  }
+  .filter-group select:focus { outline:none; }
+
+  .action-card {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:14px 16px; margin-bottom:8px;
+  }
+  .action-card.vencida { border-left:4px solid #DC2626; }
+  .action-card.proxima { border-left:4px solid #F59E0B; }
+  .action-card.cerrada { opacity:.6; }
+  .action-header {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap:10px; margin-bottom:6px;
+  }
+  .action-title { font-size:14px; font-weight:600; flex:1; }
+  .action-meta {
+    font-size:11px; color:var(--t2); display:flex; gap:14px; flex-wrap:wrap;
+    margin-top:6px;
+  }
+  .action-meta-item { display:inline-flex; align-items:center; gap:4px; }
+  .action-meta code {
+    font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--t2);
+  }
+  .badge {
+    display:inline-block; padding:2px 8px; border-radius:999px;
+    font-size:10px; font-weight:600; letter-spacing:.02em;
+    text-transform:uppercase;
+  }
+  .badge.abierta { background:#FEE2E2; color:#991B1B; }
+  .badge.proceso { background:#FEF3C7; color:#92400E; }
+  .badge.cerrada { background:#D1FAE5; color:#065F46; }
+  .badge.cancelada { background:#E5E7EB; color:#4B5563; }
+
+  .action-buttons {
+    display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;
+  }
+  .btn-sm {
+    padding:5px 10px; border-radius:6px; border:1px solid var(--border);
+    background:#fff; font:inherit; font-size:11px; font-weight:600;
+    color:var(--t2); cursor:pointer; transition:all .1s;
+  }
+  .btn-sm:hover { border-color:var(--border-strong); color:var(--t1); }
+  .btn-sm.primary {
+    background:var(--brand-600); color:#fff; border-color:var(--brand-600);
+  }
+  .btn-sm.primary:hover { background:var(--brand-700); border-color:var(--brand-700); }
+
+  .empty {
+    text-align:center; padding:40px 20px; color:var(--t3); font-size:13px;
+  }
+  .spinner {
+    width:36px; height:36px; border:3px solid var(--border);
+    border-top-color:var(--brand-600); border-radius:50%;
+    animation:spin .8s linear infinite; margin:40px auto;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* Modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(15,23,42,.55);
+    backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999; padding:16px;
+    animation:fadeIn .15s;
+  }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal-box {
+    background:#fff; border-radius:14px; padding:20px;
+    width:100%; max-width:420px;
+  }
+  .modal-box h3 { font-size:16px; font-weight:700; margin-bottom:14px; }
+  .modal-box label {
+    display:block; font-size:11px; font-weight:600; color:var(--t2);
+    margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .modal-box select, .modal-box input, .modal-box textarea {
+    width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;
+    font:inherit; font-size:13px; margin-bottom:14px;
+  }
+  .modal-box textarea { min-height:60px; resize:vertical; }
+  .modal-btns {
+    display:flex; gap:8px; justify-content:flex-end;
+  }
+  .modal-btn {
+    padding:8px 14px; border-radius:8px; font:inherit; font-size:13px;
+    font-weight:600; cursor:pointer; border:1px solid transparent;
+  }
+  .modal-btn-cancel { background:var(--bg3); color:var(--t2); border-color:var(--border); }
+  .modal-btn-ok { background:var(--brand-600); color:#fff; }
+  .modal-btn-ok:hover { background:var(--brand-700); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html">← Inicio</a>
+  <span class="topbar-title">Seguimiento de Acciones</span>
+  <a href="dashboard_v2.html">Dashboard</a>
+</div>
+
+<div class="container" id="app">
+  <div class="spinner"></div>
+</div>
+
+<script>
+// =============================================
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMoQM2DkE0FNwWKQwfJNluPqc0pg2TKv6MQs0tYUFpRSb3fk8E6vxtePJ0SKs0mkY/exec";
+// =============================================
+
+var ACCIONES = [];
+var EVENTOS = [];
+var MAESTROS = { personal:[], responsables:[], sectores:[] };
+
+var FILTERS = { responsable:"Todos", estado:"Todos", sector:"Todos" };
+
+// Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
+function escapeHTML(s) {
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function loadData() {
+  fetch(APPS_SCRIPT_URL + "?tipo=all")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      EVENTOS = data.eventos || [];
+      ACCIONES = data.acciones || [];
+      MAESTROS = data.maestros || MAESTROS;
+      render();
+    })
+    .catch(function(err){
+      document.getElementById("app").innerHTML =
+        '<div class="empty">Error al cargar: '+err.message+
+        '<br><br><button class="btn-sm primary" onclick="loadData()">Reintentar</button></div>';
+    });
+}
+
+function getEventoOf(accion) {
+  return EVENTOS.filter(function(e){return String(e.evento_id) === String(accion.evento_id)})[0] || {};
+}
+
+function applyFilters(acciones) {
+  return acciones.filter(function(a){
+    if (FILTERS.responsable !== "Todos" && a.responsable_nombre !== FILTERS.responsable) return false;
+    if (FILTERS.estado !== "Todos" && a.estado !== FILTERS.estado) return false;
+    if (FILTERS.sector !== "Todos") {
+      var ev = getEventoOf(a);
+      if (ev.sector !== FILTERS.sector) return false;
+    }
+    return true;
+  });
+}
+
+function setFilter(key, value) {
+  FILTERS[key] = value;
+  render();
+}
+
+function diasAlVencimiento(fechaVenc) {
+  if (!fechaVenc) return null;
+  // Forzar interpretación como hora local (evita off-by-one en zona ARG UTC-3)
+  // "2026-04-26T00:00:00" se interpreta como 00:00 local, no UTC
+  var vencStr = String(fechaVenc).substring(0,10);
+  var venc = new Date(vencStr + "T00:00:00");
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  return Math.floor((venc - hoy) / (1000*60*60*24));
+}
+
+function render() {
+  var filtered = applyFilters(ACCIONES);
+  var html = '';
+
+  html += '<h1>Seguimiento</h1>';
+  html += '<div class="last-update">Última actualización: '+new Date().toLocaleString("es-AR")+' · '+ACCIONES.length+' acciones totales</div>';
+
+  // KPIs
+  var abiertas = ACCIONES.filter(function(a){return a.estado === "Abierta"}).length;
+  var enProceso = ACCIONES.filter(function(a){return a.estado === "En proceso"}).length;
+  var cerradas = ACCIONES.filter(function(a){return a.estado === "Cerrada"}).length;
+  var vencidas = 0;
+  ACCIONES.forEach(function(a){
+    if (a.estado !== "Cerrada" && a.fecha_vencimiento) {
+      var d = diasAlVencimiento(a.fecha_vencimiento);
+      if (d !== null && d < 0) vencidas++;
+    }
+  });
+
+  html += '<div class="kpis">';
+  html += '<div class="kpi abiertas"><div class="kpi-label">Abiertas</div><div class="kpi-value">'+abiertas+'</div></div>';
+  html += '<div class="kpi proceso"><div class="kpi-label">En proceso</div><div class="kpi-value">'+enProceso+'</div></div>';
+  html += '<div class="kpi cerradas"><div class="kpi-label">Cerradas</div><div class="kpi-value">'+cerradas+'</div></div>';
+  html += '<div class="kpi vencidas"><div class="kpi-label">Vencidas</div><div class="kpi-value">'+vencidas+'</div></div>';
+  html += '</div>';
+
+  // Filtros
+  var responsablesUnicos = ["Todos"];
+  var seen = {};
+  ACCIONES.forEach(function(a){
+    if (a.responsable_nombre && !seen[a.responsable_nombre]) {
+      seen[a.responsable_nombre] = true;
+      responsablesUnicos.push(a.responsable_nombre);
+    }
+  });
+
+  html += '<div class="filters">';
+  html += filterSelect("responsable","Responsable",responsablesUnicos);
+  html += filterSelect("estado","Estado",["Todos","Abierta","En proceso","Cerrada","Cancelada"]);
+  html += filterSelect("sector","Sector",["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;})));
+  html += '</div>';
+
+  html += '<h3 style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--t1);">Acciones cargadas ('+filtered.length+')</h3>';
+
+  // Lista
+  if (filtered.length === 0) {
+    html += '<div class="empty">No hay acciones con estos filtros.</div>';
+  } else {
+    // Ordenar: vencidas primero, luego por vencimiento ascendente, cerradas al final
+    filtered.slice().sort(function(a,b){
+      if (a.estado === "Cerrada" && b.estado !== "Cerrada") return 1;
+      if (b.estado === "Cerrada" && a.estado !== "Cerrada") return -1;
+      var da = diasAlVencimiento(a.fecha_vencimiento);
+      var db = diasAlVencimiento(b.fecha_vencimiento);
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db;
+    }).forEach(function(a){
+      html += renderAccionCard(a);
+    });
+  }
+
+  document.getElementById("app").innerHTML = html;
+}
+
+function renderAccionCard(a) {
+  var ev = getEventoOf(a);
+  var diasV = diasAlVencimiento(a.fecha_vencimiento);
+  var estadoClass = "abierta";
+  if (a.estado === "En proceso") estadoClass = "proceso";
+  else if (a.estado === "Cerrada") estadoClass = "cerrada";
+  else if (a.estado === "Cancelada") estadoClass = "cancelada";
+
+  var cardClass = "action-card";
+  if (a.estado === "Cerrada") cardClass += " cerrada";
+  else if (diasV !== null && diasV < 0) cardClass += " vencida";
+  else if (diasV !== null && diasV <= 3) cardClass += " proxima";
+
+  var html = '<div class="'+cardClass+'">';
+  html += '<div class="action-header">';
+  html += '<div class="action-title">'+escapeHTML(a.descripcion)+'</div>';
+  html += '<span class="badge '+estadoClass+'">'+a.estado+'</span>';
+  html += '</div>';
+
+  html += '<div class="action-meta">';
+  html += '<span class="action-meta-item">👤 '+(a.responsable_nombre||"Sin asignar")+'</span>';
+  if (a.fecha_vencimiento) {
+    var fechaStr = formatDate(a.fecha_vencimiento);
+    var dStr = "";
+    if (diasV !== null && a.estado !== "Cerrada") {
+      if (diasV < 0) dStr = ' (vencida hace '+(-diasV)+' día'+(diasV===-1?'':'s')+')';
+      else if (diasV === 0) dStr = ' (vence hoy)';
+      else dStr = ' (en '+diasV+' día'+(diasV===1?'':'s')+')';
+    }
+    html += '<span class="action-meta-item">📅 '+fechaStr+dStr+'</span>';
+  }
+  if (ev.evento_id) {
+    html += '<span class="action-meta-item">🎯 <code>'+escapeHTML(ev.evento_id)+'</code> · '+escapeHTML(ev.sector||"")+'</span>';
+  }
+  html += '</div>';
+
+  if (a.notas) {
+    html += '<div style="margin-top:8px;font-size:11px;color:var(--t2);background:var(--bg3);padding:6px 10px;border-radius:6px;">'+escapeHTML(a.notas)+'</div>';
+  }
+
+  if (a.estado === "Cerrada" && a.cerrada_por_nombre) {
+    html += '<div style="margin-top:8px;font-size:11px;color:#065F46;">✓ Cerrada el '+formatDate(a.fecha_cierre)+' por '+escapeHTML(a.cerrada_por_nombre)+'</div>';
+  }
+
+  // Botones de acción
+  if (a.estado !== "Cerrada" && a.estado !== "Cancelada") {
+    html += '<div class="action-buttons">';
+    html += '<button class="btn-sm primary" onclick="abrirCierre(\''+a.accion_id+'\')">✓ Cerrar</button>';
+    html += '<button class="btn-sm" onclick="abrirNota(\''+a.accion_id+'\')">📝 Nota</button>';
+    html += '<button class="btn-sm" onclick="abrirReprogramar(\''+a.accion_id+'\')">📅 Reprogramar</button>';
+    html += '<button class="btn-sm" onclick="abrirCambioResp(\''+a.accion_id+'\')">👤 Responsable</button>';
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function filterSelect(key, label, options) {
+  var html = '<div class="filter-group"><span class="filter-label">'+label+':</span><select onchange="setFilter(\''+key+'\',this.value)">';
+  options.forEach(function(o){
+    html += '<option value="'+o+'"'+(FILTERS[key]===o?' selected':'')+'>'+o+'</option>';
+  });
+  html += '</select></div>';
+  return html;
+}
+
+function formatDate(s) {
+  if (!s) return "—";
+  var str = String(s);
+  if (str.length >= 10) {
+    var parts = str.substring(0,10).split("-");
+    if (parts.length === 3) return parts[2]+'/'+parts[1]+'/'+parts[0];
+  }
+  return str;
+}
+
+// =============================================
+// MODALES DE ACCIÓN
+// =============================================
+function getAccion(id) {
+  return ACCIONES.filter(function(a){return String(a.accion_id) === String(id)})[0];
+}
+
+function abrirCierre(accionId) {
+  var a = getAccion(accionId);
+  if (!a) return;
+  var html = '<div class="modal-overlay" id="modalOv" onclick="if(event.target.id===\'modalOv\')cerrarModal()">';
+  html += '<div class="modal-box">';
+  html += '<h3>✓ Cerrar acción</h3>';
+  html += '<div style="font-size:12px;color:var(--t2);margin-bottom:14px;">'+escapeHTML(a.descripcion)+'</div>';
+  html += '<label>¿Quién cierra?</label>';
+  html += '<select id="cierreSelect"><option value="">— Seleccionar —</option>';
+  (MAESTROS.responsables||[]).forEach(function(r){
+    html += '<option value="'+(r.nombre||"")+'" data-legajo="'+(r.legajo||"")+'">'+(r.nombre||"")+'</option>';
+  });
+  html += '</select>';
+  html += '<div class="modal-btns">';
+  html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>';
+  html += '<button class="modal-btn modal-btn-ok" onclick="confirmarCierre(\''+accionId+'\')">Confirmar cierre</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML("beforeend",html);
+}
+function confirmarCierre(accionId) {
+  var sel = document.getElementById("cierreSelect");
+  var nombre = sel.value;
+  var legajo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].getAttribute("data-legajo") : "";
+  if (!nombre) { alert("Seleccioná quién cierra"); return; }
+
+  var params = new URLSearchParams();
+  params.append("action","actualizar_accion");
+  params.append("accion_id", accionId);
+  params.append("estado","Cerrada");
+  params.append("cerrada_por_legajo", legajo || "");
+  params.append("cerrada_por_nombre", nombre);
+
+  // Optimistic
+  ACCIONES.forEach(function(a){
+    if (a.accion_id === accionId) {
+      a.estado = "Cerrada";
+      a.cerrada_por_nombre = nombre;
+      a.cerrada_por_legajo = legajo;
+      a.fecha_cierre = new Date().toISOString();
+    }
+  });
+  cerrarModal();
+  render();
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+}
+
+function abrirNota(accionId) {
+  var a = getAccion(accionId);
+  if (!a) return;
+  var html = '<div class="modal-overlay" id="modalOv" onclick="if(event.target.id===\'modalOv\')cerrarModal()">';
+  html += '<div class="modal-box">';
+  html += '<h3>📝 Agregar nota</h3>';
+  html += '<div style="font-size:12px;color:var(--t2);margin-bottom:14px;">'+escapeHTML(a.descripcion)+'</div>';
+  html += '<label>Nota</label>';
+  html += '<textarea id="notaText" placeholder="Escribí la nota de avance..."></textarea>';
+  html += '<div class="modal-btns">';
+  html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>';
+  html += '<button class="modal-btn modal-btn-ok" onclick="confirmarNota(\''+accionId+'\')">Guardar</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML("beforeend",html);
+}
+function confirmarNota(accionId) {
+  var nota = document.getElementById("notaText").value.trim();
+  if (!nota) { alert("Escribí algo"); return; }
+  var params = new URLSearchParams();
+  params.append("action","agregar_nota");
+  params.append("accion_id", accionId);
+  params.append("nota", nota);
+
+  ACCIONES.forEach(function(a){
+    if (a.accion_id === accionId) {
+      var fecha = new Date().toLocaleDateString("es-AR");
+      var nuevaNota = fecha + ": " + nota;
+      a.notas = (a.notas || "") + (a.notas ? " | " : "") + nuevaNota;
+      // En proceso si estaba abierta
+      if (a.estado === "Abierta") a.estado = "En proceso";
+    }
+  });
+  cerrarModal();
+  render();
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+}
+
+function abrirReprogramar(accionId) {
+  var a = getAccion(accionId);
+  if (!a) return;
+  var html = '<div class="modal-overlay" id="modalOv" onclick="if(event.target.id===\'modalOv\')cerrarModal()">';
+  html += '<div class="modal-box">';
+  html += '<h3>📅 Reprogramar vencimiento</h3>';
+  html += '<div style="font-size:12px;color:var(--t2);margin-bottom:14px;">Vencimiento actual: '+formatDate(a.fecha_vencimiento)+'</div>';
+  html += '<label>Nueva fecha</label>';
+  html += '<input type="date" id="nuevaFecha" value="">';
+  html += '<div class="modal-btns">';
+  html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>';
+  html += '<button class="modal-btn modal-btn-ok" onclick="confirmarReprogramar(\''+accionId+'\')">Confirmar</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML("beforeend",html);
+}
+function confirmarReprogramar(accionId) {
+  var nueva = document.getElementById("nuevaFecha").value;
+  if (!nueva) { alert("Elegí una fecha"); return; }
+  var params = new URLSearchParams();
+  params.append("action","reprogramar_accion");
+  params.append("accion_id", accionId);
+  params.append("nueva_fecha", nueva);
+
+  ACCIONES.forEach(function(a){
+    if (a.accion_id === accionId) {
+      var fecha = new Date().toLocaleDateString("es-AR");
+      var nota = fecha + ": Reprogramada de " + a.fecha_vencimiento + " a " + nueva;
+      a.notas = (a.notas || "") + (a.notas ? " | " : "") + nota;
+      a.fecha_vencimiento = nueva;
+    }
+  });
+  cerrarModal();
+  render();
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+}
+
+function abrirCambioResp(accionId) {
+  var a = getAccion(accionId);
+  if (!a) return;
+  var html = '<div class="modal-overlay" id="modalOv" onclick="if(event.target.id===\'modalOv\')cerrarModal()">';
+  html += '<div class="modal-box">';
+  html += '<h3>👤 Cambiar responsable</h3>';
+  html += '<div style="font-size:12px;color:var(--t2);margin-bottom:14px;">Responsable actual: '+escapeHTML(a.responsable_nombre)+'</div>';
+  html += '<label>Nuevo responsable</label>';
+  html += '<select id="respSelect"><option value="">— Seleccionar —</option>';
+  (MAESTROS.responsables||[]).forEach(function(r){
+    var sel = (r.nombre === a.responsable_nombre) ? ' selected' : '';
+    html += '<option value="'+(r.nombre||"")+'" data-legajo="'+(r.legajo||"")+'"'+sel+'>'+(r.nombre||"")+'</option>';
+  });
+  html += '</select>';
+  html += '<div class="modal-btns">';
+  html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>';
+  html += '<button class="modal-btn modal-btn-ok" onclick="confirmarCambioResp(\''+accionId+'\')">Confirmar</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML("beforeend",html);
+}
+function confirmarCambioResp(accionId) {
+  var sel = document.getElementById("respSelect");
+  var nombre = sel.value;
+  var legajo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].getAttribute("data-legajo") : "";
+  if (!nombre) { alert("Seleccioná un responsable"); return; }
+
+  var params = new URLSearchParams();
+  params.append("action","cambiar_responsable");
+  params.append("accion_id", accionId);
+  params.append("nuevo_legajo", legajo || "");
+  params.append("nuevo_nombre", nombre);
+
+  ACCIONES.forEach(function(a){
+    if (a.accion_id === accionId) {
+      var fecha = new Date().toLocaleDateString("es-AR");
+      var nota = fecha + ": Responsable cambiado de " + a.responsable_nombre + " a " + nombre;
+      a.notas = (a.notas || "") + (a.notas ? " | " : "") + nota;
+      a.responsable_nombre = nombre;
+      a.responsable_legajo = legajo;
+    }
+  });
+  cerrarModal();
+  render();
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+}
+
+function cerrarModal() {
+  var m = document.getElementById("modalOv");
+  if (m) m.remove();
+}
+
+// Init
+loadData();
+</script>
+</body>
+</html>
