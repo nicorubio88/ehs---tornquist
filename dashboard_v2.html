@@ -255,6 +255,133 @@
   .leading-kpi.amber .leading-kpi-status { background:#FEF3C7; color:#92400E; }
   .leading-kpi.red .leading-kpi-status { background:#FEE2E2; color:#991B1B; }
   .leading-kpi.gray .leading-kpi-status { background:#F1F5F9; color:#64748B; }
+
+  /* Sección Participación del equipo */
+  .participacion-section {
+    background:linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);
+    border:1px solid var(--brand-200); border-radius:14px;
+    padding:18px; margin:18px 0;
+  }
+  .part-controls {
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    margin-bottom:14px; padding:10px 12px;
+    background:#FFFFFF; border:1px solid var(--border); border-radius:8px;
+  }
+  .part-control-group {
+    display:flex; align-items:center; gap:6px;
+  }
+  .part-control-label {
+    font-size:11px; color:var(--t2); font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em;
+  }
+  .part-control-select {
+    background:#fff; border:1px solid var(--border); border-radius:6px;
+    padding:5px 10px; font-size:12px; color:var(--t1);
+    cursor:pointer; font-family:inherit;
+  }
+  .part-control-select:hover { border-color:var(--brand-600); }
+
+  .part-kpis {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+    gap:10px; margin-bottom:14px;
+  }
+  .part-kpi {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:14px; position:relative; overflow:hidden;
+  }
+  .part-kpi::before {
+    content:""; position:absolute; left:0; top:0; bottom:0;
+    width:3px; background:var(--status, var(--brand-600));
+  }
+  .part-kpi-label {
+    font-size:11px; color:var(--t2); font-weight:600;
+    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
+  }
+  .part-kpi-value {
+    font-size:22px; font-weight:700; color:var(--t1);
+    font-variant-numeric:tabular-nums;
+  }
+  .part-kpi-sub {
+    font-size:11px; color:var(--t3); margin-top:4px;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .part-table-wrap {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    overflow:hidden;
+  }
+  .part-table-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px; border-bottom:1px solid var(--border);
+    background:var(--bg2);
+  }
+  .part-table-title {
+    font-size:13px; font-weight:600; color:var(--t1);
+  }
+  .part-filter-pills {
+    display:flex; gap:6px;
+  }
+  .part-filter-pill {
+    font-size:11px; padding:4px 10px; background:var(--bg3);
+    color:var(--t2); border-radius:6px; cursor:pointer;
+    font-weight:500; border:1px solid transparent;
+    transition:all .15s ease;
+  }
+  .part-filter-pill:hover { border-color:var(--border); }
+  .part-filter-pill.active { background:#D1FAE5; color:#065F46; }
+  .part-filter-pill.active.danger { background:#FEE2E2; color:#991B1B; }
+
+  .part-table {
+    width:100%; border-collapse:collapse; font-size:12px;
+  }
+  .part-table thead th {
+    text-align:left; padding:10px 8px; font-weight:600;
+    font-size:11px; color:var(--t2); text-transform:uppercase;
+    letter-spacing:.04em; border-bottom:1px solid var(--border);
+    background:var(--bg2); white-space:nowrap;
+  }
+  .part-table thead th.center { text-align:center; }
+  .part-table thead th.sortable { cursor:pointer; user-select:none; }
+  .part-table thead th.sortable:hover { color:var(--brand-600); }
+  .part-table thead th.sortable.active { color:var(--brand-700); }
+  .part-table tbody td {
+    padding:9px 8px; border-bottom:1px solid var(--bg3);
+  }
+  .part-table tbody td.center { text-align:center; }
+  .part-table tbody tr.no-report { background:#FEF8F8; }
+  .part-table tbody tr:hover { background:var(--bg2); }
+  .part-name {
+    font-weight:500; color:var(--t1);
+  }
+  .part-legajo {
+    font-size:10px; color:var(--t3);
+    font-family:'JetBrains Mono',monospace; margin-top:2px;
+  }
+  .part-total {
+    font-weight:700; font-size:14px; color:var(--t1);
+    font-variant-numeric:tabular-nums;
+  }
+  .part-total.zero { color:#991B1B; }
+  .part-cell-num { color:var(--t2); font-variant-numeric:tabular-nums; }
+  .part-cell-num.zero { color:var(--t3); }
+  .part-status-badge {
+    display:inline-block; font-size:10px; padding:3px 8px;
+    border-radius:4px; font-weight:600; white-space:nowrap;
+  }
+  .part-status-badge.cumplio { background:#D1FAE5; color:#065F46; }
+  .part-status-badge.no-cumplio { background:#FEE2E2; color:#991B1B; }
+  .part-status-badge.parcial { background:#FEF3C7; color:#92400E; }
+
+  .part-empty {
+    padding:30px; text-align:center; color:var(--t3); font-size:13px;
+  }
+  .part-show-more {
+    text-align:center; padding:10px; cursor:pointer;
+    color:var(--brand-700); font-size:12px; font-weight:600;
+    background:var(--bg2); border-top:1px solid var(--border);
+    transition:background .15s ease;
+  }
+  .part-show-more:hover { background:var(--brand-50); }
 </style>
 </head>
 <body>
@@ -288,6 +415,23 @@ var PERSONAL_BY_LEGAJO = {};
 var PERSONAL_BY_NOMBRE = {};
 
 var FILTERS = { tipo:"Todos", sector:"Todos", prioridad:"Todos", estado:"Todos" };
+
+// Estado de la sección Participación del equipo (BBS DSS+)
+// Periodo, universo, orden y filtro de cumplimiento son seleccionables
+var PARTICIPACION = {
+  periodo: "semana",       // "semana" | "mes" | "trimestre"
+  universo: "convenio",    // "convenio" (109) | "todos" (convenio + supervisión)
+  orden: "no_cumplio",     // "no_cumplio" | "total_desc" | "total_asc" | "alfabetico"
+  filtroCumplimiento: "todos", // "todos" | "cumplio" | "no_cumplio"
+  expandido: false         // si false, muestra solo top 15 + botón "ver más"
+};
+
+// Objetivo de reportes según período. Base: 1 / persona / semana.
+var OBJETIVOS = {
+  semana: 1,
+  mes: 4,        // ~4 semanas
+  trimestre: 12  // ~12 semanas
+};
 var MODAL_EVENT = null;
 
 // Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
@@ -508,6 +652,369 @@ function renderLeadingKPIs() {
   return html;
 }
 
+// =============================================
+// PARTICIPACIÓN DEL EQUIPO (BBS / DSS+)
+// =============================================
+// Setters
+function setParticipacionPeriodo(v) { PARTICIPACION.periodo = v; render(); }
+function setParticipacionUniverso(v) { PARTICIPACION.universo = v; render(); }
+function setParticipacionOrden(v) { PARTICIPACION.orden = v; render(); }
+function setParticipacionFiltroCumplimiento(v) { PARTICIPACION.filtroCumplimiento = v; render(); }
+function toggleParticipacionExpandido() { PARTICIPACION.expandido = !PARTICIPACION.expandido; render(); }
+
+// Filtra eventos según el período seleccionado
+function eventoEnPeriodoParticipacion(fechaStr) {
+  if (!fechaStr) return false;
+  var dias = PARTICIPACION.periodo === "semana" ? 7
+           : PARTICIPACION.periodo === "mes" ? 30 : 90;
+  var fechaEvento = String(fechaStr).substring(0,10);
+  var hoy = new Date();
+  var hace = new Date(hoy.getTime() - dias*24*60*60*1000);
+  var hoyStr = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
+  var haceStr = hace.getFullYear() + "-" + String(hace.getMonth()+1).padStart(2,"0") + "-" + String(hace.getDate()).padStart(2,"0");
+  return fechaEvento >= haceStr && fechaEvento <= hoyStr;
+}
+
+// Construye el universo de personas según selección
+function getUniversoPersonas() {
+  var personas = [];
+  // Personal del convenio
+  (MAESTROS.personal || []).forEach(function(p){
+    personas.push({
+      legajo: String(p.legajo || ""),
+      nombre: String(p.nombre || ""),
+      esSupervisor: false
+    });
+  });
+  // Si universo === "todos", agregar también responsables
+  if (PARTICIPACION.universo === "todos") {
+    (MAESTROS.responsables || []).forEach(function(r){
+      var legajoRespStr = String(r.legajo || "");
+      var nombreRespStr = String(r.nombre || "");
+      // Evitar duplicados (responsable que ya está en convenio por legajo o nombre)
+      var existe = personas.some(function(p){
+        return (legajoRespStr && p.legajo === legajoRespStr)
+            || (nombreRespStr && p.nombre.toUpperCase() === nombreRespStr.toUpperCase());
+      });
+      if (!existe && (legajoRespStr || nombreRespStr)) {
+        personas.push({
+          legajo: legajoRespStr,
+          nombre: nombreRespStr,
+          esSupervisor: true
+        });
+      }
+    });
+  }
+  return personas;
+}
+
+// Calcula las stats de cada persona en el período seleccionado
+function calcularParticipacionPersonas() {
+  var personas = getUniversoPersonas();
+  var eventosPeriodo = EVENTOS.filter(function(e){
+    return eventoEnPeriodoParticipacion(e.fecha_evento);
+  });
+
+  // Mapa por legajo y por nombre normalizado para el match flexible
+  var statsByPerson = {};
+  personas.forEach(function(p){
+    var key = p.legajo || ("nombre:" + p.nombre.toUpperCase());
+    statsByPerson[key] = {
+      legajo: p.legajo,
+      nombre: p.nombre,
+      esSupervisor: p.esSupervisor,
+      total: 0,
+      OBSERVACION: 0,
+      CONVERSACION: 0,
+      INCIDENTE: 0,
+      ACCIDENTE: 0,
+      AMBIENTE: 0
+    };
+  });
+
+  // Asignar cada evento a la persona que lo reportó
+  eventosPeriodo.forEach(function(e){
+    var legajoEv = String(e.reportado_por_legajo || "").trim();
+    var nombreEv = String(e.reportado_por_nombre || "").trim();
+    var found = null;
+    // Match por legajo primero
+    if (legajoEv && statsByPerson[legajoEv]) {
+      found = statsByPerson[legajoEv];
+    } else if (nombreEv) {
+      // Match por nombre
+      var nombreKey = "nombre:" + nombreEv.toUpperCase();
+      if (statsByPerson[nombreKey]) {
+        found = statsByPerson[nombreKey];
+      } else {
+        // Buscar dentro de los keys por legajo cuyo nombre coincida
+        for (var k in statsByPerson) {
+          if (statsByPerson[k].nombre.toUpperCase() === nombreEv.toUpperCase()) {
+            found = statsByPerson[k];
+            break;
+          }
+        }
+      }
+    }
+    if (found) {
+      found.total++;
+      var t = e.tipo;
+      if (found[t] !== undefined) found[t]++;
+    }
+  });
+
+  // Convertir a array
+  var arr = [];
+  for (var k in statsByPerson) arr.push(statsByPerson[k]);
+
+  // Calcular cumplimiento contra objetivo
+  var objetivo = OBJETIVOS[PARTICIPACION.periodo];
+  arr.forEach(function(p){
+    p.objetivo = objetivo;
+    p.cumplio = p.total >= objetivo;
+  });
+
+  return arr;
+}
+
+function ordenarParticipacion(arr) {
+  var copia = arr.slice();
+  switch (PARTICIPACION.orden) {
+    case "no_cumplio":
+      // No cumplió primero (total ASC), pero los que están en 0 al fondo si querés...
+      // En realidad: 0 reportes primero (más urgente), después por total ASC
+      copia.sort(function(a,b){
+        if (a.total !== b.total) return a.total - b.total;
+        return a.nombre.localeCompare(b.nombre);
+      });
+      break;
+    case "total_desc":
+      copia.sort(function(a,b){
+        if (b.total !== a.total) return b.total - a.total;
+        return a.nombre.localeCompare(b.nombre);
+      });
+      break;
+    case "total_asc":
+      copia.sort(function(a,b){
+        if (a.total !== b.total) return a.total - b.total;
+        return a.nombre.localeCompare(b.nombre);
+      });
+      break;
+    case "alfabetico":
+      copia.sort(function(a,b){ return a.nombre.localeCompare(b.nombre); });
+      break;
+  }
+  return copia;
+}
+
+function calcularKPIsParticipacion(personas) {
+  var total = personas.length;
+  var cumplieron = personas.filter(function(p){ return p.cumplio; }).length;
+  var conAlMenosUno = personas.filter(function(p){ return p.total > 0; }).length;
+  var sinReportar = personas.filter(function(p){ return p.total === 0; }).length;
+
+  // Top reportador
+  var top = personas.slice().sort(function(a,b){ return b.total - a.total; })[0];
+
+  return {
+    total: total,
+    cumplieron: cumplieron,
+    pctCumplimiento: total > 0 ? Math.round((cumplieron / total) * 100) : 0,
+    conAlMenosUno: conAlMenosUno,
+    sinReportar: sinReportar,
+    top: top
+  };
+}
+
+function renderParticipacion() {
+  var personas = calcularParticipacionPersonas();
+  var personasOrdenadas = ordenarParticipacion(personas);
+  var kpis = calcularKPIsParticipacion(personas);
+
+  // Aplicar filtro de cumplimiento
+  var personasFiltradas = personasOrdenadas;
+  if (PARTICIPACION.filtroCumplimiento === "cumplio") {
+    personasFiltradas = personasOrdenadas.filter(function(p){ return p.cumplio; });
+  } else if (PARTICIPACION.filtroCumplimiento === "no_cumplio") {
+    personasFiltradas = personasOrdenadas.filter(function(p){ return !p.cumplio; });
+  }
+
+  // Limitar a 15 si no está expandido
+  var personasMostrar = PARTICIPACION.expandido ? personasFiltradas : personasFiltradas.slice(0, 15);
+
+  // Etiquetas legibles según período
+  var labelPeriodo = PARTICIPACION.periodo === "semana" ? "Últimos 7 días"
+                   : PARTICIPACION.periodo === "mes" ? "Últimos 30 días"
+                   : "Últimos 90 días";
+  var objetivo = OBJETIVOS[PARTICIPACION.periodo];
+
+  var html = '<div class="participacion-section">';
+  html += '<div class="culture-section-title">Participación del equipo</div>';
+  html += '<div class="culture-section-subtitle">'+labelPeriodo+' · Objetivo: ≥ '+objetivo+' reporte'+(objetivo>1?'s':'')+' por persona en este período. Esta tabla empuja a que <strong>todos participen</strong>, no solo los referentes.</div>';
+
+  // Controles
+  html += '<div class="part-controls">';
+
+  html += '<div class="part-control-group">';
+  html += '<span class="part-control-label">Período:</span>';
+  html += '<select class="part-control-select" onchange="setParticipacionPeriodo(this.value)">';
+  ["semana","mes","trimestre"].forEach(function(p){
+    var label = p==="semana"?"Semana":p==="mes"?"Mes":"Trimestre";
+    var sel = PARTICIPACION.periodo===p?' selected':'';
+    html += '<option value="'+p+'"'+sel+'>'+label+'</option>';
+  });
+  html += '</select>';
+  html += '</div>';
+
+  html += '<div class="part-control-group">';
+  html += '<span class="part-control-label">Universo:</span>';
+  html += '<select class="part-control-select" onchange="setParticipacionUniverso(this.value)">';
+  [["convenio","Convenio"],["todos","Convenio + supervisión"]].forEach(function(o){
+    var sel = PARTICIPACION.universo===o[0]?' selected':'';
+    html += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
+  });
+  html += '</select>';
+  html += '</div>';
+
+  html += '<div class="part-control-group">';
+  html += '<span class="part-control-label">Ordenar:</span>';
+  html += '<select class="part-control-select" onchange="setParticipacionOrden(this.value)">';
+  [
+    ["no_cumplio","No cumplió primero"],
+    ["total_desc","Más reportes primero"],
+    ["total_asc","Menos reportes primero"],
+    ["alfabetico","Alfabético"]
+  ].forEach(function(o){
+    var sel = PARTICIPACION.orden===o[0]?' selected':'';
+    html += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
+  });
+  html += '</select>';
+  html += '</div>';
+
+  html += '</div>';
+
+  // KPIs cabecera
+  html += '<div class="part-kpis">';
+
+  // Cumplimiento
+  var statusCumpl = kpis.pctCumplimiento >= 80 ? "#16A34A"
+                  : kpis.pctCumplimiento >= 40 ? "#D97706" : "#DC2626";
+  html += '<div class="part-kpi" style="--status:'+statusCumpl+';">'
+    + '<div class="part-kpi-label">Cumplimiento</div>'
+    + '<div class="part-kpi-value">'+kpis.pctCumplimiento+'%</div>'
+    + '<div class="part-kpi-sub">'+kpis.cumplieron+' de '+kpis.total+' personas</div>'
+    + '</div>';
+
+  // Aún no reportaron
+  var statusNoRep = kpis.sinReportar === 0 ? "#16A34A"
+                  : kpis.sinReportar < kpis.total * 0.3 ? "#D97706" : "#DC2626";
+  html += '<div class="part-kpi" style="--status:'+statusNoRep+';">'
+    + '<div class="part-kpi-label">Aún no reportaron</div>'
+    + '<div class="part-kpi-value">'+kpis.sinReportar+'</div>'
+    + '<div class="part-kpi-sub">personas pendientes</div>'
+    + '</div>';
+
+  // Top reportador
+  if (kpis.top && kpis.top.total > 0) {
+    html += '<div class="part-kpi" style="--status:#16A34A;">'
+      + '<div class="part-kpi-label">Top reportador</div>'
+      + '<div class="part-kpi-value" style="font-size:15px;">'+escapeHTML(kpis.top.nombre)+'</div>'
+      + '<div class="part-kpi-sub">'+kpis.top.total+' reportes'+(kpis.top.legajo?' · #'+escapeHTML(kpis.top.legajo):'')+'</div>'
+      + '</div>';
+  } else {
+    html += '<div class="part-kpi" style="--status:#94A3B8;">'
+      + '<div class="part-kpi-label">Top reportador</div>'
+      + '<div class="part-kpi-value" style="font-size:15px;color:var(--t3);">—</div>'
+      + '<div class="part-kpi-sub">sin reportes en el período</div>'
+      + '</div>';
+  }
+
+  // Objetivo
+  html += '<div class="part-kpi" style="--status:#475569;">'
+    + '<div class="part-kpi-label">Objetivo</div>'
+    + '<div class="part-kpi-value">≥ '+objetivo+'</div>'
+    + '<div class="part-kpi-sub">reporte'+(objetivo>1?'s':'')+' por persona</div>'
+    + '</div>';
+
+  html += '</div>';
+
+  // Tabla con header (filtros pills + título)
+  html += '<div class="part-table-wrap">';
+  html += '<div class="part-table-header">';
+  html += '<div class="part-table-title">Ranking de participación · '+personasFiltradas.length+' personas</div>';
+  html += '<div class="part-filter-pills">';
+  var pills = [
+    ["todos","Todos",false],
+    ["cumplio","Cumplió",false],
+    ["no_cumplio","No cumplió",true]
+  ];
+  pills.forEach(function(p){
+    var active = PARTICIPACION.filtroCumplimiento === p[0];
+    var cls = "part-filter-pill" + (active?" active":"") + (active && p[2]?" danger":"");
+    html += '<span class="'+cls+'" onclick="setParticipacionFiltroCumplimiento(\''+p[0]+'\')">'+p[1]+'</span>';
+  });
+  html += '</div>';
+  html += '</div>';
+
+  if (personasFiltradas.length === 0) {
+    html += '<div class="part-empty">No hay personas que coincidan con el filtro.</div>';
+  } else {
+    html += '<table class="part-table"><thead><tr>'
+      + '<th>#</th>'
+      + '<th>Persona</th>'
+      + '<th class="center">Total</th>'
+      + '<th class="center">👁 Obs</th>'
+      + '<th class="center">💬 Conv</th>'
+      + '<th class="center">⚠ Inc</th>'
+      + '<th class="center">🔴 Acc</th>'
+      + '<th class="center">🌿 Amb</th>'
+      + '<th class="center">Estado</th>'
+      + '</tr></thead><tbody>';
+
+    personasMostrar.forEach(function(p, idx){
+      var rowCls = p.total === 0 ? ' class="no-report"' : '';
+      var statusCls = p.cumplio ? "cumplio" : (p.total === 0 ? "no-cumplio" : "parcial");
+      var statusTxt = p.cumplio ? "✓ Cumplió" : (p.total === 0 ? "— No reportó" : "Parcial");
+      var totalCls = p.total === 0 ? "part-total zero" : "part-total";
+
+      html += '<tr'+rowCls+'>';
+      html += '<td style="color:var(--t3);font-family:JetBrains Mono,monospace;font-size:11px;">'+(idx+1)+'</td>';
+      html += '<td>'
+        + '<div class="part-name">'+escapeHTML(p.nombre)+(p.esSupervisor?' <span style="font-size:9px;color:var(--brand-700);font-weight:600;">SUPERV.</span>':'')+'</div>'
+        + (p.legajo?'<div class="part-legajo">#'+escapeHTML(p.legajo)+'</div>':'')
+        + '</td>';
+      html += '<td class="center"><span class="'+totalCls+'">'+p.total+'</span></td>';
+      html += renderParticipacionCell(p.OBSERVACION);
+      html += renderParticipacionCell(p.CONVERSACION);
+      html += renderParticipacionCell(p.INCIDENTE);
+      html += renderParticipacionCell(p.ACCIDENTE);
+      html += renderParticipacionCell(p.AMBIENTE);
+      html += '<td class="center"><span class="part-status-badge '+statusCls+'">'+statusTxt+'</span></td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+
+    // Botón ver más / ver menos
+    if (personasFiltradas.length > 15) {
+      var lblBtn = PARTICIPACION.expandido
+        ? "▲ Mostrar solo 15"
+        : "▼ Ver las " + personasFiltradas.length + " personas";
+      html += '<div class="part-show-more" onclick="toggleParticipacionExpandido()">'+lblBtn+'</div>';
+    }
+  }
+
+  html += '</div>'; // part-table-wrap
+  html += '</div>'; // participacion-section
+  return html;
+}
+
+function renderParticipacionCell(num) {
+  var cls = num === 0 ? "part-cell-num zero" : "part-cell-num";
+  var val = num === 0 ? "—" : num;
+  return '<td class="center"><span class="'+cls+'">'+val+'</span></td>';
+}
+
+
 function render() {
   var filtered = applyFilters(EVENTOS);
   var html = '';
@@ -518,6 +1025,9 @@ function render() {
 
   // Leading KPIs (cultura BBS) — siempre visibles, no se ven afectados por filtros
   html += renderLeadingKPIs();
+
+  // Sección Participación del equipo (BBS / DSS+) — empuja a que todos reporten
+  html += renderParticipacion();
 
   // KPIs por tipo (afectados por filtros)
   var counts = { OBSERVACION:0, CONVERSACION:0, INCIDENTE:0, ACCIDENTE:0, AMBIENTE:0 };
