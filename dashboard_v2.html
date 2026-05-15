@@ -382,6 +382,99 @@
     transition:background .15s ease;
   }
   .part-show-more:hover { background:var(--brand-50); }
+
+  /* Sección Mis Pendientes */
+  .mp-section {
+    background:linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%);
+    border:1px solid #FDBA74; border-radius:14px;
+    padding:18px; margin:18px 0;
+  }
+  .mp-header {
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap; margin-bottom:14px;
+  }
+  .mp-title {
+    font-size:14px; font-weight:700; color:#9A3412;
+    text-transform:uppercase; letter-spacing:.06em;
+    display:flex; align-items:center; gap:8px;
+  }
+  .mp-title::before {
+    content:""; display:inline-block; width:6px; height:18px;
+    background:#EA580C; border-radius:3px;
+  }
+  .mp-identity {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .mp-identity-label {
+    font-size:11px; color:var(--t2); font-weight:600;
+  }
+  .mp-identity-input {
+    background:#fff; border:1px solid var(--border); border-radius:6px;
+    padding:6px 10px; font-size:12px; min-width:200px;
+    font-family:inherit;
+  }
+  .mp-identity-input:focus { border-color:#EA580C; outline:none; }
+  .mp-identity-clear {
+    font-size:11px; color:var(--t2); cursor:pointer;
+    padding:4px 8px; border:1px solid var(--border);
+    border-radius:6px; background:#fff;
+  }
+  .mp-identity-clear:hover { background:var(--bg2); color:#DC2626; }
+  .mp-empty-state {
+    padding:30px 20px; text-align:center; color:var(--t2); font-size:13px;
+    background:#fff; border:1px dashed var(--border); border-radius:10px;
+  }
+  .mp-empty-state strong { color:var(--t1); }
+  .mp-action-grid {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:10px;
+  }
+  .mp-action-card {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:14px; position:relative; cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .mp-action-card:hover {
+    transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(15,23,42,.08);
+  }
+  .mp-action-card.vencida { border-left:4px solid #DC2626; }
+  .mp-action-card.urgente { border-left:4px solid #D97706; }
+  .mp-action-card.normal { border-left:4px solid #16A34A; }
+  .mp-action-desc {
+    font-size:13px; font-weight:500; color:var(--t1);
+    margin-bottom:8px; line-height:1.4;
+  }
+  .mp-action-meta {
+    display:flex; flex-wrap:wrap; gap:8px; font-size:11px;
+    color:var(--t2); margin-bottom:10px;
+  }
+  .mp-action-meta-item {
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .mp-action-meta-item code {
+    font-family:'JetBrains Mono',monospace; font-size:10px;
+  }
+  .mp-action-due {
+    display:inline-block; font-size:11px; padding:3px 8px;
+    border-radius:4px; font-weight:600;
+  }
+  .mp-action-due.vencida { background:#FEE2E2; color:#991B1B; }
+  .mp-action-due.urgente { background:#FEF3C7; color:#92400E; }
+  .mp-action-due.normal { background:#D1FAE5; color:#065F46; }
+  .mp-action-buttons {
+    display:flex; gap:6px; margin-top:10px;
+    padding-top:10px; border-top:1px solid var(--bg3);
+  }
+  .mp-action-btn {
+    flex:1; font-size:11px; padding:6px 10px; border-radius:6px;
+    border:1px solid var(--border); background:#fff; cursor:pointer;
+    color:var(--t1); font-weight:600;
+    transition:all .15s ease;
+  }
+  .mp-action-btn:hover { background:var(--brand-50); border-color:var(--brand-600); color:var(--brand-700); }
+  .mp-action-btn.primary { background:#10B981; color:#fff; border-color:#10B981; }
+  .mp-action-btn.primary:hover { background:#059669; border-color:#059669; }
 </style>
 </head>
 <body>
@@ -433,6 +526,42 @@ var OBJETIVOS = {
   trimestre: 12  // ~12 semanas
 };
 var MODAL_EVENT = null;
+
+// Estado de "Mis Pendientes" — la persona elige su identidad una sola vez,
+// queda guardada en localStorage del navegador para próximas visitas.
+var MIS_PENDIENTES = {
+  identidad_legajo: "",
+  identidad_nombre: ""
+};
+
+// Cargar identidad guardada al iniciar
+try {
+  var savedId = localStorage.getItem("ehs_identidad_v2");
+  if (savedId) {
+    var parsed = JSON.parse(savedId);
+    MIS_PENDIENTES.identidad_legajo = parsed.legajo || "";
+    MIS_PENDIENTES.identidad_nombre = parsed.nombre || "";
+  }
+} catch(e) { /* ignore */ }
+
+function guardarIdentidad(legajo, nombre) {
+  MIS_PENDIENTES.identidad_legajo = String(legajo || "");
+  MIS_PENDIENTES.identidad_nombre = String(nombre || "");
+  try {
+    localStorage.setItem("ehs_identidad_v2", JSON.stringify({
+      legajo: MIS_PENDIENTES.identidad_legajo,
+      nombre: MIS_PENDIENTES.identidad_nombre
+    }));
+  } catch(e) { /* localStorage puede estar deshabilitado */ }
+  render();
+}
+
+function limpiarIdentidad() {
+  MIS_PENDIENTES.identidad_legajo = "";
+  MIS_PENDIENTES.identidad_nombre = "";
+  try { localStorage.removeItem("ehs_identidad_v2"); } catch(e) {}
+  render();
+}
 
 // Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
 function escapeHTML(s) {
@@ -590,6 +719,193 @@ function kpiStatusLabel(status) {
   if (status === "amber") return "Cerca";
   if (status === "red") return "Brecha";
   return "Sin datos";
+}
+
+// =============================================
+// MIS PENDIENTES — Sección de acciones del usuario actual
+// =============================================
+function diasAlVenc(fechaVenc) {
+  if (!fechaVenc) return null;
+  var vencStr = String(fechaVenc).substring(0,10);
+  var venc = new Date(vencStr + "T00:00:00");
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  return Math.floor((venc - hoy) / (1000*60*60*24));
+}
+
+function obtenerMisAcciones() {
+  // Match flexible: por legajo Y por nombre (case-insensitive)
+  var legajoYo = String(MIS_PENDIENTES.identidad_legajo || "").trim();
+  var nombreYo = String(MIS_PENDIENTES.identidad_nombre || "").trim().toUpperCase();
+  if (!legajoYo && !nombreYo) return [];
+
+  return (ACCIONES || []).filter(function(a){
+    if (a.estado === "Cerrada") return false;
+    var legAcc = String(a.responsable_legajo || "").trim();
+    var nomAcc = String(a.responsable_nombre || "").trim().toUpperCase();
+    // Match por legajo exacto
+    if (legajoYo && legAcc && legajoYo === legAcc) return true;
+    // Match por nombre (case insensitive)
+    if (nombreYo && nomAcc && nombreYo === nomAcc) return true;
+    return false;
+  });
+}
+
+function renderMisPendientes() {
+  var html = '<div class="mp-section">';
+  html += '<div class="mp-header">';
+  html += '<div class="mp-title">📌 Mis pendientes</div>';
+
+  if (MIS_PENDIENTES.identidad_nombre) {
+    html += '<div class="mp-identity">';
+    html += '<span class="mp-identity-label">Soy:</span>';
+    html += '<strong style="font-size:13px;">'+escapeHTML(MIS_PENDIENTES.identidad_nombre)+'</strong>';
+    if (MIS_PENDIENTES.identidad_legajo) {
+      html += '<code style="font-size:11px;color:var(--t2);">#'+escapeHTML(MIS_PENDIENTES.identidad_legajo)+'</code>';
+    }
+    html += '<button class="mp-identity-clear" onclick="limpiarIdentidad()">Cambiar</button>';
+    html += '</div>';
+  }
+
+  html += '</div>'; // header
+
+  // Si no eligió identidad, mostrar selector
+  if (!MIS_PENDIENTES.identidad_nombre) {
+    html += '<div class="mp-empty-state">';
+    html += '<strong>¿Quién sos?</strong><br><br>';
+    html += 'Elegite de la lista para ver las acciones correctivas que tenés asignadas. Tu elección se guarda en este navegador.<br><br>';
+    html += '<div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;max-width:500px;margin:0 auto;">';
+    html += '<input type="text" id="mp_search" class="mp-identity-input" placeholder="Buscar nombre o legajo..." oninput="filtrarIdentidad(this.value)" autocomplete="off">';
+    html += '<select id="mp_select" class="mp-identity-input" size="6" onchange="elegirIdentidad()" style="min-width:280px;">';
+    // Combinar Responsables + Personal
+    var personas = [];
+    (MAESTROS.responsables||[]).forEach(function(r){
+      personas.push({legajo: r.legajo||"", nombre: r.nombre||"", esResp: true, rol: r.rol||""});
+    });
+    (MAESTROS.personal||[]).forEach(function(p){
+      // Evitar duplicados (responsables que también están en personal)
+      var legStr = String(p.legajo||"");
+      var nomStr = String(p.nombre||"").toUpperCase();
+      var dup = personas.some(function(x){
+        return (legStr && String(x.legajo)===legStr) ||
+               (nomStr && String(x.nombre).toUpperCase()===nomStr);
+      });
+      if (!dup) personas.push({legajo: legStr, nombre: p.nombre||"", esResp: false});
+    });
+    personas.forEach(function(p){
+      var label = (p.esResp?"★ ":"") + p.nombre + (p.legajo?" (#"+p.legajo+")":"") + (p.rol?" · "+p.rol:"");
+      html += '<option value="'+escapeHTML(p.nombre)+'" data-legajo="'+escapeHTML(p.legajo)+'" data-nombre="'+escapeHTML(p.nombre)+'">'+escapeHTML(label)+'</option>';
+    });
+    html += '</select>';
+    html += '</div></div>';
+    html += '</div>'; // section
+    return html;
+  }
+
+  // Tiene identidad — mostrar acciones
+  var misAcc = obtenerMisAcciones();
+
+  if (misAcc.length === 0) {
+    html += '<div class="mp-empty-state">';
+    html += '✅ <strong>No tenés acciones pendientes</strong><br><br>';
+    html += 'Cuando alguien te asigne una acción correctiva, aparecerá acá.';
+    html += '</div>';
+  } else {
+    // Ordenar por urgencia (vencidas primero, después por fecha)
+    misAcc.sort(function(a,b){
+      var dA = diasAlVenc(a.fecha_vencimiento);
+      var dB = diasAlVenc(b.fecha_vencimiento);
+      if (dA === null) return 1;
+      if (dB === null) return -1;
+      return dA - dB;
+    });
+
+    html += '<div style="font-size:12px;color:var(--t2);margin-bottom:10px;">'+misAcc.length+' acción'+(misAcc.length>1?'es':'')+' asignada'+(misAcc.length>1?'s':'')+' a vos.</div>';
+    html += '<div class="mp-action-grid">';
+
+    misAcc.forEach(function(a){
+      var ev = (EVENTOS||[]).filter(function(e){return String(e.evento_id)===String(a.evento_id);})[0] || {};
+      var dias = diasAlVenc(a.fecha_vencimiento);
+      var clase = "normal", badgeCls = "normal", textoVenc = "";
+      if (dias !== null) {
+        if (dias < 0) { clase = "vencida"; badgeCls = "vencida"; textoVenc = "Venció hace "+Math.abs(dias)+" día"+(Math.abs(dias)>1?'s':''); }
+        else if (dias === 0) { clase = "urgente"; badgeCls = "urgente"; textoVenc = "Vence hoy"; }
+        else if (dias <= 3) { clase = "urgente"; badgeCls = "urgente"; textoVenc = "Vence en "+dias+" día"+(dias>1?'s':''); }
+        else { clase = "normal"; badgeCls = "normal"; textoVenc = "Vence en "+dias+" días"; }
+      } else {
+        textoVenc = "Sin vencimiento";
+      }
+
+      html += '<div class="mp-action-card '+clase+'">';
+      html += '<div class="mp-action-desc">'+escapeHTML(a.descripcion||"(sin descripción)")+'</div>';
+      html += '<div class="mp-action-meta">';
+      html += '<span class="mp-action-meta-item">🎯 <code>'+escapeHTML(a.evento_id||"")+'</code></span>';
+      if (ev.sector) html += '<span class="mp-action-meta-item">📍 '+escapeHTML(ev.sector)+'</span>';
+      if (ev.tipo) html += '<span class="mp-action-meta-item">'+(TIPO_META[ev.tipo]?TIPO_META[ev.tipo].icon:'')+' '+(TIPO_META[ev.tipo]?TIPO_META[ev.tipo].label:'')+'</span>';
+      html += '</div>';
+      html += '<span class="mp-action-due '+badgeCls+'">'+textoVenc+'</span>';
+      html += '<div class="mp-action-buttons">';
+      html += '<button class="mp-action-btn primary" onclick="cerrarMiAccion(\''+escapeHTML(a.accion_id||"")+'\')">✓ Cerrar</button>';
+      html += '<button class="mp-action-btn" onclick="openModal(\''+escapeHTML(a.evento_id||"")+'\')">Ver evento</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+  }
+
+  html += '</div>'; // section
+  return html;
+}
+
+function filtrarIdentidad(query) {
+  var sel = document.getElementById("mp_select");
+  if (!sel) return;
+  var q = String(query || "").toLowerCase().trim();
+  for (var i = 0; i < sel.options.length; i++) {
+    var opt = sel.options[i];
+    var nombre = (opt.getAttribute("data-nombre") || opt.text).toLowerCase();
+    var legajo = (opt.getAttribute("data-legajo") || "").toLowerCase();
+    var match = !q || nombre.indexOf(q) !== -1 || legajo.indexOf(q) !== -1;
+    opt.style.display = match ? "" : "none";
+  }
+}
+
+function elegirIdentidad() {
+  var sel = document.getElementById("mp_select");
+  if (!sel) return;
+  var opt = sel.options[sel.selectedIndex];
+  if (!opt) return;
+  var legajo = opt.getAttribute("data-legajo") || "";
+  var nombre = opt.getAttribute("data-nombre") || opt.text;
+  guardarIdentidad(legajo, nombre);
+}
+
+function cerrarMiAccion(accionId) {
+  if (!accionId) return;
+  if (!confirm("¿Confirmar cierre de esta acción?")) return;
+
+  var params = new URLSearchParams();
+  params.append("action", "actualizar_accion");
+  params.append("accion_id", accionId);
+  params.append("estado", "Cerrada");
+  params.append("fecha_cierre", new Date().toISOString().substring(0,10));
+  params.append("cerrada_por_nombre", MIS_PENDIENTES.identidad_nombre);
+  params.append("cerrada_por_legajo", MIS_PENDIENTES.identidad_legajo);
+
+  // Optimistic
+  var acc = (ACCIONES||[]).filter(function(a){return String(a.accion_id)===String(accionId);})[0];
+  if (acc) {
+    acc.estado = "Cerrada";
+    acc.fecha_cierre = new Date().toISOString().substring(0,10);
+    acc.cerrada_por_nombre = MIS_PENDIENTES.identidad_nombre;
+  }
+  render();
+
+  fetch(APPS_SCRIPT_URL, { method: "POST", body: params })
+    .then(function(r){ return r.json(); })
+    .then(function(){ loadData(); })
+    .catch(function(err){ console.error(err); alert("Error al cerrar la acción"); });
 }
 
 function renderLeadingKPIs() {
@@ -1024,6 +1340,8 @@ function render() {
   html += '<div class="last-update">Última actualización: '+new Date().toLocaleString("es-AR")+' · '+EVENTOS.length+' eventos · '+ACCIONES.length+' acciones</div>';
 
   // Leading KPIs (cultura BBS) — siempre visibles, no se ven afectados por filtros
+  html += renderMisPendientes();
+
   html += renderLeadingKPIs();
 
   // Sección Participación del equipo (BBS / DSS+) — empuja a que todos reporten
@@ -1271,12 +1589,29 @@ function abrirNuevaAccion(eventoId) {
     + '<textarea id="nac_desc" placeholder="¿Qué hay que hacer?" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;min-height:70px;"></textarea></div>';
 
   html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Responsable *</label>'
-    + '<select id="nac_resp" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;">'
-    + '<option value="">— Seleccionar responsable —</option>';
+    + '<input type="text" id="nac_resp_search" placeholder="Buscar por nombre o legajo..." autocomplete="off" '
+    + 'oninput="filtrarResponsables(this.value)" '
+    + 'style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;margin-bottom:6px;">'
+    + '<select id="nac_resp" size="6" '
+    + 'style="width:100%;padding:6px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;">';
+  // Combinar Responsables (primero) + Personal (después)
+  // Cada option tiene data-legajo y data-nombre para reconocer al seleccionar
   (MAESTROS.responsables||[]).forEach(function(r){
-    html += '<option value="'+(r.nombre||"")+'" data-legajo="'+(r.legajo||"")+'">'+(r.nombre||"")+(r.rol?' ('+r.rol+')':'')+'</option>';
+    var nombre = r.nombre || "";
+    var legajo = r.legajo || "";
+    var rol = r.rol ? " · "+r.rol : "";
+    html += '<option value="'+escapeHTML(nombre)+'" data-legajo="'+escapeHTML(legajo)+'" data-nombre="'+escapeHTML(nombre)+'">'
+      + '★ '+escapeHTML(nombre) + (legajo?' (#'+escapeHTML(legajo)+')':'') + rol + '</option>';
   });
-  html += '</select></div>';
+  (MAESTROS.personal||[]).forEach(function(p){
+    var nombre = p.nombre || "";
+    var legajo = p.legajo || "";
+    html += '<option value="'+escapeHTML(nombre)+'" data-legajo="'+escapeHTML(legajo)+'" data-nombre="'+escapeHTML(nombre)+'">'
+      + escapeHTML(nombre) + (legajo?' (#'+escapeHTML(legajo)+')':'') + '</option>';
+  });
+  html += '</select>';
+  html += '<div style="font-size:10px;color:var(--t3);margin-top:4px;">★ = supervisor/responsable. Asignar puede ser a cualquier persona del Personal.</div>';
+  html += '</div>';
 
   html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Fecha de vencimiento</label>'
     + '<input type="date" id="nac_fecha" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;"></div>';
@@ -1295,15 +1630,30 @@ function cerrarNuevaAccion() {
   if (m) m.remove();
 }
 
+// Filtrar lista de responsables/personal en el modal
+function filtrarResponsables(query) {
+  var sel = document.getElementById("nac_resp");
+  if (!sel) return;
+  var q = String(query || "").toLowerCase().trim();
+  for (var i = 0; i < sel.options.length; i++) {
+    var opt = sel.options[i];
+    var nombre = (opt.getAttribute("data-nombre") || opt.text).toLowerCase();
+    var legajo = (opt.getAttribute("data-legajo") || "").toLowerCase();
+    var match = !q || nombre.indexOf(q) !== -1 || legajo.indexOf(q) !== -1;
+    opt.style.display = match ? "" : "none";
+  }
+}
+
 function guardarAccion(eventoId, nro) {
   var desc = document.getElementById("nac_desc").value.trim();
   var sel = document.getElementById("nac_resp");
-  var resp = sel.value.trim();
-  var legajo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].getAttribute("data-legajo") : "";
+  var opt = sel.options[sel.selectedIndex];
+  var resp = opt ? (opt.getAttribute("data-nombre") || sel.value.trim()) : sel.value.trim();
+  var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
   var fecha = document.getElementById("nac_fecha").value;
 
-  if (!desc || !resp) {
-    alert("Completá descripción y responsable");
+  if (!desc || !resp || sel.selectedIndex < 0) {
+    alert("Completá descripción y elegí un responsable de la lista");
     return;
   }
 

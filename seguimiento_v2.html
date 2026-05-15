@@ -175,7 +175,18 @@ var ACCIONES = [];
 var EVENTOS = [];
 var MAESTROS = { personal:[], responsables:[], sectores:[] };
 
-var FILTERS = { responsable:"Todos", estado:"Todos", sector:"Todos" };
+var FILTERS = { responsable:"Todos", estado:"Todos", sector:"Todos", soloMias:false };
+
+// Identidad cargada desde localStorage (compartida con dashboard)
+var IDENTIDAD = { legajo: "", nombre: "" };
+try {
+  var saved = localStorage.getItem("ehs_identidad_v2");
+  if (saved) {
+    var parsed = JSON.parse(saved);
+    IDENTIDAD.legajo = parsed.legajo || "";
+    IDENTIDAD.nombre = parsed.nombre || "";
+  }
+} catch(e) {}
 
 // Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
 function escapeHTML(s) {
@@ -216,12 +227,25 @@ function applyFilters(acciones) {
       var ev = getEventoOf(a);
       if (ev.sector !== FILTERS.sector) return false;
     }
+    if (FILTERS.soloMias) {
+      var legY = String(IDENTIDAD.legajo || "").trim();
+      var nomY = String(IDENTIDAD.nombre || "").trim().toUpperCase();
+      var legA = String(a.responsable_legajo || "").trim();
+      var nomA = String(a.responsable_nombre || "").trim().toUpperCase();
+      var coincide = (legY && legA && legY === legA) || (nomY && nomA && nomY === nomA);
+      if (!coincide) return false;
+    }
     return true;
   });
 }
 
 function setFilter(key, value) {
   FILTERS[key] = value;
+  render();
+}
+
+function toggleSoloMias() {
+  FILTERS.soloMias = !FILTERS.soloMias;
   render();
 }
 
@@ -273,6 +297,21 @@ function render() {
   });
 
   html += '<div class="filters">';
+
+  // Toggle "Solo mis acciones" — solo aparece si tengo identidad seteada
+  if (IDENTIDAD.nombre) {
+    var btnStyle = FILTERS.soloMias
+      ? 'background:#10B981;color:#fff;border-color:#10B981;'
+      : 'background:#fff;color:var(--t1);border-color:var(--border);';
+    html += '<button onclick="toggleSoloMias()" style="padding:8px 14px;border-radius:8px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;'+btnStyle+'">'
+      + (FILTERS.soloMias ? '✓ ' : '👤 ')
+      + 'Solo mis acciones'
+      + '</button>';
+    html += '<div style="font-size:11px;color:var(--t2);align-self:center;">('+escapeHTML(IDENTIDAD.nombre)+')</div>';
+  } else {
+    html += '<div style="font-size:11px;color:var(--t2);padding:8px 12px;background:#FFFBEB;border:1px dashed #FDE68A;border-radius:8px;align-self:center;">💡 Tip: Elegí tu identidad en el Dashboard para filtrar tus acciones.</div>';
+  }
+
   html += filterSelect("responsable","Responsable",responsablesUnicos);
   html += filterSelect("estado","Estado",["Todos","Abierta","En proceso","Cerrada","Cancelada"]);
   html += filterSelect("sector","Sector",["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;})));

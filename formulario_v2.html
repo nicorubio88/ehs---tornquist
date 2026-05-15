@@ -273,7 +273,7 @@ var state = {
     obs_hablo_persona:"", obs_causa_acto:"", obs_estado_observado:"",
     obs_genera_ot:"", obs_parada_equipo:"", obs_tipo_riesgo:"",
     conv_tema:"", conv_compromiso:"",
-    conv_refuerzo_positivo:"", conv_propuesta_propia:"",
+    conv_refuerzo_positivo:"", conv_propuesta_propia:"", conv_origen:"",
     inc_equipo_afectado:"", inc_dano_estimado_ars:"", inc_accion_inmediata:"",
     inc_notif_responsable:"", inc_notif_a_quien:"",
     inc_estado_mental:"", inc_error_critico:"",
@@ -433,6 +433,21 @@ function renderStep0() {
   var html = '<h1>¿Qué tipo de evento querés registrar?</h1>';
   html += '<p class="subtitle">Elegí el tipo y luego el subtipo correspondiente.</p>';
 
+  // Pregunta de ruteo guiada — solo aparece si todavía no se eligió tipo
+  // Ayuda a evitar la duplicación entre "Observación de acto inseguro" y "Conversación correctiva"
+  if (!f.tipo) {
+    html += '<div class="section" style="background:linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);border-color:#7DD3FC;">'
+      + '<div class="section-title" style="color:#075985;">🧭 Te ayudo a elegir</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">Si ya sabés el tipo, ignorá esta guía. Si tenés dudas, respondé:</div>'
+      + '<div class="field"><label>¿El reporte incluye una conversación con una persona específica?</label><div class="chips">'
+      + '<div class="chip" onclick="rutearTipo(\'CONVERSACION\')">Sí — hablé con alguien</div>'
+      + '<div class="chip" onclick="rutearTipo(\'OBSERVACION\')">No — vi pero no hablé</div>'
+      + '<div class="chip" onclick="rutearTipo(\'INCIDENTE\')">Hubo un evento (algo se rompió o casi pasa)</div>'
+      + '<div class="chip" onclick="rutearTipo(\'ACCIDENTE\')">Hubo lesión a una persona</div>'
+      + '<div class="chip" onclick="rutearTipo(\'AMBIENTE\')">Es un evento ambiental</div>'
+      + '</div></div></div>';
+  }
+
   html += '<div class="section"><div class="section-title">Tipo de evento</div>';
   html += '<div class="type-grid">';
   Object.keys(TIPO_META).forEach(function(tipo){
@@ -463,6 +478,17 @@ function renderStep0() {
     html += '</div></div>';
   }
   return html;
+}
+
+// Helper: ruteo desde la pregunta guiada del paso 0
+function rutearTipo(tipo) {
+  state.form.tipo = tipo;
+  state.form.subtipo = "";
+  render();
+  // Scroll al bloque de tipo
+  setTimeout(function(){
+    window.scrollTo({top: 200, behavior: "smooth"});
+  }, 50);
 }
 
 // PASO 1: Cuándo, dónde y prioridad
@@ -566,20 +592,16 @@ function renderObservacion(f) {
     html += '<option value="'+o+'"'+(f.obs_tipo_acto_condicion===o?' selected':'')+'>'+o+'</option>';
   });
   html += '</select></div>';
-  html += '<div class="field"><label>Acción inmediata tomada</label><textarea placeholder="¿Qué se hizo en el momento?" onchange="setField(\'obs_accion_inmediata\',this.value)">'+escapeHTML(f.obs_accion_inmediata)+'</textarea></div>';
+  html += '<div class="field-hint" style="background:#FEF8E1;border-left:3px solid #F59E0B;padding:8px 12px;border-radius:4px;font-size:12px;color:#78350F;">'
+    + '<strong>Tip:</strong> Si conversaste con la persona involucrada, mejor cargá una Conversación en su lugar (queda mejor registrado el diálogo y la cultura BBS).'
+    + '</div>';
   html += '</div>';
 
-  // Bloque condicional: Acto inseguro → conversación con la persona
+  // Bloque condicional: Acto inseguro → análisis SafeStart
   if (f.obs_tipo_acto_condicion === "Acto inseguro") {
     html += '<div class="section" style="background:linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);border-color:#BFDBFE;">'
-      + '<div class="section-title" style="color:#1E40AF;">💬 Conversación con la persona</div>'
-      + '<div class="field-hint" style="margin-bottom:12px;">El acto inseguro se aborda con diálogo. Estos datos son opcionales pero ayudan a aprender mejor.</div>'
-      + '<div class="field"><label>¿Hablaste con la persona?</label><div class="chips">';
-    ["Sí","No","La persona reportó por sí misma"].forEach(function(o){
-      var cls = (f.obs_hablo_persona===o)?'chip active':'chip';
-      html += '<div class="'+cls+'" onclick="setField(\'obs_hablo_persona\',\''+o+'\')">'+o+'</div>';
-    });
-    html += '</div></div>';
+      + '<div class="section-title" style="color:#1E40AF;">🧠 Análisis del acto</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">Estos datos son opcionales pero ayudan a entender la causa raíz.</div>';
     html += '<div class="field"><label>Estado observado en la persona <span style="font-weight:400;color:#64748B;font-size:11px;">(SafeStart)</span></label><div class="chips">';
     ["Prisa","Frustración","Fatiga","Complacencia","Ninguno detectable"].forEach(function(o){
       var cls = (f.obs_estado_observado===o)?'chip active':'chip';
@@ -624,6 +646,12 @@ function renderObservacion(f) {
 
 function renderConversacion(f) {
   var html = '<div class="section"><div class="section-title">💬 Conversación</div>';
+  html += '<div class="field"><label>¿Surgió de una observación previa?</label><div class="chips">';
+  ["Sí","No"].forEach(function(o){
+    var cls = (f.conv_origen===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'conv_origen\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div><div class="field-hint">Si Sí, podés vincular esta conversación con el acto inseguro que la motivó.</div></div>';
   html += '<div class="field"><label>Tema tratado <span class="req">*</span></label><input type="text" value="'+escapeHTML(f.conv_tema)+'" placeholder="Ej: Uso de EPP en zona X" onchange="setField(\'conv_tema\',this.value)"></div>';
   html += '<div class="field"><label>Compromiso asumido</label><textarea placeholder="¿Qué compromiso se asumió?" onchange="setField(\'conv_compromiso\',this.value)">'+escapeHTML(f.conv_compromiso)+'</textarea></div>';
   html += '</div>';
@@ -798,12 +826,10 @@ function renderReview() {
 
   // Específicos
   if (f.tipo === "OBSERVACION") {
-    var hasObs = f.obs_tipo_acto_condicion || f.obs_accion_inmediata || f.obs_hablo_persona || f.obs_causa_acto || f.obs_estado_observado || f.obs_genera_ot || f.obs_parada_equipo || f.obs_tipo_riesgo;
+    var hasObs = f.obs_tipo_acto_condicion || f.obs_causa_acto || f.obs_estado_observado || f.obs_genera_ot || f.obs_parada_equipo || f.obs_tipo_riesgo;
     if (hasObs) {
       html += '<div class="section">';
       if (f.obs_tipo_acto_condicion) html += reviewRow("Tipo", f.obs_tipo_acto_condicion);
-      if (f.obs_accion_inmediata) html += reviewRow("Acción inmediata", f.obs_accion_inmediata);
-      if (f.obs_hablo_persona) html += reviewRow("Hablaste con la persona", f.obs_hablo_persona);
       if (f.obs_estado_observado) html += reviewRow("Estado observado (SafeStart)", f.obs_estado_observado);
       if (f.obs_causa_acto) html += reviewRow("Causa probable", f.obs_causa_acto);
       if (f.obs_tipo_riesgo) html += reviewRow("Tipo de riesgo", f.obs_tipo_riesgo);
@@ -814,6 +840,7 @@ function renderReview() {
   }
   if (f.tipo === "CONVERSACION") {
     html += '<div class="section">';
+    if (f.conv_origen) html += reviewRow("Surgió de observación previa", f.conv_origen);
     if (f.conv_tema) html += reviewRow("Tema", f.conv_tema);
     if (f.conv_compromiso) html += reviewRow("Compromiso", f.conv_compromiso);
     if (f.conv_refuerzo_positivo) html += reviewRow("Empezó con refuerzo positivo", f.conv_refuerzo_positivo);

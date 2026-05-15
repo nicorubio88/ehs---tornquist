@@ -53,7 +53,7 @@ var HEADERS_EVENTOS = [
   // Observación detallada (condición insegura)
   "obs_genera_ot", "obs_parada_equipo", "obs_tipo_riesgo",
   // Conversación calidad BBS
-  "conv_refuerzo_positivo", "conv_propuesta_propia",
+  "conv_refuerzo_positivo", "conv_propuesta_propia", "conv_origen",
   // SafeStart en Incidente
   "inc_estado_mental", "inc_error_critico",
   // SafeStart en Accidente
@@ -340,6 +340,7 @@ function saveEvento(ss, p) {
     p.obs_tipo_riesgo || "",
     p.conv_refuerzo_positivo || "",
     p.conv_propuesta_propia || "",
+    p.conv_origen || "",
     p.inc_estado_mental || "",
     p.inc_error_critico || "",
     p.acc_estado_mental || "",
