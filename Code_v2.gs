@@ -67,7 +67,9 @@ var HEADERS_ACCIONES = [
   "descripcion", "responsable_legajo", "responsable_nombre",
   "fecha_creacion", "fecha_vencimiento", "estado",
   "cerrada_por_legajo", "cerrada_por_nombre", "fecha_cierre",
-  "foto_evidencia_url", "notas"
+  "foto_evidencia_url", "notas",
+  // Columnas nuevas (al final, retro-compatibles)
+  "prioridad", "creada_por_legajo", "creada_por_nombre"
 ];
 
 // Tipos válidos
@@ -353,7 +355,88 @@ function saveEvento(ss, p) {
   pintarFilaPorPrioridad(sheet, sheet.getLastRow(), p.prioridad);
   enviarNotificacionEvento(p, eventoId);
 
-  return jsonResponse({ ok: true, evento_id: eventoId });
+  // Si el formulario incluyó datos de acción correctiva integrada, crearla
+  // Aplica para Condición insegura, Incidente y Ambiente
+  var accionCreadaId = null;
+  if (p.accion_descripcion && String(p.accion_descripcion).trim() !== "") {
+    var accionParams = {
+      evento_id: eventoId,
+      nro_accion: 1,
+      descripcion: p.accion_descripcion,
+      responsable_nombre: p.accion_responsable_nombre || "",
+      responsable_legajo: p.accion_responsable_legajo || "",
+      fecha_vencimiento: p.accion_fecha_cierre || "",
+      prioridad: p.accion_prioridad || "",
+      estado: "Abierta",
+      creada_por_nombre: p.reportado_por_nombre || "",
+      creada_por_legajo: p.reportado_por_legajo || ""
+    };
+    try {
+      var resAccion = saveAccionInterna(ss, accionParams);
+      accionCreadaId = resAccion.accion_id;
+    } catch (e) {
+      // Si falla crear la acción, igual el evento se guardó OK
+      Logger.log("Error al crear acción integrada: " + e.message);
+    }
+  }
+
+  return jsonResponse({ ok: true, evento_id: eventoId, accion_id: accionCreadaId });
+}
+
+// Función auxiliar interna para crear una acción desde el flujo de evento
+function saveAccionInterna(ss, p) {
+  var sheet = getOrCreateSheet(ss, SHEET_ACCIONES, HEADERS_ACCIONES);
+  var accionId = generateId("ACC");
+  var now = new Date();
+  var fechaCreacion = Utilities.formatDate(now, "America/Argentina/Buenos_Aires", "yyyy-MM-dd");
+
+  // Respetando el orden de HEADERS_ACCIONES
+  var row = [
+    accionId,                          // accion_id
+    p.evento_id || "",                 // evento_id
+    p.nro_accion || 1,                 // nro_accion
+    p.descripcion || "",               // descripcion
+    p.responsable_legajo || "",        // responsable_legajo
+    p.responsable_nombre || "",        // responsable_nombre
+    fechaCreacion,                     // fecha_creacion
+    p.fecha_vencimiento || "",         // fecha_vencimiento
+    p.estado || "Abierta",             // estado
+    "",                                // cerrada_por_legajo
+    "",                                // cerrada_por_nombre
+    "",                                // fecha_cierre
+    "",                                // foto_evidencia_url
+    "",                                // notas
+    p.prioridad || "",                 // prioridad (nueva)
+    p.creada_por_legajo || "",         // creada_por_legajo (nueva)
+    p.creada_por_nombre || ""          // creada_por_nombre (nueva)
+  ];
+  sheet.appendRow(row);
+
+  // Notificar al responsable (placeholder por ahora)
+  try {
+    enviarNotificacionAccionAsignada(p, accionId);
+  } catch (e) {
+    Logger.log("Error en notificación de acción: " + e.message);
+  }
+
+  return { accion_id: accionId };
+}
+
+// Notificación al responsable cuando se le asigna una acción nueva
+function enviarNotificacionAccionAsignada(p, accionId) {
+  if (!p.responsable_nombre) return;  // sin responsable, no notificar
+  var to = "seh-tornquist-notificaciones@googlegroups.com";
+  var subject = "Nueva acción correctiva asignada: " + (p.responsable_nombre);
+  var body = "Se generó una acción correctiva en el sistema EHS Tornquist:\n\n"
+    + "Acción ID: " + accionId + "\n"
+    + "Evento origen: " + (p.evento_id || "") + "\n"
+    + "Descripción: " + (p.descripcion || "") + "\n"
+    + "Responsable: " + (p.responsable_nombre || "") + (p.responsable_legajo ? " (#"+p.responsable_legajo+")" : "") + "\n"
+    + "Prioridad: " + (p.prioridad || "—") + "\n"
+    + "Fecha de cierre: " + (p.fecha_vencimiento || "—") + "\n"
+    + "Creada por: " + (p.creada_por_nombre || "—") + "\n\n"
+    + "Esta acción aparece en la sección \"Mis pendientes\" del dashboard del responsable.";
+  MailApp.sendEmail(to, subject, body);
 }
 
 function pintarFilaPorPrioridad(sheet, row, prioridad) {

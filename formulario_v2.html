@@ -284,7 +284,12 @@ var state = {
     acc_estado_mental:"", acc_error_critico:"",
     amb_sustancia:"", amb_cantidad:"", amb_unidad:"",
     amb_medio_impactado:"", amb_contencion_aplicada:"", amb_notif_autoridad:"",
-    amb_fuente:"", amb_llego_pluvial:""
+    amb_fuente:"", amb_llego_pluvial:"",
+    // Nuevos campos: tarjeta de aviso de riesgo
+    obs_tarjeta_aviso:"", obs_nro_tarjeta:"",
+    // Acción correctiva integrada (opcional)
+    accion_descripcion:"", accion_prioridad:"", accion_fecha_cierre:"",
+    accion_responsable_nombre:"", accion_responsable_legajo:""
   },
   saving: false,
   saved: null,
@@ -585,20 +590,25 @@ function renderStep3() {
 }
 
 function renderObservacion(f) {
+  // El subtipo (Acto inseguro / Condición insegura) ya se eligió en paso 0
+  // No volvemos a preguntarlo acá. Lo mostramos como referencia.
   var html = '<div class="section"><div class="section-title">👁 Observación</div>';
-  html += '<div class="field"><label>Tipo de acto/condición</label><select onchange="setField(\'obs_tipo_acto_condicion\',this.value)">'
-    + '<option value="">— Elegir —</option>';
-  ["Acto inseguro","Condición insegura"].forEach(function(o){
-    html += '<option value="'+o+'"'+(f.obs_tipo_acto_condicion===o?' selected':'')+'>'+o+'</option>';
-  });
-  html += '</select></div>';
+  if (f.subtipo) {
+    html += '<div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Subtipo elegido: <span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:500;font-size:12px;">'+escapeHTML(f.subtipo)+'</span></div>';
+  }
   html += '<div class="field-hint" style="background:#FEF8E1;border-left:3px solid #F59E0B;padding:8px 12px;border-radius:4px;font-size:12px;color:#78350F;">'
     + '<strong>Tip:</strong> Si conversaste con la persona involucrada, mejor cargá una Conversación en su lugar (queda mejor registrado el diálogo y la cultura BBS).'
     + '</div>';
   html += '</div>';
 
+  // Sincronizamos obs_tipo_acto_condicion con subtipo para backward compat con KPIs y dashboard
+  // (lo seteamos invisible cuando se entra acá)
+  if (f.subtipo && f.obs_tipo_acto_condicion !== f.subtipo) {
+    f.obs_tipo_acto_condicion = f.subtipo;
+  }
+
   // Bloque condicional: Acto inseguro → análisis SafeStart
-  if (f.obs_tipo_acto_condicion === "Acto inseguro") {
+  if (f.subtipo === "Acto inseguro") {
     html += '<div class="section" style="background:linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);border-color:#BFDBFE;">'
       + '<div class="section-title" style="color:#1E40AF;">🧠 Análisis del acto</div>'
       + '<div class="field-hint" style="margin-bottom:12px;">Estos datos son opcionales pero ayudan a entender la causa raíz.</div>';
@@ -616,32 +626,103 @@ function renderObservacion(f) {
     html += '</div></div></div>';
   }
 
-  // Bloque condicional: Condición insegura → acción de mantenimiento
-  if (f.obs_tipo_acto_condicion === "Condición insegura") {
+  // Bloque condicional: Condición insegura → gestión del desvío + acción correctiva
+  if (f.subtipo === "Condición insegura") {
     html += '<div class="section" style="background:linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);border-color:#FDE68A;">'
-      + '<div class="section-title" style="color:#B45309;">🔧 Acción de mantenimiento</div>'
-      + '<div class="field-hint" style="margin-bottom:12px;">La condición insegura se elimina con barreras físicas o ingeniería. Datos opcionales para gestión.</div>'
+      + '<div class="section-title" style="color:#B45309;">🔧 Gestión del desvío</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">Datos opcionales para gestión y trazabilidad.</div>'
       + '<div class="field"><label>Tipo de riesgo</label><div class="chips">';
     ["Mecánico","Eléctrico","Químico","Ergonómico","Físico","Locativo"].forEach(function(o){
       var cls = (f.obs_tipo_riesgo===o)?'chip active':'chip';
       html += '<div class="'+cls+'" onclick="setField(\'obs_tipo_riesgo\',\''+o+'\')">'+o+'</div>';
     });
     html += '</div></div>';
-    html += '<div class="field"><label>¿Genera orden de trabajo a Mantenimiento?</label><div class="chips">';
-    ["Sí","No","Ya está en curso"].forEach(function(o){
-      var cls = (f.obs_genera_ot===o)?'chip active':'chip';
-      html += '<div class="'+cls+'" onclick="setField(\'obs_genera_ot\',\''+o+'\')">'+o+'</div>';
+    html += '<div class="field"><label>¿Se generó tarjeta de aviso de riesgo?</label><div class="chips">';
+    ["Sí","No","No corresponde"].forEach(function(o){
+      var cls = (f.obs_tarjeta_aviso===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_tarjeta_aviso\',\''+o+'\')">'+o+'</div>';
     });
     html += '</div></div>';
+    if (f.obs_tarjeta_aviso === "Sí") {
+      html += '<div class="field"><label>N° de tarjeta</label><input type="text" value="'+escapeHTML(f.obs_nro_tarjeta)+'" placeholder="Ej: TR-2026-045" onchange="setField(\'obs_nro_tarjeta\',this.value)"></div>';
+    }
     html += '<div class="field"><label>¿Necesita parada de equipo?</label><div class="chips">';
     ["Sí","No","Solo paro programado"].forEach(function(o){
       var cls = (f.obs_parada_equipo===o)?'chip active':'chip';
       html += '<div class="'+cls+'" onclick="setField(\'obs_parada_equipo\',\''+o+'\')">'+o+'</div>';
     });
-    html += '</div></div></div>';
+    html += '</div></div>';
+    html += '</div>';
+
+    // Bloque acción correctiva integrada (opcional)
+    html += renderAccionCorrectivaIntegrada(f);
   }
 
   return html;
+}
+
+// =============================================
+// Bloque reusable: acción correctiva integrada
+// Aparece en Condición insegura, Incidente y Medio Ambiente
+// Si se llena, se crea automáticamente al guardar el evento
+// =============================================
+function renderAccionCorrectivaIntegrada(f) {
+  var personasList = [];
+  (MAESTROS.responsables||[]).forEach(function(r){
+    personasList.push({legajo: r.legajo||"", nombre: r.nombre||"", esResp: true});
+  });
+  (MAESTROS.personal||[]).forEach(function(p){
+    var legStr = String(p.legajo||"");
+    var nomStr = String(p.nombre||"").toUpperCase();
+    var dup = personasList.some(function(x){
+      return (legStr && String(x.legajo)===legStr) ||
+             (nomStr && String(x.nombre).toUpperCase()===nomStr);
+    });
+    if (!dup) personasList.push({legajo: legStr, nombre: p.nombre||"", esResp: false});
+  });
+
+  var html = '<div class="section" style="background:linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);border-color:#86EFAC;">'
+    + '<div class="section-title" style="color:#166534;">📋 Acción correctiva (opcional)</div>'
+    + '<div class="field-hint" style="margin-bottom:12px;">Si completás los siguientes campos, se crea automáticamente una acción correctiva asignada que aparece en "Mis pendientes" del responsable y en seguimiento.</div>';
+
+  html += '<div class="field"><label>Acción necesaria</label><textarea placeholder="¿Qué hay que hacer para eliminar/controlar el desvío?" onchange="setField(\'accion_descripcion\',this.value)">'+escapeHTML(f.accion_descripcion)+'</textarea></div>';
+
+  html += '<div class="field-row">';
+  html += '<div class="field" style="flex:1;"><label>Prioridad</label><div class="chips">';
+  ["Alta","Media","Baja"].forEach(function(o){
+    var cls = (f.accion_prioridad===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'accion_prioridad\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field" style="flex:1;"><label>Fecha de cierre</label><input type="date" value="'+escapeHTML(f.accion_fecha_cierre)+'" onchange="setField(\'accion_fecha_cierre\',this.value)"></div>';
+  html += '</div>';
+
+  html += '<div class="field"><label>Responsable asignado</label>'
+    + '<select onchange="setAccionResponsable(this)">'
+    + '<option value="">— Sin asignar —</option>';
+  personasList.forEach(function(p){
+    var nombre = String(p.nombre||"");
+    var legajo = String(p.legajo||"");
+    var label = (p.esResp?"★ ":"") + nombre + (legajo?" (#"+legajo+")":"");
+    var selected = (f.accion_responsable_nombre === nombre) ? " selected" : "";
+    html += '<option value="'+escapeHTML(nombre)+'" data-legajo="'+escapeHTML(legajo)+'"'+selected+'>'+escapeHTML(label)+'</option>';
+  });
+  html += '</select>';
+  html += '<div class="field-hint" style="margin-top:4px;font-size:11px;">★ = supervisor. Si asignás, la acción aparecerá en su pantalla "Mis pendientes".</div>';
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+// Setter especial: toma legajo del option seleccionado y guarda ambos campos
+function setAccionResponsable(selectEl) {
+  var opt = selectEl.options[selectEl.selectedIndex];
+  var nombre = opt ? opt.value : "";
+  var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
+  state.form.accion_responsable_nombre = nombre;
+  state.form.accion_responsable_legajo = legajo;
+  render();
 }
 
 function renderConversacion(f) {
@@ -708,6 +789,9 @@ function renderIncidente(f) {
     html += '<div class="'+cls+'" onclick="setField(\'inc_error_critico\',\''+o+'\')">'+o+'</div>';
   });
   html += '</div></div></div>';
+
+  // Bloque acción correctiva integrada (opcional)
+  html += renderAccionCorrectivaIntegrada(f);
 
   return html;
 }
@@ -804,10 +888,12 @@ function renderAmbiente(f) {
   });
   html += '</div></div>';
   html += '</div>';
+
+  // Bloque acción correctiva integrada (opcional)
+  html += renderAccionCorrectivaIntegrada(f);
+
   return html;
 }
-
-// PASO 4: Revisión
 function renderReview() {
   var f = state.form;
   var meta = TIPO_META[f.tipo] || {};
@@ -826,14 +912,15 @@ function renderReview() {
 
   // Específicos
   if (f.tipo === "OBSERVACION") {
-    var hasObs = f.obs_tipo_acto_condicion || f.obs_causa_acto || f.obs_estado_observado || f.obs_genera_ot || f.obs_parada_equipo || f.obs_tipo_riesgo;
+    var hasObs = f.obs_tipo_acto_condicion || f.obs_causa_acto || f.obs_estado_observado || f.obs_parada_equipo || f.obs_tipo_riesgo || f.obs_tarjeta_aviso || f.obs_nro_tarjeta;
     if (hasObs) {
       html += '<div class="section">';
       if (f.obs_tipo_acto_condicion) html += reviewRow("Tipo", f.obs_tipo_acto_condicion);
       if (f.obs_estado_observado) html += reviewRow("Estado observado (SafeStart)", f.obs_estado_observado);
       if (f.obs_causa_acto) html += reviewRow("Causa probable", f.obs_causa_acto);
       if (f.obs_tipo_riesgo) html += reviewRow("Tipo de riesgo", f.obs_tipo_riesgo);
-      if (f.obs_genera_ot) html += reviewRow("Genera OT mantenimiento", f.obs_genera_ot);
+      if (f.obs_tarjeta_aviso) html += reviewRow("Tarjeta de aviso de riesgo", f.obs_tarjeta_aviso);
+      if (f.obs_nro_tarjeta) html += reviewRow("N° tarjeta", f.obs_nro_tarjeta);
       if (f.obs_parada_equipo) html += reviewRow("Parada de equipo", f.obs_parada_equipo);
       html += '</div>';
     }
@@ -883,6 +970,20 @@ function renderReview() {
     html += '</div>';
   }
 
+  // Acción correctiva integrada (si se llenó)
+  var puedeCargarAccion = (f.tipo === "OBSERVACION" && f.subtipo === "Condición insegura")
+    || f.tipo === "INCIDENTE" || f.tipo === "AMBIENTE";
+  if (puedeCargarAccion && f.accion_descripcion) {
+    html += '<div class="section" style="background:linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);border-color:#86EFAC;">';
+    html += '<div class="section-title" style="color:#166534;">📋 Acción correctiva a crear</div>';
+    html += reviewRow("Descripción", f.accion_descripcion);
+    if (f.accion_prioridad) html += reviewRow("Prioridad", f.accion_prioridad);
+    if (f.accion_fecha_cierre) html += reviewRow("Fecha de cierre", f.accion_fecha_cierre);
+    if (f.accion_responsable_nombre) html += reviewRow("Responsable", f.accion_responsable_nombre + (f.accion_responsable_legajo?' (#'+f.accion_responsable_legajo+')':''));
+    else html += reviewRow("Responsable", "Sin asignar");
+    html += '</div>';
+  }
+
   return html;
 }
 
@@ -892,11 +993,19 @@ function reviewRow(label, value) {
 }
 
 function renderSuccess() {
+  var msgAccion = "";
+  if (state.savedAccion) {
+    msgAccion = '<div style="margin:14px auto;padding:12px 16px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;max-width:480px;text-align:left;">'
+      + '<div style="font-size:13px;font-weight:600;color:#166534;margin-bottom:4px;">📋 Acción correctiva creada</div>'
+      + '<div style="font-size:12px;color:#15803D;">Se generó la acción asignada' + (state.savedAccionResp ? ' a <strong>'+escapeHTML(state.savedAccionResp)+'</strong>' : '') + '. Aparece en "Mis pendientes" del dashboard y en seguimiento.</div>'
+      + '</div>';
+  }
   var html = '<div class="success-screen">'
     + '<div class="success-icon">✓</div>'
     + '<h2>Evento registrado</h2>'
     + '<p>El registro se guardó correctamente y se envió la notificación por email.</p>'
     + '<div class="success-id">ID: '+state.saved+'</div>'
+    + msgAccion
     + '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
     + '<a href="formulario_v2.html" class="btn btn-next" style="text-decoration:none;display:inline-block;flex:0 0 auto;">+ Cargar otro evento</a>'
     + '<a href="dashboard_v2.html" class="btn btn-prev" style="text-decoration:none;display:inline-block;flex:0 0 auto;">Ver dashboard</a>'
@@ -925,6 +1034,11 @@ function submitForm() {
     .then(function(resp){
       if (resp.ok) {
         state.saved = resp.evento_id;
+        // Si el backend devolvió accion_id, hubo acción correctiva integrada
+        if (resp.accion_id) {
+          state.savedAccion = resp.accion_id;
+          state.savedAccionResp = state.form.accion_responsable_nombre || "";
+        }
         state.saving = false;
         renderSuccess();
       } else {
