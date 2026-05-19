@@ -32,7 +32,6 @@ function agregarPersonalDotacion() {
   // Lista oficial DOTACION_FC — 51 personas
   // Formato: [legajo, "Apellido, Nombre"]
   var personasNuevas = [
-   [106278, "ABARZUA, OSVALDO DANIEL"],
 [106288, "VALLEJOS, JOSE LUIS"],
 [106258, "IRIARTE, ALDO JORGE"],
 [106260, "MENDEZ, MARCELO DANIEL"],
