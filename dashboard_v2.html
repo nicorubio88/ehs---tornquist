@@ -613,13 +613,79 @@ function setFilter(key, value) {
 // LEADING KPIs (BBS / DSS+ Bradley Curve)
 // =============================================
 // Detecta si un legajo es supervisor (figura en tabla Responsables)
+// Normaliza un nombre para comparar: mayúsculas, sin tildes, ordenado alfabéticamente
+// Así "Nicolás Rubio" y "RUBIO NICOLAS DAVID" pueden matchear por tokens compartidos
+function normalizarNombre(nombre) {
+  if (!nombre) return "";
+  return String(nombre)
+    .toUpperCase()
+    .replace(/[ÁÀÄÂ]/g, "A").replace(/[ÉÈËÊ]/g, "E").replace(/[ÍÌÏÎ]/g, "I")
+    .replace(/[ÓÒÖÔ]/g, "O").replace(/[ÚÙÜÛ]/g, "U").replace(/Ñ/g, "N")
+    .replace(/[^A-Z\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Devuelve los tokens (palabras) de un nombre como Set, para comparar por intersección
+function tokensNombre(nombre) {
+  var norm = normalizarNombre(nombre);
+  if (!norm) return [];
+  return norm.split(" ").filter(function(t){ return t.length >= 3; }); // ignorar iniciales sueltas
+}
+
+// Dos nombres "matchean" si comparten al menos 2 tokens significativos (apellido + nombre)
+// o si uno tiene pocos tokens (ej "A. Zanotto") y comparten el apellido
+function nombresCoincidenFlexible(n1, n2) {
+  var t1 = tokensNombre(n1);
+  var t2 = tokensNombre(n2);
+  if (t1.length === 0 || t2.length === 0) return false;
+  var comunes = t1.filter(function(t){ return t2.indexOf(t) !== -1; });
+
+  // 2+ tokens en común = misma persona (ej: RUBIO + NICOLAS)
+  if (comunes.length >= 2) return true;
+
+  // Si alguno de los nombres tiene 1 solo token significativo (ej "A. Zanotto" → ["ZANOTTO"]),
+  // permitimos match con 1 token compartido (el apellido)
+  if ((t1.length === 1 || t2.length === 1) && comunes.length >= 1) return true;
+
+  return false;
+}
+
 function esSupervisor(legajo, nombre) {
   if (!legajo && !nombre) return false;
-  return (MAESTROS.responsables||[]).some(function(r){
+
+  // 1. Buscar en tabla RESPONSABLES por legajo exacto
+  var enResponsables = (MAESTROS.responsables||[]).some(function(r){
     if (legajo && r.legajo && String(r.legajo) === String(legajo)) return true;
-    if (nombre && r.nombre && String(r.nombre).toUpperCase() === String(nombre).toUpperCase()) return true;
+    // 2. Match por nombre flexible (tolera distinto orden/formato)
+    if (nombre && r.nombre && nombresCoincidenFlexible(r.nombre, nombre)) return true;
     return false;
   });
+  if (enResponsables) return true;
+
+  // 3. Buscar en PERSONAL por legajo y revisar si su rol NO es operario
+  if (legajo) {
+    var persona = (MAESTROS.personal||[]).filter(function(p){
+      return String(p.legajo) === String(legajo);
+    })[0];
+    if (persona && persona.rol) {
+      var rol = String(persona.rol).toLowerCase().trim();
+      if (rol && rol !== "operario" && rol !== "") return true;
+    }
+  }
+
+  // 4. Buscar en PERSONAL por nombre flexible y revisar rol
+  if (nombre) {
+    var personaPorNombre = (MAESTROS.personal||[]).filter(function(p){
+      return p.nombre && nombresCoincidenFlexible(p.nombre, nombre);
+    })[0];
+    if (personaPorNombre && personaPorNombre.rol) {
+      var rol2 = String(personaPorNombre.rol).toLowerCase().trim();
+      if (rol2 && rol2 !== "operario" && rol2 !== "") return true;
+    }
+  }
+
+  return false;
 }
 
 function inLast30Days(fechaStr) {
@@ -641,7 +707,8 @@ function calculateLeadingKPIs() {
   var observacionesMes = ultimoMes.filter(function(e){ return e.tipo === "OBSERVACION"; });
   var accidentesMes = ultimoMes.filter(function(e){ return e.tipo === "ACCIDENTE"; });
 
-  // KPI 1 — % cargado por operarios
+  // KPI 1 — % cargado por operarios (no por jefes/supervisores)
+  // Si no hay reportes, es 0. Si todos son de supervisores, también es 0 (correcto).
   var totalReportes = ultimoMes.length;
   var deOperarios = ultimoMes.filter(function(e){
     return !esSupervisor(e.reportado_por_legajo, e.reportado_por_nombre);
@@ -690,8 +757,8 @@ function calculateLeadingKPIs() {
     : null;
 
   return {
-    pctOperarios: { value: pctOperarios, target: 50, unit: "%" },
-    ratioCultura: { value: ratioCultura, target: 100, unit: ":1" },
+    pctOperarios: { value: pctOperarios, target: 50, unit: "%", detalle: deOperarios + " de " + totalReportes + " reportes" },
+    ratioCultura: { value: ratioCultura, target: 100, unit: ":1", detalle: observacionesMes.length + " obs / " + accidentesMes.length + " accid" },
     obsPorTrabajador: { value: obsPorTrabajador, target: 1, unit: "" },
     pctEnTermino: { value: pctEnTermino, target: 80, unit: "%" },
     tiempoPromedio: { value: tiempoPromedio, target: 14, unit: " días", invert: true } // menos es mejor
@@ -921,7 +988,7 @@ function renderLeadingKPIs() {
   html += '<div class="leading-kpi '+s1+'">'
     + '<div class="leading-kpi-label">Reportes de operarios</div>'
     + '<div class="leading-kpi-value">'+k.pctOperarios.value+'%</div>'
-    + '<div class="leading-kpi-target">target ≥ '+k.pctOperarios.target+'%</div>'
+    + '<div class="leading-kpi-target">target ≥ '+k.pctOperarios.target+'% · '+k.pctOperarios.detalle+'</div>'
     + '<span class="leading-kpi-status">'+kpiStatusLabel(s1)+'</span>'
     + '</div>';
 
@@ -931,7 +998,7 @@ function renderLeadingKPIs() {
   html += '<div class="leading-kpi '+s2+'">'
     + '<div class="leading-kpi-label">Ratio cultura (obs / accid)</div>'
     + '<div class="leading-kpi-value">'+ratioDisplay+'</div>'
-    + '<div class="leading-kpi-target">target ≥ '+k.ratioCultura.target+':1</div>'
+    + '<div class="leading-kpi-target">target ≥ '+k.ratioCultura.target+':1 · '+k.ratioCultura.detalle+'</div>'
     + '<span class="leading-kpi-status">'+kpiStatusLabel(s2)+'</span>'
     + '</div>';
 
@@ -1393,7 +1460,7 @@ function render() {
       else if (e.estado === "Cerrado") estadoClass = "cerrado";
       else if (e.estado === "Sin acciones") estadoClass = "tratamiento";
       html += '<tr class="row-clickable" onclick="openModal(\''+escapeHTML(e.evento_id)+'\')">'
-        + '<td><code style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code></td>'
+        + '<td><code style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code>'+(e.foto_url?' <span title="Tiene foto">📷</span>':'')+'</td>'
         + '<td>'+formatDate(e.fecha_evento)+'</td>'
         + '<td><span class="badge '+meta.className+'">'+meta.icon+' '+meta.label+'</span></td>'
         + '<td>'+(e.sector||"—")+'</td>'
@@ -1527,7 +1594,13 @@ function openModal(eventoId) {
 
   // Foto
   if (ev.foto_url) {
-    html += '<div style="margin-top:12px;text-align:center;"><img src="'+ev.foto_url+'" style="max-width:100%;max-height:300px;border-radius:8px;" alt="Foto"/></div>';
+    html += '<div style="margin-top:12px;text-align:center;">'
+      + '<div style="font-size:11px;color:var(--t2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">📷 Foto del evento</div>'
+      + '<a href="'+escapeHTML(ev.foto_url)+'" target="_blank" rel="noopener" title="Click para ver en grande">'
+      + '<img src="'+escapeHTML(ev.foto_url)+'" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--border);cursor:pointer;" alt="Foto del evento"/>'
+      + '</a>'
+      + '<div style="font-size:10px;color:var(--t3);margin-top:4px;">Click en la imagen para verla en grande</div>'
+      + '</div>';
   }
 
   // Acciones
