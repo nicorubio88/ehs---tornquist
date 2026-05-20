@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registrar Evento — EHS Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0;
+    --brand-400:#34D399; --brand-500:#10B981; --brand-600:#059669;
+    --brand-700:#047857; --brand-800:#065F46; --brand-900:#064E3B;
+    --ink-50:#F8FAFC; --ink-100:#F1F5F9; --ink-200:#E2E8F0;
+    --ink-400:#94A3B8; --ink-500:#64748B; --ink-700:#334155;
+    --ink-800:#1E293B; --ink-900:#0F172A;
+    --observation:#1E40AF; --conversation:#0F766E; --incident:#B45309;
+    --accident:#B91C1C; --environment:#15803D;
+    --shadow-sm:0 1px 2px rgba(15,23,42,.06);
+    --shadow-md:0 4px 12px rgba(15,23,42,.08);
+    --shadow-lg:0 20px 40px rgba(4,120,87,.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:'Inter Tight',system-ui,sans-serif;
+    background:var(--ink-50); color:var(--ink-800);
+    min-height:100vh; letter-spacing:-.01em; padding:0;
+  }
+  .topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 20px; border-bottom:1px solid var(--ink-200);
+    background:#fff; position:sticky; top:0; z-index:10;
+  }
+  .topbar-back { font-size:13px; color:var(--ink-500); text-decoration:none; }
+  .topbar-back:hover { color:var(--ink-800); }
+  .topbar-title { font-size:14px; font-weight:600; color:var(--ink-900); }
+  .container { max-width:680px; margin:0 auto; padding:20px 16px 80px; }
+
+  .progress {
+    display:flex; gap:6px; margin-bottom:24px;
+  }
+  .progress-step {
+    flex:1; height:4px; background:var(--ink-200); border-radius:2px; transition:all .3s;
+  }
+  .progress-step.active { background:var(--brand-600); }
+  .progress-step.done { background:var(--brand-400); }
+
+  .step-label {
+    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600;
+    color:var(--ink-500); text-transform:uppercase; letter-spacing:.1em;
+    margin-bottom:8px;
+  }
+  h1 {
+    font-size:24px; font-weight:700; color:var(--ink-900);
+    margin-bottom:8px; letter-spacing:-.02em;
+  }
+  .subtitle { color:var(--ink-500); font-size:14px; margin-bottom:24px; }
+
+  .section {
+    background:#fff; border:1px solid var(--ink-200); border-radius:14px;
+    padding:18px; margin-bottom:14px; box-shadow:var(--shadow-sm);
+  }
+  .section-title {
+    font-size:15px; font-weight:700; margin-bottom:14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .field { margin-bottom:14px; }
+  .field:last-child { margin-bottom:0; }
+  .field label {
+    display:block; font-size:12px; font-weight:600; color:var(--ink-700);
+    margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .req { color:var(--accident); margin-left:2px; }
+  .field input, .field textarea, .field select {
+    width:100%; padding:10px 12px; border:1px solid var(--ink-200);
+    border-radius:8px; font:inherit; font-size:14px; color:var(--ink-900);
+    background:#fff; transition:all .15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline:none; border-color:var(--brand-500);
+    box-shadow:0 0 0 3px var(--brand-100);
+  }
+  .field textarea { resize:vertical; min-height:80px; line-height:1.5; }
+  .field-hint { font-size:11px; color:var(--ink-400); margin-top:4px; }
+  .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:520px) { .field-row { grid-template-columns:1fr; } }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip {
+    padding:9px 14px; border:1.5px solid var(--ink-200); border-radius:999px;
+    background:#fff; font-size:13px; font-weight:500; color:var(--ink-700);
+    cursor:pointer; transition:all .15s;
+  }
+  .chip:hover { border-color:var(--ink-400); }
+  .chip.active {
+    background:var(--brand-50); border-color:var(--brand-600);
+    color:var(--brand-800); font-weight:600;
+  }
+  .chip.danger.active { background:#FEF2F2; border-color:var(--accident); color:var(--accident); }
+  .chip.warn.active { background:#FFFBEB; border-color:var(--incident); color:var(--incident); }
+
+  .type-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:10px;
+  }
+  .type-card {
+    border:1.5px solid var(--ink-200); border-radius:12px;
+    padding:14px 12px; cursor:pointer; background:#fff;
+    transition:all .15s; text-align:left;
+  }
+  .type-card:hover { transform:translateY(-1px); box-shadow:var(--shadow-md); }
+  .type-card.active { border-width:2px; padding:13px 11px; }
+  .type-card.active.observation { border-color:var(--observation); background:#EFF6FF; }
+  .type-card.active.conversation { border-color:var(--conversation); background:#F0FDFA; }
+  .type-card.active.incident { border-color:var(--incident); background:#FFFBEB; }
+  .type-card.active.accident { border-color:var(--accident); background:#FEF2F2; }
+  .type-card.active.environment { border-color:var(--environment); background:#F0FDF4; }
+  .type-icon {
+    font-size:24px; margin-bottom:6px; display:block;
+  }
+  .type-name { font-size:13px; font-weight:700; color:var(--ink-900); margin-bottom:2px; }
+  .type-desc { font-size:11px; color:var(--ink-500); line-height:1.3; }
+
+  .nav-buttons {
+    display:flex; gap:10px; margin-top:20px; padding-top:14px;
+    border-top:1px solid var(--ink-200);
+  }
+  .btn {
+    flex:1; padding:12px 18px; border-radius:10px; border:none;
+    font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
+    transition:all .15s;
+  }
+  .btn-prev { background:#fff; color:var(--ink-700); border:1.5px solid var(--ink-200); }
+  .btn-prev:hover { border-color:var(--ink-400); }
+  .btn-next, .btn-submit {
+    background:var(--brand-600); color:#fff;
+  }
+  .btn-next:hover, .btn-submit:hover { background:var(--brand-700); }
+  .btn-next:disabled, .btn-submit:disabled {
+    background:var(--ink-200); cursor:not-allowed;
+  }
+
+  .review-row {
+    display:flex; padding:8px 0; border-bottom:1px solid var(--ink-100);
+    font-size:13px;
+  }
+  .review-row:last-child { border-bottom:none; }
+  .review-label {
+    flex:0 0 40%; font-weight:600; color:var(--ink-500);
+    text-transform:uppercase; font-size:11px; letter-spacing:.04em;
+  }
+  .review-value { flex:1; color:var(--ink-900); }
+
+  .loading-overlay {
+    position:fixed; inset:0; background:rgba(255,255,255,.95);
+    display:flex; align-items:center; justify-content:center;
+    z-index:100; flex-direction:column; gap:14px;
+  }
+  .spinner {
+    width:40px; height:40px; border:3px solid var(--ink-200);
+    border-top-color:var(--brand-600); border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .success-screen {
+    text-align:center; padding:40px 20px;
+  }
+  .success-icon {
+    width:64px; height:64px; border-radius:50%;
+    background:var(--brand-100); color:var(--brand-700);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 16px; font-size:32px;
+  }
+  .success-screen h2 { font-size:20px; margin-bottom:8px; }
+  .success-screen p { color:var(--ink-500); margin-bottom:20px; }
+  .success-id {
+    display:inline-block; font-family:'JetBrains Mono',monospace;
+    font-size:13px; padding:6px 12px; background:var(--ink-100);
+    border-radius:6px; margin-bottom:20px;
+  }
+
+  .error-banner {
+    background:#FEF2F2; border:1px solid #FECACA; color:#991B1B;
+    padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px;
+  }
+
+  /* Banner inspiracional no-punitivo */
+  .culture-banner {
+    background:linear-gradient(135deg, var(--brand-50) 0%, #ECFDF5 100%);
+    border:1px solid var(--brand-200); border-radius:12px;
+    padding:14px 18px; margin-bottom:16px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .culture-banner-icon {
+    width:36px; height:36px; flex:0 0 36px;
+    border-radius:50%; background:var(--brand-600);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:18px;
+  }
+  .culture-banner-text {
+    font-size:13px; line-height:1.45; color:var(--brand-900);
+    font-weight:500;
+  }
+  .culture-banner-text strong { color:var(--brand-700); font-weight:700; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html" class="topbar-back">← Inicio</a>
+  <span class="topbar-title">Registrar Evento</span>
+  <span style="width:50px;"></span>
+</div>
+
+<div class="container" id="app">
+  <div style="text-align:center;padding:40px 20px;">
+    <div class="spinner" style="margin:0 auto 14px;"></div>
+    <p style="color:var(--ink-500);font-size:13px;">Cargando datos maestros...</p>
+  </div>
+</div>
+
+<script>
+// =============================================
+var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMoQM2DkE0FNwWKQwfJNluPqc0pg2TKv6MQs0tYUFpRSb3fk8E6vxtePJ0SKs0mkY/exec";
+// =============================================
+
+// =============================================
+// 💚 MENSAJE DE CULTURA (no punitivo) — EDITAR ACÁ
+// Aparece en el formulario al elegir Observación o Conversación.
+// Refuerza la cultura BBS de reporte sin culpa.
+var CULTURE_MESSAGE = "Cada observación que cargás cuida a un compañero. Este sistema es para <strong>aprender y mejorar</strong>, no para sancionar.";
+// =============================================
+
+// Subtipos válidos por tipo
+var SUBTIPOS = {
+  "OBSERVACION":  ["Acto inseguro", "Condición insegura"],
+  "CONVERSACION": ["Refuerzo positivo", "Coaching correctivo", "Charla de seguridad"],
+  "INCIDENTE":    ["Casi accidente / cuasi accidente", "Daño material", "Falla equipo con riesgo"],
+  "ACCIDENTE":    ["Lesión leve sin baja", "Lesión leve con baja", "Lesión grave", "Fatal"],
+  "AMBIENTE":     ["Derrame", "Fuga gas/vapor", "Emisión no controlada", "Residuo mal gestionado", "Ruido fuera de norma"]
+};
+
+var TIPO_META = {
+  "OBSERVACION":  { icon:"👁", label:"Observación", desc:"Acto/condición insegura, casi accidente", className:"observation" },
+  "CONVERSACION": { icon:"💬", label:"Conversación", desc:"Diálogo de seguridad", className:"conversation" },
+  "INCIDENTE":    { icon:"⚠️", label:"Incidente", desc:"Daño material, cuasi accidente", className:"incident" },
+  "ACCIDENTE":    { icon:"🔴", label:"Accidente", desc:"Lesión a persona", className:"accident" },
+  "AMBIENTE":     { icon:"🌿", label:"Medio Ambiente", desc:"Derrame, fuga, emisión", className:"environment" }
+};
+
+var TURNOS = ["A","B","C","D","Diurno"];
+var BODY_PARTS = ["Cabeza","Ojos","Cara","Cuello","Hombro","Brazo","Mano","Dedos","Tronco","Espalda","Cadera","Pierna","Rodilla","Pie","Múltiples"];
+var TIPO_LESION = ["Corte","Golpe","Quemadura","Aplastamiento","Esguince","Fractura","Atrapamiento","Caída","Proyección","Eléctrico","Químico","Otro"];
+var MEDIOS = ["Suelo","Agua","Aire","Múltiple"];
+var UNIDADES = ["L","kg","m³","ppm","unidades"];
+
+// Estado global
+var MAESTROS = { personal:[], sectores:[], responsables:[], sustancias:[] };
+var PERSONAL_BY_LEGAJO = {};
+var PERSONAL_BY_NOMBRE = {};
+
+var state = {
+  step: 0,
+  totalSteps: 5,
+  form: {
+    tipo:"", subtipo:"",
+    fecha_evento:"", hora_evento:"", sector:"", turno:"",
+    reportado_por_legajo:"", reportado_por_nombre:"",
+    persona_legajo:"", persona_nombre:"",
+    descripcion:"", prioridad:"",
+    // Específicos
+    obs_tipo_acto_condicion:"", obs_accion_inmediata:"",
+    obs_hablo_persona:"", obs_causa_acto:"", obs_estado_observado:"",
+    obs_genera_ot:"", obs_parada_equipo:"", obs_tipo_riesgo:"",
+    conv_tema:"", conv_compromiso:"",
+    conv_refuerzo_positivo:"", conv_propuesta_propia:"", conv_origen:"",
+    inc_equipo_afectado:"", inc_dano_estimado_ars:"", inc_accion_inmediata:"",
+    inc_notif_responsable:"", inc_notif_a_quien:"",
+    inc_estado_mental:"", inc_error_critico:"",
+    acc_parte_cuerpo:"", acc_tipo_lesion:"", acc_mecanismo:"",
+    acc_testigo1_legajo:"", acc_testigo2_legajo:"",
+    acc_notif_art:"", acc_hora_notif_art:"", acc_dias_baja_estimados:"",
+    acc_accion_inmediata:"", acc_notif_responsable:"", acc_notif_a_quien:"",
+    acc_estado_mental:"", acc_error_critico:"",
+    amb_sustancia:"", amb_cantidad:"", amb_unidad:"",
+    amb_medio_impactado:"", amb_contencion_aplicada:"", amb_notif_autoridad:"",
+    amb_fuente:"", amb_llego_pluvial:"",
+    // Nuevos campos: tarjeta de aviso de riesgo
+    obs_tarjeta_aviso:"", obs_nro_tarjeta:"",
+    // Acción correctiva integrada (opcional)
+    accion_descripcion:"", accion_prioridad:"", accion_fecha_cierre:"",
+    accion_responsable_nombre:"", accion_responsable_legajo:"",
+    // Foto (base64 comprimida, se sube a Drive al guardar)
+    foto_base64:"", foto_nombre:""
+  },
+  saving: false,
+  saved: null,
+  error: null
+};
+
+// =============================================
+// CARGA INICIAL DE MAESTROS
+// =============================================
+// =============================================
+// HELPERS
+// =============================================
+// Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
+function escapeHTML(s) {
+  if (s === null || s === undefined) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function loadMaestros() {
+  fetch(APPS_SCRIPT_URL + "?tipo=maestros")
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      MAESTROS = data || MAESTROS;
+      // Construir índices
+      (MAESTROS.personal || []).forEach(function(p){
+        if (p.legajo) PERSONAL_BY_LEGAJO[String(p.legajo)] = p.nombre;
+        if (p.nombre) PERSONAL_BY_NOMBRE[String(p.nombre).toUpperCase()] = p.legajo;
+      });
+      // Pre-llenar fecha y hora con valores actuales
+      var now = new Date();
+      state.form.fecha_evento = now.toISOString().substring(0,10);
+      state.form.hora_evento = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+      injectDatalists();
+      render();
+    })
+    .catch(function(err){
+      document.getElementById("app").innerHTML =
+        '<div class="error-banner">No pude cargar los datos maestros desde el servidor. Reintentá en unos segundos. Detalle: '+err.message+'</div>'+
+        '<button class="btn btn-next" onclick="loadMaestros()">Reintentar</button>';
+    });
+}
+
+function injectDatalists() {
+  if (document.getElementById("dlPersonas")) return;
+  var html = '<datalist id="dlPersonas">';
+  (MAESTROS.personal||[]).forEach(function(p){
+    if (p.nombre) html += '<option value="'+p.nombre+'">';
+  });
+  html += '</datalist><datalist id="dlLegajos">';
+  (MAESTROS.personal||[]).forEach(function(p){
+    if (p.legajo) html += '<option value="'+p.legajo+'">'+(p.nombre||"")+'</option>';
+  });
+  html += '</datalist>';
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
+// =============================================
+// HELPERS
+// =============================================
+function setField(field, value) { state.form[field] = value; render(); }
+function setType(tipo) {
+  state.form.tipo = tipo;
+  state.form.subtipo = ""; // reset subtipo al cambiar tipo
+  render();
+}
+function setSubtipo(sub) { state.form.subtipo = sub; render(); }
+
+function onPersonaChange(field, v) {
+  state.form[field] = v;
+  // Auto-fill complementario
+  var key = String(v||"").trim().toUpperCase();
+  if (PERSONAL_BY_NOMBRE[key]) {
+    var legajoField = field.replace("nombre","legajo");
+    if (state.form.hasOwnProperty(legajoField)) state.form[legajoField] = String(PERSONAL_BY_NOMBRE[key]);
+  }
+  render();
+}
+function onLegajoChange(field, v) {
+  state.form[field] = v;
+  var key = String(v||"").trim();
+  if (PERSONAL_BY_LEGAJO[key]) {
+    var nombreField = field.replace("legajo","nombre");
+    if (state.form.hasOwnProperty(nombreField)) state.form[nombreField] = PERSONAL_BY_LEGAJO[key];
+  }
+  render();
+}
+
+function canNext() {
+  var s = state.step, f = state.form;
+  if (s === 0) return !!f.tipo && !!f.subtipo;
+  if (s === 1) return !!f.fecha_evento && !!f.hora_evento && !!f.sector && !!f.turno && !!f.prioridad;
+  if (s === 2) return !!f.reportado_por_legajo && !!f.reportado_por_nombre;
+  if (s === 3) return !!(f.descripcion && f.descripcion.trim().length >= 10);
+  return true;
+}
+
+function nextStep() { if (canNext()) { state.step++; render(); window.scrollTo(0,0); } }
+function prevStep() { if (state.step > 0) { state.step--; render(); window.scrollTo(0,0); } }
+
+// =============================================
+// RENDER
+// =============================================
+function render() {
+  if (state.saved) return renderSuccess();
+  var html = '';
+  // Progress bar
+  html += '<div class="progress">';
+  for (var i=0; i<state.totalSteps; i++) {
+    var cls = '';
+    if (i < state.step) cls = 'done';
+    else if (i === state.step) cls = 'active';
+    html += '<div class="progress-step '+cls+'"></div>';
+  }
+  html += '</div>';
+  html += '<div class="step-label">Paso '+(state.step+1)+' de '+state.totalSteps+'</div>';
+
+  if (state.error) html += '<div class="error-banner">'+state.error+'</div>';
+
+  if (state.step === 0) html += renderStep0();
+  else if (state.step === 1) html += renderStep1();
+  else if (state.step === 2) html += renderStep2();
+  else if (state.step === 3) html += renderStep3();
+  else if (state.step === 4) html += renderReview();
+
+  // Nav buttons
+  html += '<div class="nav-buttons">';
+  if (state.step > 0) html += '<button class="btn btn-prev" onclick="prevStep()">← Anterior</button>';
+  if (state.step < state.totalSteps - 1) {
+    html += '<button class="btn btn-next" onclick="nextStep()" '+(canNext()?"":"disabled")+'>Siguiente →</button>';
+  } else {
+    html += '<button class="btn btn-submit" onclick="submitForm()" '+(state.saving?"disabled":"")+'>'+(state.saving?(state.form.foto_base64?"Subiendo foto y guardando...":"Enviando..."):"✓ Enviar registro")+'</button>';
+  }
+  html += '</div>';
+
+  document.getElementById("app").innerHTML = html;
+}
+
+// PASO 0: Tipo y subtipo
+function renderStep0() {
+  var f = state.form;
+  var html = '<h1>¿Qué tipo de evento querés registrar?</h1>';
+  html += '<p class="subtitle">Elegí el tipo y luego el subtipo correspondiente.</p>';
+
+  // Pregunta de ruteo guiada — solo aparece si todavía no se eligió tipo
+  // Ayuda a evitar la duplicación entre "Observación de acto inseguro" y "Conversación correctiva"
+  if (!f.tipo) {
+    html += '<div class="section" style="background:linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);border-color:#7DD3FC;">'
+      + '<div class="section-title" style="color:#075985;">🧭 Te ayudo a elegir</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">Si ya sabés el tipo, ignorá esta guía. Si tenés dudas, respondé:</div>'
+      + '<div class="field"><label>¿El reporte incluye una conversación con una persona específica?</label><div class="chips">'
+      + '<div class="chip" onclick="rutearTipo(\'CONVERSACION\')">Sí — hablé con alguien</div>'
+      + '<div class="chip" onclick="rutearTipo(\'OBSERVACION\')">No — vi pero no hablé</div>'
+      + '<div class="chip" onclick="rutearTipo(\'INCIDENTE\')">Hubo un evento (algo se rompió o casi pasa)</div>'
+      + '<div class="chip" onclick="rutearTipo(\'ACCIDENTE\')">Hubo lesión a una persona</div>'
+      + '<div class="chip" onclick="rutearTipo(\'AMBIENTE\')">Es un evento ambiental</div>'
+      + '</div></div></div>';
+  }
+
+  html += '<div class="section"><div class="section-title">Tipo de evento</div>';
+  html += '<div class="type-grid">';
+  Object.keys(TIPO_META).forEach(function(tipo){
+    var meta = TIPO_META[tipo];
+    var active = f.tipo === tipo ? 'active '+meta.className : '';
+    html += '<div class="type-card '+active+'" onclick="setType(\''+tipo+'\')">'
+      + '<span class="type-icon">'+meta.icon+'</span>'
+      + '<div class="type-name">'+meta.label+'</div>'
+      + '<div class="type-desc">'+meta.desc+'</div>'
+      + '</div>';
+  });
+  html += '</div></div>';
+
+  if (f.tipo) {
+    // Banner inspiracional para Observación y Conversación
+    if (f.tipo === "OBSERVACION" || f.tipo === "CONVERSACION") {
+      html += '<div class="culture-banner">'
+        + '<div class="culture-banner-icon">💚</div>'
+        + '<div class="culture-banner-text">'+CULTURE_MESSAGE+'</div>'
+        + '</div>';
+    }
+    html += '<div class="section"><div class="section-title">Subtipo</div>';
+    html += '<div class="chips">';
+    SUBTIPOS[f.tipo].forEach(function(s){
+      var cls = (f.subtipo===s) ? 'chip active' : 'chip';
+      html += '<div class="'+cls+'" onclick="setSubtipo(\''+s+'\')">'+s+'</div>';
+    });
+    html += '</div></div>';
+  }
+  return html;
+}
+
+// Helper: ruteo desde la pregunta guiada del paso 0
+function rutearTipo(tipo) {
+  state.form.tipo = tipo;
+  state.form.subtipo = "";
+  render();
+  // Scroll al bloque de tipo
+  setTimeout(function(){
+    window.scrollTo({top: 200, behavior: "smooth"});
+  }, 50);
+}
+
+// PASO 1: Cuándo, dónde y prioridad
+function renderStep1() {
+  var f = state.form;
+  var html = '<h1>¿Cuándo y dónde ocurrió?</h1>';
+  html += '<p class="subtitle">Datos básicos del evento.</p>';
+
+  html += '<div class="section"><div class="section-title">📅 Fecha y hora</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Fecha <span class="req">*</span></label><input type="date" value="'+f.fecha_evento+'" onchange="setField(\'fecha_evento\',this.value)"></div>';
+  html += '<div class="field"><label>Hora <span class="req">*</span></label><input type="time" value="'+f.hora_evento+'" onchange="setField(\'hora_evento\',this.value)"></div>';
+  html += '</div></div>';
+
+  html += '<div class="section"><div class="section-title">📍 Ubicación</div>';
+  html += '<div class="field"><label>Sector <span class="req">*</span></label>';
+  html += '<select onchange="setField(\'sector\',this.value)"><option value="">— Elegir sector —</option>';
+  (MAESTROS.sectores||[]).forEach(function(s){
+    var sel = (f.sector===s.nombre)?' selected':'';
+    html += '<option value="'+s.nombre+'"'+sel+'>'+s.nombre+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>Turno <span class="req">*</span></label><div class="chips">';
+  TURNOS.forEach(function(t){
+    var cls = (f.turno===t)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'turno\',\''+t+'\')">'+t+'</div>';
+  });
+  html += '</div></div></div>';
+
+  html += '<div class="section"><div class="section-title">🚦 Prioridad</div>';
+  html += '<div class="chips">';
+  ["Alta","Media","Baja"].forEach(function(p){
+    var clsBase = 'chip';
+    if (p==="Alta") clsBase += ' danger';
+    else if (p==="Media") clsBase += ' warn';
+    var cls = (f.prioridad===p)? clsBase+' active' : clsBase;
+    html += '<div class="'+cls+'" onclick="setField(\'prioridad\',\''+p+'\')">'+p+'</div>';
+  });
+  html += '</div>';
+  html += '<div class="field-hint">Alta = requiere acción inmediata. Media = en el turno. Baja = puede esperar.</div>';
+  html += '</div>';
+  return html;
+}
+
+// PASO 2: Quién reporta y persona involucrada
+function renderStep2() {
+  var f = state.form;
+  var html = '<h1>¿Quién reporta?</h1>';
+  html += '<p class="subtitle">Identificación del reporte y de la persona involucrada (si aplica).</p>';
+
+  html += '<div class="section"><div class="section-title">👤 Reportado por</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Nombre <span class="req">*</span></label><input type="text" list="dlPersonas" value="'+escapeHTML(f.reportado_por_nombre)+'" placeholder="Apellido, Nombre" onchange="onPersonaChange(\'reportado_por_nombre\',this.value)"></div>';
+  html += '<div class="field"><label>Legajo <span class="req">*</span></label><input type="text" list="dlLegajos" value="'+escapeHTML(f.reportado_por_legajo)+'" placeholder="Número" onchange="onLegajoChange(\'reportado_por_legajo\',this.value)"></div>';
+  html += '</div></div>';
+
+  // Persona involucrada solo aplica para algunos tipos
+  if (["OBSERVACION","CONVERSACION","INCIDENTE","ACCIDENTE"].indexOf(f.tipo) >= 0) {
+    var labelPersona = "Persona involucrada";
+    if (f.tipo === "ACCIDENTE") labelPersona = "Persona accidentada";
+    else if (f.tipo === "CONVERSACION") labelPersona = "Persona con quien se habló";
+    else if (f.tipo === "OBSERVACION") labelPersona = "Persona observada (opcional)";
+
+    var req = (f.tipo === "ACCIDENTE" || f.tipo === "CONVERSACION") ? '<span class="req">*</span>' : '';
+
+    html += '<div class="section"><div class="section-title">👥 '+labelPersona+'</div>';
+    html += '<div class="field-row">';
+    html += '<div class="field"><label>Nombre '+req+'</label><input type="text" list="dlPersonas" value="'+escapeHTML(f.persona_nombre)+'" placeholder="Apellido, Nombre" onchange="onPersonaChange(\'persona_nombre\',this.value)"></div>';
+    html += '<div class="field"><label>Legajo</label><input type="text" list="dlLegajos" value="'+escapeHTML(f.persona_legajo)+'" placeholder="Número" onchange="onLegajoChange(\'persona_legajo\',this.value)"></div>';
+    html += '</div></div>';
+  }
+  return html;
+}
+
+// PASO 3: Detalle específico del tipo
+function renderStep3() {
+  var f = state.form;
+  var html = '<h1>Detalles del '+(TIPO_META[f.tipo]||{label:""}).label+'</h1>';
+  html += '<p class="subtitle">Contanos qué pasó. Mientras más detalle, mejor el análisis posterior.</p>';
+
+  html += '<div class="section"><div class="section-title">📄 Descripción</div>';
+  html += '<div class="field"><label>¿Qué pasó exactamente? <span class="req">*</span></label>'
+    + '<textarea placeholder="Describí en detalle el evento..." onchange="setField(\'descripcion\',this.value)">'+escapeHTML(f.descripcion)+'</textarea>'
+    + '<div class="field-hint">Mínimo 10 caracteres.</div></div></div>';
+
+  // Bloques específicos por tipo
+  if (f.tipo === "OBSERVACION") html += renderObservacion(f);
+  else if (f.tipo === "CONVERSACION") html += renderConversacion(f);
+  else if (f.tipo === "INCIDENTE") html += renderIncidente(f);
+  else if (f.tipo === "ACCIDENTE") html += renderAccidente(f);
+  else if (f.tipo === "AMBIENTE") html += renderAmbiente(f);
+
+  return html;
+}
+
+function renderObservacion(f) {
+  // El subtipo (Acto inseguro / Condición insegura) ya se eligió en paso 0
+  // No volvemos a preguntarlo acá. Lo mostramos como referencia.
+  var html = '<div class="section"><div class="section-title">👁 Observación</div>';
+  if (f.subtipo) {
+    html += '<div style="font-size:12px;color:var(--t2);margin-bottom:6px;">Subtipo elegido: <span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:500;font-size:12px;">'+escapeHTML(f.subtipo)+'</span></div>';
+  }
+  html += '<div class="field-hint" style="background:#FEF8E1;border-left:3px solid #F59E0B;padding:8px 12px;border-radius:4px;font-size:12px;color:#78350F;">'
+    + '<strong>Tip:</strong> Si conversaste con la persona involucrada, mejor cargá una Conversación en su lugar (queda mejor registrado el diálogo y la cultura BBS).'
+    + '</div>';
+  html += '</div>';
+
+  // Sincronizamos obs_tipo_acto_condicion con subtipo para backward compat con KPIs y dashboard
+  // (lo seteamos invisible cuando se entra acá)
+  if (f.subtipo && f.obs_tipo_acto_condicion !== f.subtipo) {
+    f.obs_tipo_acto_condicion = f.subtipo;
+  }
+
+  // Bloque condicional: Acto inseguro → análisis SafeStart
+  if (f.subtipo === "Acto inseguro") {
+    html += '<div class="section" style="background:linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);border-color:#BFDBFE;">'
+      + '<div class="section-title" style="color:#1E40AF;">🧠 Análisis del acto</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">Estos datos son opcionales pero ayudan a entender la causa raíz.</div>';
+    html += '<div class="field"><label>Estado observado en la persona <span style="font-weight:400;color:#64748B;font-size:11px;">(SafeStart)</span></label><div class="chips">';
+    ["Prisa","Frustración","Fatiga","Complacencia","Ninguno detectable"].forEach(function(o){
+      var cls = (f.obs_estado_observado===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_estado_observado\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div>';
+    html += '<div class="field"><label>Causa más probable del acto</label><div class="chips">';
+    ["Desconocimiento","Costumbre","Presión por tiempo","Distracción","Otro"].forEach(function(o){
+      var cls = (f.obs_causa_acto===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_causa_acto\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div></div>';
+  }
+
+  // Bloque condicional: Condición insegura → gestión del desvío + acción correctiva
+  if (f.subtipo === "Condición insegura") {
+    html += '<div class="section" style="background:linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);border-color:#FDE68A;">'
+      + '<div class="section-title" style="color:#B45309;">🔧 Gestión del desvío</div>'
+      + '<div class="field-hint" style="margin-bottom:12px;">Datos opcionales para gestión y trazabilidad.</div>'
+      + '<div class="field"><label>Tipo de riesgo</label><div class="chips">';
+    ["Mecánico","Eléctrico","Químico","Ergonómico","Físico","Locativo"].forEach(function(o){
+      var cls = (f.obs_tipo_riesgo===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_tipo_riesgo\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div>';
+    html += '<div class="field"><label>¿Se generó tarjeta de aviso de riesgo?</label><div class="chips">';
+    ["Sí","No","No corresponde"].forEach(function(o){
+      var cls = (f.obs_tarjeta_aviso===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_tarjeta_aviso\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div>';
+    if (f.obs_tarjeta_aviso === "Sí") {
+      html += '<div class="field"><label>N° de tarjeta</label><input type="text" value="'+escapeHTML(f.obs_nro_tarjeta)+'" placeholder="Ej: TR-2026-045" onchange="setField(\'obs_nro_tarjeta\',this.value)"></div>';
+    }
+    html += '<div class="field"><label>¿Necesita parada de equipo?</label><div class="chips">';
+    ["Sí","No","Solo paro programado"].forEach(function(o){
+      var cls = (f.obs_parada_equipo===o)?'chip active':'chip';
+      html += '<div class="'+cls+'" onclick="setField(\'obs_parada_equipo\',\''+o+'\')">'+o+'</div>';
+    });
+    html += '</div></div>';
+    html += '</div>';
+
+    // Bloque acción correctiva integrada (opcional)
+    html += renderAccionCorrectivaIntegrada(f);
+
+    // Bloque de foto (opcional)
+    html += renderBloqueFoto(f);
+  }
+
+  return html;
+}
+
+// =============================================
+// Bloque reusable: acción correctiva integrada
+// Aparece en Condición insegura, Incidente y Medio Ambiente
+// Si se llena, se crea automáticamente al guardar el evento
+// =============================================
+function renderAccionCorrectivaIntegrada(f) {
+  var personasList = [];
+  (MAESTROS.responsables||[]).forEach(function(r){
+    personasList.push({legajo: r.legajo||"", nombre: r.nombre||"", esResp: true});
+  });
+  (MAESTROS.personal||[]).forEach(function(p){
+    var legStr = String(p.legajo||"");
+    var nomStr = String(p.nombre||"").toUpperCase();
+    var dup = personasList.some(function(x){
+      return (legStr && String(x.legajo)===legStr) ||
+             (nomStr && String(x.nombre).toUpperCase()===nomStr);
+    });
+    if (!dup) personasList.push({legajo: legStr, nombre: p.nombre||"", esResp: false});
+  });
+
+  var html = '<div class="section" style="background:linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);border-color:#86EFAC;">'
+    + '<div class="section-title" style="color:#166534;">📋 Acción correctiva (opcional)</div>'
+    + '<div class="field-hint" style="margin-bottom:12px;">Si completás los siguientes campos, se crea automáticamente una acción correctiva asignada que aparece en "Mis pendientes" del responsable y en seguimiento.</div>';
+
+  html += '<div class="field"><label>Acción necesaria</label><textarea placeholder="¿Qué hay que hacer para eliminar/controlar el desvío?" onchange="setField(\'accion_descripcion\',this.value)">'+escapeHTML(f.accion_descripcion)+'</textarea></div>';
+
+  html += '<div class="field-row">';
+  html += '<div class="field" style="flex:1;"><label>Prioridad</label><div class="chips">';
+  ["Alta","Media","Baja"].forEach(function(o){
+    var cls = (f.accion_prioridad===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'accion_prioridad\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field" style="flex:1;"><label>Fecha de cierre</label><input type="date" value="'+escapeHTML(f.accion_fecha_cierre)+'" onchange="setField(\'accion_fecha_cierre\',this.value)"></div>';
+  html += '</div>';
+
+  html += '<div class="field"><label>Responsable asignado</label>'
+    + '<select onchange="setAccionResponsable(this)">'
+    + '<option value="">— Sin asignar —</option>';
+  personasList.forEach(function(p){
+    var nombre = String(p.nombre||"");
+    var legajo = String(p.legajo||"");
+    var label = (p.esResp?"★ ":"") + nombre + (legajo?" (#"+legajo+")":"");
+    var selected = (f.accion_responsable_nombre === nombre) ? " selected" : "";
+    html += '<option value="'+escapeHTML(nombre)+'" data-legajo="'+escapeHTML(legajo)+'"'+selected+'>'+escapeHTML(label)+'</option>';
+  });
+  html += '</select>';
+  html += '<div class="field-hint" style="margin-top:4px;font-size:11px;">★ = supervisor. Si asignás, la acción aparecerá en su pantalla "Mis pendientes".</div>';
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+// Setter especial: toma legajo del option seleccionado y guarda ambos campos
+function setAccionResponsable(selectEl) {
+  var opt = selectEl.options[selectEl.selectedIndex];
+  var nombre = opt ? opt.value : "";
+  var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
+  state.form.accion_responsable_nombre = nombre;
+  state.form.accion_responsable_legajo = legajo;
+  render();
+}
+
+function renderBloqueFoto(f) {
+  var html = '<div class="section" style="background:linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);border-color:#7DD3FC;">'
+    + '<div class="section-title" style="color:#075985;">📷 Foto (opcional)</div>'
+    + '<div class="field-hint" style="margin-bottom:12px;">Una foto ayuda a que el responsable vea exactamente qué hay que corregir. La imagen se comprime automáticamente antes de subir.</div>';
+
+  if (f.foto_base64) {
+    // Ya hay foto cargada — mostrar preview
+    html += '<div style="text-align:center;">';
+    html += '<img src="'+f.foto_base64+'" style="max-width:100%;max-height:240px;border-radius:8px;border:1px solid var(--border);" alt="Vista previa">';
+    html += '<div style="margin-top:8px;">';
+    html += '<button type="button" onclick="quitarFoto()" style="padding:8px 16px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">✕ Quitar foto</button>';
+    html += '</div></div>';
+  } else {
+    // Sin foto — mostrar botón de captura
+    html += '<div style="text-align:center;padding:10px;">';
+    html += '<label style="display:inline-block;padding:14px 24px;background:#0284C7;color:#fff;border-radius:10px;font-size:14px;cursor:pointer;font-weight:600;">';
+    html += '📷 Sacar / elegir foto';
+    html += '<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="procesarFoto(this)">';
+    html += '</label>';
+    html += '<div id="foto_status" style="margin-top:10px;font-size:12px;color:var(--t2);"></div>';
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// Procesa la foto: comprime con canvas y guarda en state como base64
+function procesarFoto(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+
+  var statusEl = document.getElementById("foto_status");
+  if (statusEl) statusEl.textContent = "Procesando imagen...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      // Redimensionar a máx 1280px lado mayor
+      var maxLado = 1280;
+      var w = img.width, h = img.height;
+      if (w > h && w > maxLado) { h = Math.round(h * maxLado / w); w = maxLado; }
+      else if (h >= w && h > maxLado) { w = Math.round(w * maxLado / h); h = maxLado; }
+
+      var canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Comprimir a JPEG 75%
+      var base64 = canvas.toDataURL("image/jpeg", 0.75);
+
+      state.form.foto_base64 = base64;
+      state.form.foto_nombre = file.name || "foto.jpg";
+
+      // Calcular tamaño aproximado
+      var sizeKB = Math.round(base64.length * 0.75 / 1024);
+      render();
+    };
+    img.onerror = function() {
+      if (statusEl) statusEl.textContent = "No se pudo leer la imagen. Probá con otra.";
+    };
+    img.src = e.target.result;
+  };
+  reader.onerror = function() {
+    if (statusEl) statusEl.textContent = "Error al leer el archivo.";
+  };
+  reader.readAsDataURL(file);
+}
+
+function quitarFoto() {
+  state.form.foto_base64 = "";
+  state.form.foto_nombre = "";
+  render();
+}
+
+
+function renderConversacion(f) {
+  var html = '<div class="section"><div class="section-title">💬 Conversación</div>';
+  html += '<div class="field"><label>¿Surgió de una observación previa?</label><div class="chips">';
+  ["Sí","No"].forEach(function(o){
+    var cls = (f.conv_origen===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'conv_origen\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div><div class="field-hint">Si Sí, podés vincular esta conversación con el acto inseguro que la motivó.</div></div>';
+  html += '<div class="field"><label>Tema tratado <span class="req">*</span></label><input type="text" value="'+escapeHTML(f.conv_tema)+'" placeholder="Ej: Uso de EPP en zona X" onchange="setField(\'conv_tema\',this.value)"></div>';
+  html += '<div class="field"><label>Compromiso asumido</label><textarea placeholder="¿Qué compromiso se asumió?" onchange="setField(\'conv_compromiso\',this.value)">'+escapeHTML(f.conv_compromiso)+'</textarea></div>';
+  html += '</div>';
+
+  // Bloque calidad de la conversación BBS
+  html += '<div class="section" style="background:linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);border-color:#A7F3D0;">'
+    + '<div class="section-title" style="color:#065F46;">🌱 Calidad de la conversación</div>'
+    + '<div class="field-hint" style="margin-bottom:12px;">Una conversación BBS de calidad empieza reconociendo lo positivo y deja que la persona descubra la mejora.</div>'
+    + '<div class="field"><label>¿Empezaste reconociendo algo positivo?</label><div class="chips">';
+  ["Sí","No"].forEach(function(o){
+    var cls = (f.conv_refuerzo_positivo===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'conv_refuerzo_positivo\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field"><label>¿La persona propuso ella misma la mejora?</label><div class="chips">';
+  ["Sí","No","Parcialmente"].forEach(function(o){
+    var cls = (f.conv_propuesta_propia===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'conv_propuesta_propia\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div></div>';
+
+  return html;
+}
+
+function renderIncidente(f) {
+  var html = '<div class="section"><div class="section-title">⚠️ Incidente</div>';
+  html += '<div class="field"><label>Equipo o instalación afectada</label><input type="text" value="'+escapeHTML(f.inc_equipo_afectado)+'" placeholder="Ej: Bomba P-101, Cinta 3" onchange="setField(\'inc_equipo_afectado\',this.value)"></div>';
+  html += '<div class="field"><label>Daño material estimado (ARS)</label><input type="number" value="'+f.inc_dano_estimado_ars+'" placeholder="0" onchange="setField(\'inc_dano_estimado_ars\',this.value)"></div>';
+  html += '<div class="field"><label>Acción inmediata</label><textarea placeholder="¿Qué se hizo?" onchange="setField(\'inc_accion_inmediata\',this.value)">'+escapeHTML(f.inc_accion_inmediata)+'</textarea></div>';
+  html += '<div class="field"><label>¿Se notificó al responsable del área?</label><div class="chips">';
+  ["Sí","No"].forEach(function(o){
+    var cls = (f.inc_notif_responsable===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'inc_notif_responsable\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  if (f.inc_notif_responsable === "Sí") {
+    html += '<div class="field"><label>¿A quién?</label><input type="text" value="'+escapeHTML(f.inc_notif_a_quien)+'" placeholder="Nombre del responsable" onchange="setField(\'inc_notif_a_quien\',this.value)"></div>';
+  }
+  html += '</div>';
+
+  // Bloque SafeStart — análisis de factor humano
+  html += '<div class="section" style="background:linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%);border-color:#E9D5FF;">'
+    + '<div class="section-title" style="color:#6B21A8;">🧠 Análisis SafeStart</div>'
+    + '<div class="field-hint" style="margin-bottom:12px;">El 90-95% de los incidentes tiene un estado mental detrás. Aprender a reconocerlo previene el próximo accidente.</div>'
+    + '<div class="field"><label>Estado mental al momento del incidente</label><div class="chips">';
+  ["Prisa","Frustración","Fatiga","Complacencia","Ninguno detectable"].forEach(function(o){
+    var cls = (f.inc_estado_mental===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'inc_estado_mental\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field"><label>Error crítico identificado</label><div class="chips">';
+  ["Ojos no en la tarea","Mente no en la tarea","Línea de fuego","Equilibrio/tracción/agarre","Ninguno"].forEach(function(o){
+    var cls = (f.inc_error_critico===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'inc_error_critico\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div></div>';
+
+  // Bloque acción correctiva integrada (opcional)
+  html += renderAccionCorrectivaIntegrada(f);
+
+  return html;
+}
+
+function renderAccidente(f) {
+  var html = '<div class="section"><div class="section-title">🔴 Accidente</div>';
+  html += '<div class="field"><label>Parte del cuerpo afectada <span class="req">*</span></label><select onchange="setField(\'acc_parte_cuerpo\',this.value)"><option value="">— Elegir —</option>';
+  BODY_PARTS.forEach(function(b){
+    html += '<option value="'+b+'"'+(f.acc_parte_cuerpo===b?' selected':'')+'>'+b+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>Tipo de lesión <span class="req">*</span></label><select onchange="setField(\'acc_tipo_lesion\',this.value)"><option value="">— Elegir —</option>';
+  TIPO_LESION.forEach(function(b){
+    html += '<option value="'+b+'"'+(f.acc_tipo_lesion===b?' selected':'')+'>'+b+'</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>Mecanismo (cómo se produjo) <span class="req">*</span></label><input type="text" value="'+escapeHTML(f.acc_mecanismo)+'" placeholder="Caída desde altura, atrapamiento, etc." onchange="setField(\'acc_mecanismo\',this.value)"></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Testigo 1 (legajo)</label><input type="text" list="dlLegajos" value="'+f.acc_testigo1_legajo+'" onchange="setField(\'acc_testigo1_legajo\',this.value)"></div>';
+  html += '<div class="field"><label>Testigo 2 (legajo)</label><input type="text" list="dlLegajos" value="'+f.acc_testigo2_legajo+'" onchange="setField(\'acc_testigo2_legajo\',this.value)"></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Días de baja estimados</label><input type="number" value="'+f.acc_dias_baja_estimados+'" placeholder="0" onchange="setField(\'acc_dias_baja_estimados\',this.value)"></div>';
+  html += '<div class="field"><label>Acción inmediata <span class="req">*</span></label><textarea placeholder="Atención brindada, derivación, etc." onchange="setField(\'acc_accion_inmediata\',this.value)">'+escapeHTML(f.acc_accion_inmediata)+'</textarea></div>';
+  html += '<div class="field"><label>¿Se notificó a la ART? <span class="req">*</span></label><div class="chips">';
+  ["Sí","No","En curso"].forEach(function(o){
+    var cls = (f.acc_notif_art===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'acc_notif_art\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  if (f.acc_notif_art === "Sí") {
+    html += '<div class="field"><label>Hora de notificación ART</label><input type="time" value="'+f.acc_hora_notif_art+'" onchange="setField(\'acc_hora_notif_art\',this.value)"></div>';
+  }
+  html += '</div>';
+
+  // Bloque SafeStart — análisis obligatorio del factor humano (Res. SRT 84/2012)
+  html += '<div class="section" style="background:linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%);border-color:#E9D5FF;">'
+    + '<div class="section-title" style="color:#6B21A8;">🧠 Análisis SafeStart <span style="font-weight:400;color:#64748B;font-size:11px;">(investigación de accidente)</span></div>'
+    + '<div class="field-hint" style="margin-bottom:12px;">Investigación del factor humano según Res. SRT 84/2012. Reconocer el patrón estado→error es clave para que no se repita.</div>'
+    + '<div class="field"><label>Estado mental previo al accidente <span class="req">*</span></label><div class="chips">';
+  ["Prisa","Frustración","Fatiga","Complacencia","Ninguno detectable"].forEach(function(o){
+    var cls = (f.acc_estado_mental===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'acc_estado_mental\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field"><label>Error crítico cometido <span class="req">*</span></label><div class="chips">';
+  ["Ojos no en la tarea","Mente no en la tarea","Línea de fuego","Equilibrio/tracción/agarre","Ninguno"].forEach(function(o){
+    var cls = (f.acc_error_critico===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'acc_error_critico\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div></div>';
+
+  return html;
+}
+
+function renderAmbiente(f) {
+  var html = '<div class="section"><div class="section-title">🌿 Medio Ambiente</div>';
+  html += '<div class="field"><label>Sustancia <span class="req">*</span></label><select onchange="setField(\'amb_sustancia\',this.value)"><option value="">— Elegir —</option>';
+  (MAESTROS.sustancias||[]).forEach(function(s){
+    html += '<option value="'+s.nombre+'"'+(f.amb_sustancia===s.nombre?' selected':'')+'>'+s.nombre+(s.tipo_riesgo?' ('+s.tipo_riesgo+')':'')+'</option>';
+  });
+  html += '<option value="Otra"'+(f.amb_sustancia==="Otra"?' selected':'')+'>Otra (especificar en descripción)</option>';
+  html += '</select></div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Cantidad estimada</label><input type="number" step="0.01" value="'+f.amb_cantidad+'" placeholder="0" onchange="setField(\'amb_cantidad\',this.value)"></div>';
+  html += '<div class="field"><label>Unidad</label><select onchange="setField(\'amb_unidad\',this.value)"><option value="">—</option>';
+  UNIDADES.forEach(function(u){
+    html += '<option value="'+u+'"'+(f.amb_unidad===u?' selected':'')+'>'+u+'</option>';
+  });
+  html += '</select></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Medio impactado <span class="req">*</span></label><div class="chips">';
+  MEDIOS.forEach(function(m){
+    var cls = (f.amb_medio_impactado===m)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'amb_medio_impactado\',\''+m+'\')">'+m+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field"><label>Fuente del derrame/fuga</label><div class="chips">';
+  ["Cañería","Tanque","Válvula","Transferencia","Tambor","Otro"].forEach(function(o){
+    var cls = (f.amb_fuente===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'amb_fuente\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field"><label>¿Llegó a desagüe pluvial o cuerpo de agua? <span class="req">*</span></label><div class="chips">';
+  ["No","Sí — pluvial","Sí — cuerpo de agua","No corresponde"].forEach(function(o){
+    var cls = (f.amb_llego_pluvial===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'amb_llego_pluvial\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '<div class="field"><label>Contención aplicada</label><textarea placeholder="¿Qué contención se aplicó?" onchange="setField(\'amb_contencion_aplicada\',this.value)">'+escapeHTML(f.amb_contencion_aplicada)+'</textarea></div>';
+  html += '<div class="field"><label>¿Se notificó autoridad ambiental?</label><div class="chips">';
+  ["Sí","No","No corresponde"].forEach(function(o){
+    var cls = (f.amb_notif_autoridad===o)?'chip active':'chip';
+    html += '<div class="'+cls+'" onclick="setField(\'amb_notif_autoridad\',\''+o+'\')">'+o+'</div>';
+  });
+  html += '</div></div>';
+  html += '</div>';
+
+  // Bloque acción correctiva integrada (opcional)
+  html += renderAccionCorrectivaIntegrada(f);
+
+  // Bloque de foto (opcional)
+  html += renderBloqueFoto(f);
+
+  return html;
+}
+function renderReview() {
+  var f = state.form;
+  var meta = TIPO_META[f.tipo] || {};
+  var html = '<h1>Revisá antes de enviar</h1>';
+  html += '<p class="subtitle">Si hay algo mal, volvé atrás. Una vez enviado queda registrado.</p>';
+
+  html += '<div class="section"><div class="section-title">'+meta.icon+' '+meta.label+' — '+escapeHTML(f.subtipo)+'</div>';
+  html += reviewRow("Fecha / Hora", f.fecha_evento + ' ' + f.hora_evento);
+  html += reviewRow("Sector", f.sector);
+  html += reviewRow("Turno", f.turno);
+  html += reviewRow("Prioridad", f.prioridad);
+  html += reviewRow("Reportado por", f.reportado_por_nombre + (f.reportado_por_legajo?' (Leg. '+escapeHTML(f.reportado_por_legajo)+')':''));
+  if (f.persona_nombre) html += reviewRow("Persona", f.persona_nombre + (f.persona_legajo?' (Leg. '+escapeHTML(f.persona_legajo)+')':''));
+  html += reviewRow("Descripción", f.descripcion);
+  html += '</div>';
+
+  // Específicos
+  if (f.tipo === "OBSERVACION") {
+    var hasObs = f.obs_tipo_acto_condicion || f.obs_causa_acto || f.obs_estado_observado || f.obs_parada_equipo || f.obs_tipo_riesgo || f.obs_tarjeta_aviso || f.obs_nro_tarjeta;
+    if (hasObs) {
+      html += '<div class="section">';
+      if (f.obs_tipo_acto_condicion) html += reviewRow("Tipo", f.obs_tipo_acto_condicion);
+      if (f.obs_estado_observado) html += reviewRow("Estado observado (SafeStart)", f.obs_estado_observado);
+      if (f.obs_causa_acto) html += reviewRow("Causa probable", f.obs_causa_acto);
+      if (f.obs_tipo_riesgo) html += reviewRow("Tipo de riesgo", f.obs_tipo_riesgo);
+      if (f.obs_tarjeta_aviso) html += reviewRow("Tarjeta de aviso de riesgo", f.obs_tarjeta_aviso);
+      if (f.obs_nro_tarjeta) html += reviewRow("N° tarjeta", f.obs_nro_tarjeta);
+      if (f.obs_parada_equipo) html += reviewRow("Parada de equipo", f.obs_parada_equipo);
+      html += '</div>';
+    }
+  }
+  if (f.tipo === "CONVERSACION") {
+    html += '<div class="section">';
+    if (f.conv_origen) html += reviewRow("Surgió de observación previa", f.conv_origen);
+    if (f.conv_tema) html += reviewRow("Tema", f.conv_tema);
+    if (f.conv_compromiso) html += reviewRow("Compromiso", f.conv_compromiso);
+    if (f.conv_refuerzo_positivo) html += reviewRow("Empezó con refuerzo positivo", f.conv_refuerzo_positivo);
+    if (f.conv_propuesta_propia) html += reviewRow("Propuesta de la propia persona", f.conv_propuesta_propia);
+    html += '</div>';
+  }
+  if (f.tipo === "INCIDENTE") {
+    html += '<div class="section">';
+    if (f.inc_equipo_afectado) html += reviewRow("Equipo", f.inc_equipo_afectado);
+    if (f.inc_dano_estimado_ars) html += reviewRow("Daño estimado", '$'+f.inc_dano_estimado_ars);
+    if (f.inc_accion_inmediata) html += reviewRow("Acción inmediata", f.inc_accion_inmediata);
+    if (f.inc_notif_responsable) html += reviewRow("Notif. responsable", f.inc_notif_responsable + (f.inc_notif_a_quien?' — '+f.inc_notif_a_quien:''));
+    if (f.inc_estado_mental) html += reviewRow("Estado mental (SafeStart)", f.inc_estado_mental);
+    if (f.inc_error_critico) html += reviewRow("Error crítico (SafeStart)", f.inc_error_critico);
+    html += '</div>';
+  }
+  if (f.tipo === "ACCIDENTE") {
+    html += '<div class="section">';
+    if (f.acc_parte_cuerpo) html += reviewRow("Parte del cuerpo", f.acc_parte_cuerpo);
+    if (f.acc_tipo_lesion) html += reviewRow("Tipo de lesión", f.acc_tipo_lesion);
+    if (f.acc_mecanismo) html += reviewRow("Mecanismo", f.acc_mecanismo);
+    if (f.acc_testigo1_legajo) html += reviewRow("Testigo 1", f.acc_testigo1_legajo);
+    if (f.acc_testigo2_legajo) html += reviewRow("Testigo 2", f.acc_testigo2_legajo);
+    if (f.acc_dias_baja_estimados) html += reviewRow("Días de baja", f.acc_dias_baja_estimados);
+    if (f.acc_accion_inmediata) html += reviewRow("Acción inmediata", f.acc_accion_inmediata);
+    if (f.acc_notif_art) html += reviewRow("Notif. ART", f.acc_notif_art + (f.acc_hora_notif_art?' a las '+f.acc_hora_notif_art:''));
+    if (f.acc_estado_mental) html += reviewRow("Estado mental previo (SafeStart)", f.acc_estado_mental);
+    if (f.acc_error_critico) html += reviewRow("Error crítico (SafeStart)", f.acc_error_critico);
+    html += '</div>';
+  }
+  if (f.tipo === "AMBIENTE") {
+    html += '<div class="section">';
+    if (f.amb_sustancia) html += reviewRow("Sustancia", f.amb_sustancia);
+    if (f.amb_cantidad) html += reviewRow("Cantidad", f.amb_cantidad+' '+(f.amb_unidad||''));
+    if (f.amb_fuente) html += reviewRow("Fuente", f.amb_fuente);
+    if (f.amb_medio_impactado) html += reviewRow("Medio impactado", f.amb_medio_impactado);
+    if (f.amb_llego_pluvial) html += reviewRow("Llegó a pluvial/cuerpo de agua", f.amb_llego_pluvial);
+    if (f.amb_contencion_aplicada) html += reviewRow("Contención", f.amb_contencion_aplicada);
+    if (f.amb_notif_autoridad) html += reviewRow("Notif. autoridad", f.amb_notif_autoridad);
+    html += '</div>';
+  }
+
+  // Acción correctiva integrada (si se llenó)
+  var puedeCargarAccion = (f.tipo === "OBSERVACION" && f.subtipo === "Condición insegura")
+    || f.tipo === "INCIDENTE" || f.tipo === "AMBIENTE";
+  if (puedeCargarAccion && f.accion_descripcion) {
+    html += '<div class="section" style="background:linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);border-color:#86EFAC;">';
+    html += '<div class="section-title" style="color:#166534;">📋 Acción correctiva a crear</div>';
+    html += reviewRow("Descripción", f.accion_descripcion);
+    if (f.accion_prioridad) html += reviewRow("Prioridad", f.accion_prioridad);
+    if (f.accion_fecha_cierre) html += reviewRow("Fecha de cierre", f.accion_fecha_cierre);
+    if (f.accion_responsable_nombre) html += reviewRow("Responsable", f.accion_responsable_nombre + (f.accion_responsable_legajo?' (#'+f.accion_responsable_legajo+')':''));
+    else html += reviewRow("Responsable", "Sin asignar");
+    html += '</div>';
+  }
+
+  return html;
+}
+
+function reviewRow(label, value) {
+  if (!value || value === "undefined") return "";
+  return '<div class="review-row"><span class="review-label">'+escapeHTML(label)+'</span><span class="review-value">'+escapeHTML(value)+'</span></div>';
+}
+
+function renderSuccess() {
+  var msgAccion = "";
+  if (state.savedAccion) {
+    msgAccion = '<div style="margin:14px auto;padding:12px 16px;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;max-width:480px;text-align:left;">'
+      + '<div style="font-size:13px;font-weight:600;color:#166534;margin-bottom:4px;">📋 Acción correctiva creada</div>'
+      + '<div style="font-size:12px;color:#15803D;">Se generó la acción asignada' + (state.savedAccionResp ? ' a <strong>'+escapeHTML(state.savedAccionResp)+'</strong>' : '') + '. Aparece en "Mis pendientes" del dashboard y en seguimiento.</div>'
+      + '</div>';
+  }
+  var html = '<div class="success-screen">'
+    + '<div class="success-icon">✓</div>'
+    + '<h2>Evento registrado</h2>'
+    + '<p>El registro se guardó correctamente y se envió la notificación por email.</p>'
+    + '<div class="success-id">ID: '+state.saved+'</div>'
+    + msgAccion
+    + '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
+    + '<a href="formulario_v2.html" class="btn btn-next" style="text-decoration:none;display:inline-block;flex:0 0 auto;">+ Cargar otro evento</a>'
+    + '<a href="dashboard_v2.html" class="btn btn-prev" style="text-decoration:none;display:inline-block;flex:0 0 auto;">Ver dashboard</a>'
+    + '</div></div>';
+  document.getElementById("app").innerHTML = html;
+}
+
+// =============================================
+// SUBMIT
+// =============================================
+function submitForm() {
+  state.saving = true;
+  state.error = null;
+  render();
+
+  // Si hay foto, primero la subimos a Drive y obtenemos la URL
+  if (state.form.foto_base64) {
+    subirFotoYGuardar();
+  } else {
+    guardarEvento("");
+  }
+}
+
+// Sube la foto a Drive vía Apps Script, luego guarda el evento con la URL
+function subirFotoYGuardar() {
+  var paramsFoto = new URLSearchParams();
+  paramsFoto.append("action", "upload_foto");
+  paramsFoto.append("foto_base64", state.form.foto_base64);
+  paramsFoto.append("foto_nombre", state.form.foto_nombre || "foto.jpg");
+
+  fetch(APPS_SCRIPT_URL, { method:"POST", body: paramsFoto })
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (resp.ok && resp.foto_url) {
+        guardarEvento(resp.foto_url);
+      } else {
+        // Si falla la foto, guardamos el evento igual (sin foto) para no perder el reporte
+        console.warn("No se pudo subir la foto, guardando evento sin ella");
+        guardarEvento("");
+      }
+    })
+    .catch(function(err){
+      console.warn("Error subiendo foto: " + err.message + ". Guardando evento sin foto.");
+      guardarEvento("");
+    });
+}
+
+function guardarEvento(fotoUrl) {
+  var params = new URLSearchParams();
+  params.append("action","save_evento");
+  Object.keys(state.form).forEach(function(k){
+    // No mandamos el base64 de la foto (ya se subió aparte)
+    if (k === "foto_base64" || k === "foto_nombre") return;
+    if (state.form[k] !== "" && state.form[k] !== null && state.form[k] !== undefined) {
+      params.append(k, state.form[k]);
+    }
+  });
+  // Agregamos la URL de la foto si se subió
+  if (fotoUrl) params.append("foto_url", fotoUrl);
+
+  fetch(APPS_SCRIPT_URL, { method:"POST", body: params })
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (resp.ok) {
+        state.saved = resp.evento_id;
+        // Si el backend devolvió accion_id, hubo acción correctiva integrada
+        if (resp.accion_id) {
+          state.savedAccion = resp.accion_id;
+          state.savedAccionResp = state.form.accion_responsable_nombre || "";
+        }
+        state.saving = false;
+        renderSuccess();
+      } else {
+        state.error = "Error al guardar: " + (resp.error || "desconocido");
+        state.saving = false;
+        render();
+      }
+    })
+    .catch(function(err){
+      state.error = "Error de red: " + err.message;
+      state.saving = false;
+      render();
+    });
+}
+
+// Init
+loadMaestros();
+</script>
+</body>
+</html>
