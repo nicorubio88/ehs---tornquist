@@ -59,7 +59,9 @@ var HEADERS_EVENTOS = [
   // SafeStart en Accidente
   "acc_estado_mental", "acc_error_critico",
   // Medio Ambiente detallado
-  "amb_fuente", "amb_llego_pluvial"
+  "amb_fuente", "amb_llego_pluvial",
+  // Tarjeta de aviso de riesgo (paquete acción integrada)
+  "obs_tarjeta_aviso", "obs_nro_tarjeta"
 ];
 
 var HEADERS_ACCIONES = [
@@ -170,6 +172,7 @@ function doPost(e) {
 
     if (action === "save_evento")        return saveEvento(ss, p);
     if (action === "save_accion")        return saveAccion(ss, p);
+    if (action === "upload_foto")        return uploadFoto(p);
     if (action === "actualizar_accion")  return actualizarAccion(ss, p);
     if (action === "agregar_nota")       return agregarNota(ss, p);
     if (action === "reprogramar_accion") return reprogramarAccion(ss, p);
@@ -348,7 +351,9 @@ function saveEvento(ss, p) {
     p.acc_estado_mental || "",
     p.acc_error_critico || "",
     p.amb_fuente || "",
-    p.amb_llego_pluvial || ""
+    p.amb_llego_pluvial || "",
+    p.obs_tarjeta_aviso || "",
+    p.obs_nro_tarjeta || ""
   ];
 
   sheet.appendRow(row);
@@ -437,6 +442,63 @@ function enviarNotificacionAccionAsignada(p, accionId) {
     + "Creada por: " + (p.creada_por_nombre || "—") + "\n\n"
     + "Esta acción aparece en la sección \"Mis pendientes\" del dashboard del responsable.";
   MailApp.sendEmail(to, subject, body);
+}
+
+// ============================================================
+// UPLOAD FOTO — recibe base64, guarda en Drive, devuelve URL pública
+// ============================================================
+function uploadFoto(p) {
+  try {
+    if (!p.foto_base64) {
+      return jsonResponse({ ok: false, error: "No se recibió imagen" });
+    }
+
+    // El base64 viene como "data:image/jpeg;base64,XXXX" — separamos el prefijo
+    var base64Data = p.foto_base64;
+    var contentType = "image/jpeg";
+    var comaIdx = base64Data.indexOf(",");
+    if (comaIdx !== -1) {
+      var prefijo = base64Data.substring(0, comaIdx);
+      var match = prefijo.match(/data:([^;]+);/);
+      if (match) contentType = match[1];
+      base64Data = base64Data.substring(comaIdx + 1);
+    }
+
+    // Decodificar
+    var bytes = Utilities.base64Decode(base64Data);
+    var ahora = new Date();
+    var nombreArchivo = "EHS_" + Utilities.formatDate(ahora, "America/Argentina/Buenos_Aires", "yyyyMMdd_HHmmss") + ".jpg";
+    var blob = Utilities.newBlob(bytes, contentType, nombreArchivo);
+
+    // Buscar o crear carpeta EHS_Fotos/YYYY-MM
+    var carpetaRaiz = obtenerOCrearCarpeta(DriveApp.getRootFolder(), "EHS_Fotos");
+    var nombreMes = Utilities.formatDate(ahora, "America/Argentina/Buenos_Aires", "yyyy-MM");
+    var carpetaMes = obtenerOCrearCarpeta(carpetaRaiz, nombreMes);
+
+    // Guardar el archivo
+    var archivo = carpetaMes.createFile(blob);
+
+    // Permiso público de lectura (cualquiera con el link)
+    archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    // URL para mostrar la imagen embebida
+    var fileId = archivo.getId();
+    var urlPublica = "https://drive.google.com/thumbnail?id=" + fileId + "&sz=w1280";
+
+    return jsonResponse({ ok: true, foto_url: urlPublica, file_id: fileId });
+
+  } catch (error) {
+    return jsonResponse({ ok: false, error: "Error al subir foto: " + error.toString() });
+  }
+}
+
+// Helper: busca una subcarpeta por nombre, la crea si no existe
+function obtenerOCrearCarpeta(carpetaPadre, nombre) {
+  var existentes = carpetaPadre.getFoldersByName(nombre);
+  if (existentes.hasNext()) {
+    return existentes.next();
+  }
+  return carpetaPadre.createFolder(nombre);
 }
 
 function pintarFilaPorPrioridad(sheet, row, prioridad) {

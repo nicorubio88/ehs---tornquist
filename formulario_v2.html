@@ -289,7 +289,9 @@ var state = {
     obs_tarjeta_aviso:"", obs_nro_tarjeta:"",
     // Acción correctiva integrada (opcional)
     accion_descripcion:"", accion_prioridad:"", accion_fecha_cierre:"",
-    accion_responsable_nombre:"", accion_responsable_legajo:""
+    accion_responsable_nombre:"", accion_responsable_legajo:"",
+    // Foto (base64 comprimida, se sube a Drive al guardar)
+    foto_base64:"", foto_nombre:""
   },
   saving: false,
   saved: null,
@@ -425,7 +427,7 @@ function render() {
   if (state.step < state.totalSteps - 1) {
     html += '<button class="btn btn-next" onclick="nextStep()" '+(canNext()?"":"disabled")+'>Siguiente →</button>';
   } else {
-    html += '<button class="btn btn-submit" onclick="submitForm()" '+(state.saving?"disabled":"")+'>'+(state.saving?"Enviando...":"✓ Enviar registro")+'</button>';
+    html += '<button class="btn btn-submit" onclick="submitForm()" '+(state.saving?"disabled":"")+'>'+(state.saving?(state.form.foto_base64?"Subiendo foto y guardando...":"Enviando..."):"✓ Enviar registro")+'</button>';
   }
   html += '</div>';
 
@@ -656,6 +658,9 @@ function renderObservacion(f) {
 
     // Bloque acción correctiva integrada (opcional)
     html += renderAccionCorrectivaIntegrada(f);
+
+    // Bloque de foto (opcional)
+    html += renderBloqueFoto(f);
   }
 
   return html;
@@ -724,6 +729,85 @@ function setAccionResponsable(selectEl) {
   state.form.accion_responsable_legajo = legajo;
   render();
 }
+
+function renderBloqueFoto(f) {
+  var html = '<div class="section" style="background:linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);border-color:#7DD3FC;">'
+    + '<div class="section-title" style="color:#075985;">📷 Foto (opcional)</div>'
+    + '<div class="field-hint" style="margin-bottom:12px;">Una foto ayuda a que el responsable vea exactamente qué hay que corregir. La imagen se comprime automáticamente antes de subir.</div>';
+
+  if (f.foto_base64) {
+    // Ya hay foto cargada — mostrar preview
+    html += '<div style="text-align:center;">';
+    html += '<img src="'+f.foto_base64+'" style="max-width:100%;max-height:240px;border-radius:8px;border:1px solid var(--border);" alt="Vista previa">';
+    html += '<div style="margin-top:8px;">';
+    html += '<button type="button" onclick="quitarFoto()" style="padding:8px 16px;background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;">✕ Quitar foto</button>';
+    html += '</div></div>';
+  } else {
+    // Sin foto — mostrar botón de captura
+    html += '<div style="text-align:center;padding:10px;">';
+    html += '<label style="display:inline-block;padding:14px 24px;background:#0284C7;color:#fff;border-radius:10px;font-size:14px;cursor:pointer;font-weight:600;">';
+    html += '📷 Sacar / elegir foto';
+    html += '<input type="file" accept="image/*" capture="environment" style="display:none;" onchange="procesarFoto(this)">';
+    html += '</label>';
+    html += '<div id="foto_status" style="margin-top:10px;font-size:12px;color:var(--t2);"></div>';
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// Procesa la foto: comprime con canvas y guarda en state como base64
+function procesarFoto(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+
+  var statusEl = document.getElementById("foto_status");
+  if (statusEl) statusEl.textContent = "Procesando imagen...";
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      // Redimensionar a máx 1280px lado mayor
+      var maxLado = 1280;
+      var w = img.width, h = img.height;
+      if (w > h && w > maxLado) { h = Math.round(h * maxLado / w); w = maxLado; }
+      else if (h >= w && h > maxLado) { w = Math.round(w * maxLado / h); h = maxLado; }
+
+      var canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Comprimir a JPEG 75%
+      var base64 = canvas.toDataURL("image/jpeg", 0.75);
+
+      state.form.foto_base64 = base64;
+      state.form.foto_nombre = file.name || "foto.jpg";
+
+      // Calcular tamaño aproximado
+      var sizeKB = Math.round(base64.length * 0.75 / 1024);
+      render();
+    };
+    img.onerror = function() {
+      if (statusEl) statusEl.textContent = "No se pudo leer la imagen. Probá con otra.";
+    };
+    img.src = e.target.result;
+  };
+  reader.onerror = function() {
+    if (statusEl) statusEl.textContent = "Error al leer el archivo.";
+  };
+  reader.readAsDataURL(file);
+}
+
+function quitarFoto() {
+  state.form.foto_base64 = "";
+  state.form.foto_nombre = "";
+  render();
+}
+
 
 function renderConversacion(f) {
   var html = '<div class="section"><div class="section-title">💬 Conversación</div>';
@@ -892,6 +976,9 @@ function renderAmbiente(f) {
   // Bloque acción correctiva integrada (opcional)
   html += renderAccionCorrectivaIntegrada(f);
 
+  // Bloque de foto (opcional)
+  html += renderBloqueFoto(f);
+
   return html;
 }
 function renderReview() {
@@ -1021,13 +1108,50 @@ function submitForm() {
   state.error = null;
   render();
 
+  // Si hay foto, primero la subimos a Drive y obtenemos la URL
+  if (state.form.foto_base64) {
+    subirFotoYGuardar();
+  } else {
+    guardarEvento("");
+  }
+}
+
+// Sube la foto a Drive vía Apps Script, luego guarda el evento con la URL
+function subirFotoYGuardar() {
+  var paramsFoto = new URLSearchParams();
+  paramsFoto.append("action", "upload_foto");
+  paramsFoto.append("foto_base64", state.form.foto_base64);
+  paramsFoto.append("foto_nombre", state.form.foto_nombre || "foto.jpg");
+
+  fetch(APPS_SCRIPT_URL, { method:"POST", body: paramsFoto })
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (resp.ok && resp.foto_url) {
+        guardarEvento(resp.foto_url);
+      } else {
+        // Si falla la foto, guardamos el evento igual (sin foto) para no perder el reporte
+        console.warn("No se pudo subir la foto, guardando evento sin ella");
+        guardarEvento("");
+      }
+    })
+    .catch(function(err){
+      console.warn("Error subiendo foto: " + err.message + ". Guardando evento sin foto.");
+      guardarEvento("");
+    });
+}
+
+function guardarEvento(fotoUrl) {
   var params = new URLSearchParams();
   params.append("action","save_evento");
   Object.keys(state.form).forEach(function(k){
+    // No mandamos el base64 de la foto (ya se subió aparte)
+    if (k === "foto_base64" || k === "foto_nombre") return;
     if (state.form[k] !== "" && state.form[k] !== null && state.form[k] !== undefined) {
       params.append(k, state.form[k]);
     }
   });
+  // Agregamos la URL de la foto si se subió
+  if (fotoUrl) params.append("foto_url", fotoUrl);
 
   fetch(APPS_SCRIPT_URL, { method:"POST", body: params })
     .then(function(r){ return r.json(); })
