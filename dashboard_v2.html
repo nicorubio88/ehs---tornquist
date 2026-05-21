@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
     --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0; --brand-600:#059669;
@@ -1434,6 +1435,18 @@ function render() {
   html += '<div class="card"><h2>Acciones correctivas <span style="font-weight:400;font-size:13px;color:var(--t2);">('+ACCIONES.length+' totales)</span></h2>'+renderActionsSummary()+'</div>';
   html += '</div>';
 
+  // Gráfico de evolución mensual
+  html += '<div class="card" style="margin-top:16px;">';
+  html += '<h2>Evolución mensual <span style="font-weight:400;font-size:13px;color:var(--t2);">· últimos 6 meses</span></h2>';
+  html += '<p style="font-size:13px;color:var(--t2);margin:4px 0 16px;">Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.</p>';
+  html += '<div style="position:relative;width:100%;height:320px;"><canvas id="evolucionChart"></canvas></div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#185FA5;"></span>Eventos generados</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#059669;"></span>Acciones cerradas</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#D85A30;"></span>Backlog abierto (acumulado)</span>'
+    + '</div>';
+  html += '</div>';
+
   // Filtros
   html += '<div class="filters">';
   html += filterSelect("tipo","Tipo",["Todos"].concat(Object.keys(TIPO_META)));
@@ -1479,6 +1492,119 @@ function render() {
     + '</div>';
 
   document.getElementById("app").innerHTML = html;
+
+  // Dibujar el gráfico de evolución (después de que el canvas exista en el DOM)
+  dibujarEvolucionMensual();
+}
+
+// Calcula y dibuja el gráfico de evolución mensual (últimos 6 meses)
+var _chartEvolucion = null;
+function dibujarEvolucionMensual() {
+  var canvas = document.getElementById("evolucionChart");
+  if (!canvas || typeof Chart === "undefined") return;
+
+  var datos = calcularEvolucionMensual(6);
+
+  // Destruir gráfico anterior si existe (evita duplicados al re-renderizar)
+  if (_chartEvolucion) { _chartEvolucion.destroy(); _chartEvolucion = null; }
+
+  _chartEvolucion = new Chart(canvas, {
+    data: {
+      labels: datos.labels,
+      datasets: [
+        { type:"bar", label:"Generados", data:datos.generados, backgroundColor:"#185FA5", borderRadius:4, order:2 },
+        { type:"bar", label:"Cerradas", data:datos.cerradas, backgroundColor:"#059669", borderRadius:4, order:2 },
+        { type:"line", label:"Backlog", data:datos.backlog, borderColor:"#D85A30", backgroundColor:"#D85A30", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#D85A30", order:1, yAxisID:"y1" }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
+      scales:{
+        x:{ ticks:{autoSkip:false}, grid:{display:false} },
+        y:{ beginAtZero:true, title:{display:true,text:"Por mes"}, grid:{color:"rgba(128,128,128,0.1)"} },
+        y1:{ beginAtZero:true, position:"right", title:{display:true,text:"Backlog acumulado"}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+// Devuelve {labels, generados, cerradas, backlog} de los últimos N meses
+function calcularEvolucionMensual(nMeses) {
+  var hoy = new Date();
+  var meses = [];
+  // Construir array de los últimos N meses (clave YYYY-MM)
+  for (var i = nMeses-1; i >= 0; i--) {
+    var d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+    meses.push({
+      clave: d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"),
+      label: ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][d.getMonth()] + " " + String(d.getFullYear()).slice(2)
+    });
+  }
+  var clavesValidas = {};
+  meses.forEach(function(m){ clavesValidas[m.clave] = true; });
+
+  // Eventos generados por mes (por fecha_evento)
+  var generadosPorMes = {};
+  (EVENTOS||[]).forEach(function(e){
+    var clave = mesDeFecha(e.fecha_evento);
+    if (clave && clavesValidas[clave]) generadosPorMes[clave] = (generadosPorMes[clave]||0) + 1;
+  });
+
+  // Acciones cerradas por mes (por fecha_cierre)
+  var cerradasPorMes = {};
+  (ACCIONES||[]).forEach(function(a){
+    if (String(a.estado||"") === "Cerrada") {
+      var clave = mesDeFecha(a.fecha_cierre);
+      if (clave && clavesValidas[clave]) cerradasPorMes[clave] = (cerradasPorMes[clave]||0) + 1;
+    }
+  });
+
+  // Backlog acumulado: acciones abiertas al final de cada mes
+  // = creadas hasta fin de mes - cerradas hasta fin de mes
+  var labels=[], generados=[], cerradas=[], backlog=[];
+  meses.forEach(function(m){
+    labels.push(m.label);
+    generados.push(generadosPorMes[m.clave] || 0);
+    cerradas.push(cerradasPorMes[m.clave] || 0);
+
+    // Backlog al cierre de este mes
+    var finMes = m.clave + "-31"; // comparación string YYYY-MM-DD funciona
+    var creadasHasta = 0, cerradasHasta = 0;
+    (ACCIONES||[]).forEach(function(a){
+      var fc = normalizarFechaStr(a.fecha_creacion);
+      if (fc && fc <= finMes) creadasHasta++;
+      if (String(a.estado||"") === "Cerrada") {
+        var fcierre = normalizarFechaStr(a.fecha_cierre);
+        if (fcierre && fcierre <= finMes) cerradasHasta++;
+      }
+    });
+    backlog.push(Math.max(0, creadasHasta - cerradasHasta));
+  });
+
+  return { labels:labels, generados:generados, cerradas:cerradas, backlog:backlog };
+}
+
+// Extrae "YYYY-MM" de una fecha (Date o string)
+function mesDeFecha(f) {
+  var s = normalizarFechaStr(f);
+  return s ? s.substring(0,7) : null;
+}
+
+// Normaliza una fecha a string "YYYY-MM-DD"
+function normalizarFechaStr(f) {
+  if (!f) return null;
+  if (f instanceof Date) {
+    return f.getFullYear() + "-" + String(f.getMonth()+1).padStart(2,"0") + "-" + String(f.getDate()).padStart(2,"0");
+  }
+  var s = String(f).trim();
+  // Puede venir como "2026-05-19" o "2026-05-19 00:00:00" o ISO
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1]+"-"+m[2]+"-"+m[3];
+  // Intentar parsear como Date
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  return null;
 }
 
 function renderPyramid(counts) {
