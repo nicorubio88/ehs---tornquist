@@ -1435,15 +1435,29 @@ function render() {
   html += '<div class="card"><h2>Acciones correctivas <span style="font-weight:400;font-size:13px;color:var(--t2);">('+ACCIONES.length+' totales)</span></h2>'+renderActionsSummary()+'</div>';
   html += '</div>';
 
-  // Gráfico de evolución mensual
+  // Gráfico de evolución
   html += '<div class="card" style="margin-top:16px;">';
-  html += '<h2>Evolución mensual <span style="font-weight:400;font-size:13px;color:var(--t2);">· últimos 6 meses</span></h2>';
-  html += '<p style="font-size:13px;color:var(--t2);margin:4px 0 16px;">Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.</p>';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">';
+  html += '<h2 style="margin:0;">Evolución <span id="evoSubtitulo" style="font-weight:400;font-size:13px;color:var(--t2);">· mensual, últimos 6 meses</span></h2>';
+  // Toggle
+  html += '<div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;">'
+    + '<button id="btnEvoMensual" onclick="cambiarVistaEvolucion(\'mensual\')" style="border:none;background:var(--brand-600);color:#fff;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Mensual</button>'
+    + '<button id="btnEvoAcum" onclick="cambiarVistaEvolucion(\'acumulado\')" style="border:none;background:transparent;color:var(--t2);padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Acumulado</button>'
+    + '</div>';
+  html += '</div>';
+  html += '<p id="evoDescripcion" style="font-size:13px;color:var(--t2);margin:8px 0 16px;">Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.</p>';
   html += '<div style="position:relative;width:100%;height:320px;"><canvas id="evolucionChart"></canvas></div>';
-  html += '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+  // Leyenda mensual
+  html += '<div id="evoLeyendaMensual" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
     + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#185FA5;"></span>Eventos generados</span>'
     + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#059669;"></span>Acciones cerradas</span>'
     + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#D85A30;"></span>Backlog abierto (acumulado)</span>'
+    + '</div>';
+  // Leyenda acumulada (oculta por defecto)
+  html += '<div id="evoLeyendaAcum" style="display:none;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#185FA5;"></span>Eventos generados (acum.)</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#059669;"></span>Acciones cerradas (acum.)</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:rgba(216,90,48,0.25);"></span>Brecha = backlog</span>'
     + '</div>';
   html += '</div>';
 
@@ -1497,8 +1511,10 @@ function render() {
   dibujarEvolucionMensual();
 }
 
-// Calcula y dibuja el gráfico de evolución mensual (últimos 6 meses)
+// Estado de la vista del gráfico: "mensual" o "acumulado"
+var _vistaEvolucion = "mensual";
 var _chartEvolucion = null;
+
 function dibujarEvolucionMensual() {
   var canvas = document.getElementById("evolucionChart");
   if (!canvas || typeof Chart === "undefined") return;
@@ -1508,25 +1524,84 @@ function dibujarEvolucionMensual() {
   // Destruir gráfico anterior si existe (evita duplicados al re-renderizar)
   if (_chartEvolucion) { _chartEvolucion.destroy(); _chartEvolucion = null; }
 
-  _chartEvolucion = new Chart(canvas, {
-    data: {
-      labels: datos.labels,
-      datasets: [
-        { type:"bar", label:"Generados", data:datos.generados, backgroundColor:"#185FA5", borderRadius:4, order:2 },
-        { type:"bar", label:"Cerradas", data:datos.cerradas, backgroundColor:"#059669", borderRadius:4, order:2 },
-        { type:"line", label:"Backlog", data:datos.backlog, borderColor:"#D85A30", backgroundColor:"#D85A30", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#D85A30", order:1, yAxisID:"y1" }
-      ]
-    },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
-      scales:{
-        x:{ ticks:{autoSkip:false}, grid:{display:false} },
-        y:{ beginAtZero:true, title:{display:true,text:"Por mes"}, grid:{color:"rgba(128,128,128,0.1)"} },
-        y1:{ beginAtZero:true, position:"right", title:{display:true,text:"Backlog acumulado"}, grid:{display:false} }
+  var config;
+  if (_vistaEvolucion === "acumulado") {
+    // Vista acumulada: dos líneas que crecen; la brecha entre ellas = backlog
+    config = {
+      type: "line",
+      data: {
+        labels: datos.labels,
+        datasets: [
+          { label:"Generados acum.", data:datos.generadosAcum, borderColor:"#185FA5", backgroundColor:"rgba(216,90,48,0.16)", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#185FA5", fill:"+1" },
+          { label:"Cerradas acum.", data:datos.cerradasAcum, borderColor:"#059669", backgroundColor:"transparent", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#059669", fill:false }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
+        scales:{
+          x:{ ticks:{autoSkip:false}, grid:{display:false} },
+          y:{ beginAtZero:true, title:{display:true,text:"Total acumulado"}, grid:{color:"rgba(128,128,128,0.1)"} }
+        }
       }
-    }
-  });
+    };
+  } else {
+    // Vista mensual: barras de generados/cerradas + línea de backlog
+    config = {
+      data: {
+        labels: datos.labels,
+        datasets: [
+          { type:"bar", label:"Generados", data:datos.generados, backgroundColor:"#185FA5", borderRadius:4, order:2 },
+          { type:"bar", label:"Cerradas", data:datos.cerradas, backgroundColor:"#059669", borderRadius:4, order:2 },
+          { type:"line", label:"Backlog", data:datos.backlog, borderColor:"#D85A30", backgroundColor:"#D85A30", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#D85A30", order:1, yAxisID:"y1" }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
+        scales:{
+          x:{ ticks:{autoSkip:false}, grid:{display:false} },
+          y:{ beginAtZero:true, title:{display:true,text:"Por mes"}, grid:{color:"rgba(128,128,128,0.1)"} },
+          y1:{ beginAtZero:true, position:"right", title:{display:true,text:"Backlog acumulado"}, grid:{display:false} }
+        }
+      }
+    };
+  }
+
+  _chartEvolucion = new Chart(canvas, config);
+}
+
+// Cambia entre vista mensual y acumulada
+function cambiarVistaEvolucion(vista) {
+  _vistaEvolucion = vista;
+
+  // Actualizar botones
+  var btnM = document.getElementById("btnEvoMensual");
+  var btnA = document.getElementById("btnEvoAcum");
+  if (btnM && btnA) {
+    var activo = "var(--brand-600)", inactivo = "transparent";
+    var colorAct = "#fff", colorInact = "var(--t2)";
+    btnM.style.background = (vista==="mensual") ? activo : inactivo;
+    btnM.style.color = (vista==="mensual") ? colorAct : colorInact;
+    btnA.style.background = (vista==="acumulado") ? activo : inactivo;
+    btnA.style.color = (vista==="acumulado") ? colorAct : colorInact;
+  }
+
+  // Actualizar subtítulo y descripción
+  var sub = document.getElementById("evoSubtitulo");
+  var desc = document.getElementById("evoDescripcion");
+  if (sub) sub.textContent = (vista==="acumulado") ? "· acumulado histórico" : "· mensual, últimos 6 meses";
+  if (desc) desc.textContent = (vista==="acumulado")
+    ? "Total de eventos generados y acciones cerradas que se acumulan mes a mes. La brecha entre las líneas es el backlog."
+    : "Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.";
+
+  // Mostrar la leyenda correspondiente
+  var legM = document.getElementById("evoLeyendaMensual");
+  var legA = document.getElementById("evoLeyendaAcum");
+  if (legM) legM.style.display = (vista==="mensual") ? "flex" : "none";
+  if (legA) legA.style.display = (vista==="acumulado") ? "flex" : "none";
+
+  dibujarEvolucionMensual();
 }
 
 // Devuelve {labels, generados, cerradas, backlog} de los últimos N meses
@@ -1563,13 +1638,23 @@ function calcularEvolucionMensual(nMeses) {
   // Backlog acumulado: acciones abiertas al final de cada mes
   // = creadas hasta fin de mes - cerradas hasta fin de mes
   var labels=[], generados=[], cerradas=[], backlog=[];
+  var generadosAcum=[], cerradasAcum=[];
   meses.forEach(function(m){
     labels.push(m.label);
     generados.push(generadosPorMes[m.clave] || 0);
     cerradas.push(cerradasPorMes[m.clave] || 0);
 
-    // Backlog al cierre de este mes
     var finMes = m.clave + "-31"; // comparación string YYYY-MM-DD funciona
+
+    // Acumulado de EVENTOS generados hasta fin de este mes
+    var evGenHasta = 0;
+    (EVENTOS||[]).forEach(function(e){
+      var fe = normalizarFechaStr(e.fecha_evento);
+      if (fe && fe <= finMes) evGenHasta++;
+    });
+    generadosAcum.push(evGenHasta);
+
+    // Acumulado de ACCIONES creadas y cerradas hasta fin de este mes
     var creadasHasta = 0, cerradasHasta = 0;
     (ACCIONES||[]).forEach(function(a){
       var fc = normalizarFechaStr(a.fecha_creacion);
@@ -1579,10 +1664,15 @@ function calcularEvolucionMensual(nMeses) {
         if (fcierre && fcierre <= finMes) cerradasHasta++;
       }
     });
+    cerradasAcum.push(cerradasHasta);
     backlog.push(Math.max(0, creadasHasta - cerradasHasta));
   });
 
-  return { labels:labels, generados:generados, cerradas:cerradas, backlog:backlog };
+  return {
+    labels:labels,
+    generados:generados, cerradas:cerradas, backlog:backlog,
+    generadosAcum:generadosAcum, cerradasAcum:cerradasAcum
+  };
 }
 
 // Extrae "YYYY-MM" de una fecha (Date o string)
