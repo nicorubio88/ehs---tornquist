@@ -77,11 +77,11 @@ var HEADERS_ACCIONES = [
 // Tipos válidos
 var TIPOS = ["OBSERVACION", "CONVERSACION", "INCIDENTE", "ACCIDENTE", "AMBIENTE"];
 
-// Subtipos válidos por tipo
+// Subtipos válidos por tipo (deben coincidir con SUBTIPOS del formulario)
 var SUBTIPOS = {
-  "OBSERVACION":  ["Acto inseguro", "Condición insegura", "Casi accidente"],
-  "CONVERSACION": ["Refuerzo positivo", "Coaching correctivo", "Charla preventiva", "Diálogo 5 minutos"],
-  "INCIDENTE":    ["Daño material", "Cuasi accidente", "Falla equipo con riesgo"],
+  "OBSERVACION":  ["Acto inseguro", "Condición insegura"],
+  "CONVERSACION": ["Refuerzo positivo", "Coaching correctivo", "Charla de seguridad"],
+  "INCIDENTE":    ["Casi accidente / cuasi accidente", "Daño material", "Falla equipo con riesgo"],
   "ACCIDENTE":    ["Lesión leve sin baja", "Lesión leve con baja", "Lesión grave", "Fatal"],
   "AMBIENTE":     ["Derrame", "Fuga gas/vapor", "Emisión no controlada", "Residuo mal gestionado", "Ruido fuera de norma"]
 };

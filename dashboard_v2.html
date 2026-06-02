@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
     --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0; --brand-600:#059669;
@@ -756,12 +757,16 @@ function calculateLeadingKPIs() {
     ? Math.round(tiempos.reduce(function(a,b){return a+b;}, 0) / tiempos.length)
     : null;
 
+  // Contar conversaciones del mes para Bradley
+  var conversacionesMes = ultimoMes.filter(function(e){ return e.tipo === "CONVERSACION"; }).length;
+
   return {
     pctOperarios: { value: pctOperarios, target: 50, unit: "%", detalle: deOperarios + " de " + totalReportes + " reportes" },
     ratioCultura: { value: ratioCultura, target: 100, unit: ":1", detalle: observacionesMes.length + " obs / " + accidentesMes.length + " accid" },
     obsPorTrabajador: { value: obsPorTrabajador, target: 1, unit: "" },
     pctEnTermino: { value: pctEnTermino, target: 80, unit: "%" },
-    tiempoPromedio: { value: tiempoPromedio, target: 14, unit: " días", invert: true } // menos es mejor
+    tiempoPromedio: { value: tiempoPromedio, target: 14, unit: " días", invert: true }, // menos es mejor
+    conversacionesMes: conversacionesMes
   };
 }
 
@@ -1036,6 +1041,232 @@ function renderLeadingKPIs() {
 }
 
 // =============================================
+// CURVA DE BRADLEY — etapa cultural de la planta
+// =============================================
+// Las 4 etapas son: Reactiva → Dependiente → Independiente → Interdependiente
+// Cálculo basado en los KPIs existentes (ratio cultura, % operarios, pirámide)
+function calcularEtapaBradley() {
+  var k = calculateLeadingKPIs();
+  var ratio = k.ratioCultura.value;
+  var pctOp = k.pctOperarios.value;
+
+  // Cantidad de observaciones del mes (vital para distinguir etapa 1 de 2)
+  var hoy = new Date();
+  var hace30 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()-30);
+  var hace30Str = hace30.toISOString().slice(0,10);
+  var obsMes = (EVENTOS||[]).filter(function(e){
+    var f = String(e.fecha_evento||"").substring(0,10);
+    return e.tipo === "OBSERVACION" && f >= hace30Str;
+  }).length;
+
+  // Ratio obs/accidente como número
+  var ratioNum = (ratio === "∞") ? 9999 : Number(ratio) || 0;
+
+  var hayConversaciones = (k.conversacionesMes && k.conversacionesMes > 0);
+  var etapa = 1;
+  var razon = "";
+
+  // Lógica del modelo Bradley:
+  // 1. Reactiva: prácticamente sin observaciones (cultura post-accidente)
+  // 2. Dependiente: hay observaciones pero la participación de operarios es baja
+  //                 (la seguridad la empuja la jefatura)
+  // 3. Independiente: ratio sólido (≥50) Y operarios participan (≥50%)
+  // 4. Interdependiente: lo anterior + ratio muy alto (≥100, ≥70% op) + conversaciones activas
+
+  if (obsMes < 3) {
+    // Casi sin observaciones → cultura reactiva
+    etapa = 1;
+    razon = "Casi sin observaciones reportadas. La cultura aún reacciona post-accidente.";
+  } else if (ratioNum >= 100 && pctOp >= 70 && hayConversaciones) {
+    etapa = 4;
+    razon = "Ratio alto, operarios reportando activamente y hay conversaciones de seguridad.";
+  } else if (ratioNum >= 50 && pctOp >= 50) {
+    etapa = 3;
+    razon = "Buen flujo de observaciones, operarios participan activamente.";
+  } else {
+    // Hay observaciones pero falla algún criterio (típicamente bajo % operarios)
+    etapa = 2;
+    razon = "Hay reportes pero principalmente impulsados por supervisión.";
+  }
+
+  return { etapa: etapa, razon: razon, ratioObservado: ratio, pctOperariosObs: pctOp, observacionesMes: obsMes };
+}
+
+function renderCurvaBradley() {
+  var b = calcularEtapaBradley();
+  var etapas = [
+    { num:1, label:"Reactiva",       desc:"Se reacciona post-accidente", color:"#DC2626" },
+    { num:2, label:"Dependiente",    desc:"Supervisor empuja seguridad", color:"#F59E0B" },
+    { num:3, label:"Independiente",  desc:"Cada uno se cuida solo",      color:"#3B82F6" },
+    { num:4, label:"Interdependiente",desc:"El equipo se cuida entre sí",color:"#059669" }
+  ];
+
+  var html = '<div class="card" style="margin-top:16px;">';
+  html += '<h2 style="margin-bottom:4px;">Curva de Bradley · etapa cultural</h2>';
+  html += '<p style="font-size:13px;color:var(--t2);margin:0 0 16px;">Dónde estamos ubicados en la madurez de cultura de seguridad. Calculado a partir del ratio obs/accidente y participación de operarios.</p>';
+
+  // Barra con las 4 etapas
+  html += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
+  etapas.forEach(function(e){
+    var activa = (e.num === b.etapa);
+    var bg = activa ? e.color : "#F3F4F6";
+    var fg = activa ? "#FFFFFF" : "var(--t2)";
+    var border = activa ? ("2px solid " + e.color) : "2px solid transparent";
+    var pesoNum = activa ? "800" : "600";
+    html += '<div style="flex:1;padding:14px 10px;background:'+bg+';color:'+fg+';border-radius:8px;border:'+border+';text-align:center;transition:all .2s;">';
+    html += '<div style="font-size:24px;font-weight:'+pesoNum+';line-height:1;">'+e.num+'</div>';
+    html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">'+e.label+'</div>';
+    html += '<div style="font-size:10px;opacity:.85;margin-top:2px;line-height:1.3;">'+e.desc+'</div>';
+    if (activa) html += '<div style="font-size:10px;margin-top:6px;font-weight:700;letter-spacing:.05em;">◄ ESTAMOS ACÁ</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Indicador con flecha apuntando a la etapa actual
+  var pos = ((b.etapa - 1) / 3) * 100; // 0%, 33%, 66%, 100%
+  html += '<div style="position:relative;height:12px;background:linear-gradient(to right, #FEE2E2, #FEF3C7, #DBEAFE, #D1FAE5);border-radius:6px;margin-bottom:18px;">';
+  html += '<div style="position:absolute;top:-4px;left:calc('+pos+'% - 8px);width:16px;height:20px;background:#111827;border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,.2);"></div>';
+  html += '</div>';
+
+  // Métricas de soporte
+  html += '<div style="display:flex;flex-wrap:wrap;gap:18px;padding:12px 14px;background:#F9FAFB;border-radius:8px;font-size:13px;">';
+  html += '<div><strong>Ratio obs/accid:</strong> <span style="color:var(--brand-700);font-weight:700;">'+(b.ratioObservado===Infinity||b.ratioObservado==="∞"?"∞":b.ratioObservado+":1")+'</span></div>';
+  html += '<div><strong>% reportes de operarios:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.pctOperariosObs+'%</span></div>';
+  html += '<div style="flex:1;min-width:200px;font-size:12px;color:var(--t2);">'+b.razon+'</div>';
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+// =============================================
+// TARGET DE EVENTOS POR PERSONA
+// =============================================
+// Modo fijo: 4 eventos/persona/mes (alineado con ratio 100:1 estándar)
+// Modo dinámico: calculado desde dotación + accidentes históricos
+function calcularTargetEventos() {
+  var totalPersonal = (MAESTROS.personal || []).length || 1;
+
+  // Modo fijo
+  var targetFijo = 4;
+
+  // Modo dinámico: para mantener ratio 100:1, si esperamos N accidentes/año, necesitamos 100N obs/año
+  // = 100N/12 obs/mes, distribuido entre la dotación → 100N/12/personas obs/persona/mes
+  // Estimamos N accidentes esperados con base histórica (últimos 12 meses)
+  var hace1Año = new Date();
+  hace1Año.setFullYear(hace1Año.getFullYear() - 1);
+  var hace1AñoStr = hace1Año.toISOString().slice(0,10);
+  var accidUlt12m = (EVENTOS||[]).filter(function(e){
+    var f = String(e.fecha_evento||"").substring(0,10);
+    return e.tipo === "ACCIDENTE" && f >= hace1AñoStr;
+  }).length;
+
+  // Si no hubo accidentes en 12m, usamos 1 como conservador para no dejar target en 0
+  var accidEsperados = Math.max(1, accidUlt12m);
+  var targetDinamico = Math.ceil((accidEsperados * 100) / 12 / totalPersonal);
+
+  // El dinámico nunca puede ser menor al fijo (4 es el piso recomendado)
+  if (targetDinamico < targetFijo) targetDinamico = targetFijo;
+
+  // Cumplimiento actual: cuántas personas alcanzaron el target en el último mes
+  var ahora = new Date();
+  var inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().slice(0,10);
+  var conteoPorPersona = {};
+  (EVENTOS||[]).forEach(function(e){
+    var f = String(e.fecha_evento||"").substring(0,10);
+    if (f < inicioMes) return;
+    var key = String(e.reportado_por_legajo||"") || String(e.reportado_por_nombre||"").toUpperCase();
+    if (!key) return;
+    conteoPorPersona[key] = (conteoPorPersona[key]||0) + 1;
+  });
+
+  return {
+    targetFijo: targetFijo,
+    targetDinamico: targetDinamico,
+    accidUlt12m: accidUlt12m,
+    totalPersonal: totalPersonal,
+    conteoPorPersona: conteoPorPersona
+  };
+}
+
+// Estado UI del target (persistido en localStorage)
+function getModoTarget() {
+  try { return localStorage.getItem("ehs_modo_target") || "fijo"; } catch(e) { return "fijo"; }
+}
+function setModoTarget(modo) {
+  try { localStorage.setItem("ehs_modo_target", modo); } catch(e) {}
+  render();
+}
+
+function renderTargetEventos() {
+  var t = calcularTargetEventos();
+  var modo = getModoTarget();
+  var targetUsado = (modo === "dinamico") ? t.targetDinamico : t.targetFijo;
+
+  // Cuántas personas alcanzaron el target este mes
+  var alcanzaron = 0;
+  var totalPersonas = t.totalPersonal;
+  Object.keys(t.conteoPorPersona).forEach(function(k){
+    if (t.conteoPorPersona[k] >= targetUsado) alcanzaron++;
+  });
+  var pctCumplimiento = totalPersonas > 0 ? Math.round((alcanzaron / totalPersonas) * 100) : 0;
+
+  var html = '<div class="card" style="margin-top:16px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">';
+  html += '<h2 style="margin:0;">Objetivo de eventos por persona <span style="font-weight:400;font-size:13px;color:var(--t2);">· para mantener ratio 100:1 obs/accidente</span></h2>';
+  // Toggle modo
+  html += '<div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;">'
+    + '<button onclick="setModoTarget(\'fijo\')" style="border:none;background:'+(modo==="fijo"?"var(--brand-600)":"transparent")+';color:'+(modo==="fijo"?"#fff":"var(--t2)")+';padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Fijo</button>'
+    + '<button onclick="setModoTarget(\'dinamico\')" style="border:none;background:'+(modo==="dinamico"?"var(--brand-600)":"transparent")+';color:'+(modo==="dinamico"?"#fff":"var(--t2)")+';padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Dinámico</button>'
+    + '</div>';
+  html += '</div>';
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:14px;">';
+
+  // Target actual
+  html += '<div style="padding:14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;">'
+    + '<div style="font-size:10px;color:#075985;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Target del mes</div>'
+    + '<div style="font-size:32px;font-weight:800;color:#075985;line-height:1;margin-top:6px;">'+targetUsado+'</div>'
+    + '<div style="font-size:11px;color:#0369A1;margin-top:4px;">eventos por persona</div>'
+    + '</div>';
+
+  // Cumplimiento
+  var colorCump = pctCumplimiento >= 80 ? "#065F46" : (pctCumplimiento >= 40 ? "#92400E" : "#991B1B");
+  var bgCump   = pctCumplimiento >= 80 ? "#D1FAE5" : (pctCumplimiento >= 40 ? "#FEF3C7" : "#FEE2E2");
+  var bdCump   = pctCumplimiento >= 80 ? "#A7F3D0" : (pctCumplimiento >= 40 ? "#FDE68A" : "#FCA5A5");
+  html += '<div style="padding:14px;background:'+bgCump+';border:1px solid '+bdCump+';border-radius:10px;">'
+    + '<div style="font-size:10px;color:'+colorCump+';font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cumplimiento mes</div>'
+    + '<div style="font-size:32px;font-weight:800;color:'+colorCump+';line-height:1;margin-top:6px;">'+pctCumplimiento+'%</div>'
+    + '<div style="font-size:11px;color:'+colorCump+';margin-top:4px;">'+alcanzaron+' de '+totalPersonas+' personas</div>'
+    + '</div>';
+
+  // Datos del cálculo dinámico
+  html += '<div style="padding:14px;background:#F9FAFB;border:1px solid var(--border);border-radius:10px;">'
+    + '<div style="font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Base del cálculo</div>'
+    + '<div style="font-size:13px;color:var(--t1);margin-top:6px;line-height:1.5;">'
+    + '<div><strong>'+t.totalPersonal+'</strong> personas en planta</div>'
+    + '<div><strong>'+t.accidUlt12m+'</strong> accidentes últimos 12 meses</div>'
+    + '</div>'
+    + '</div>';
+
+  html += '</div>';
+
+  // Nota explicativa según modo
+  html += '<div style="margin-top:12px;padding:10px 14px;background:#FFFBEB;border:1px dashed #FDE68A;border-radius:8px;font-size:12px;color:#78350F;line-height:1.5;">';
+  if (modo === "fijo") {
+    html += '<strong>Modo fijo:</strong> 4 eventos/persona/mes. Es el piso recomendado para iniciar una cultura BBS. ';
+    html += 'Si la planta tiene una tasa de accidentes habitual, conviene pasar a "Dinámico" para ajustar al ratio 100:1.';
+  } else {
+    html += '<strong>Modo dinámico:</strong> calculado como <code>(accidentes × 100) / 12 meses / dotación</code>. ';
+    html += 'Con '+t.accidUlt12m+' accidentes y '+t.totalPersonal+' personas, el target es '+t.targetDinamico+' eventos/persona/mes para sostener un ratio cultural saludable.';
+  }
+  html += '</div>';
+
+  html += '</div>';
+  return html;
+}
+
+// =============================================
 // PARTICIPACIÓN DEL EQUIPO (BBS / DSS+)
 // =============================================
 // Setters
@@ -1222,7 +1453,7 @@ function renderParticipacion() {
   }
 
   // Limitar a 15 si no está expandido
-  var personasMostrar = PARTICIPACION.expandido ? personasFiltradas : personasFiltradas.slice(0, 15);
+  var personasMostrar = PARTICIPACION.expandido ? personasFiltradas : personasFiltradas.slice(0, 5);
 
   // Etiquetas legibles según período
   var labelPeriodo = PARTICIPACION.periodo === "semana" ? "Últimos 7 días"
@@ -1378,9 +1609,9 @@ function renderParticipacion() {
     html += '</tbody></table>';
 
     // Botón ver más / ver menos
-    if (personasFiltradas.length > 15) {
+    if (personasFiltradas.length > 5) {
       var lblBtn = PARTICIPACION.expandido
-        ? "▲ Mostrar solo 15"
+        ? "▲ Mostrar solo 5"
         : "▼ Ver las " + personasFiltradas.length + " personas";
       html += '<div class="part-show-more" onclick="toggleParticipacionExpandido()">'+lblBtn+'</div>';
     }
@@ -1411,6 +1642,12 @@ function render() {
 
   html += renderLeadingKPIs();
 
+  // Curva de Bradley — etapa cultural
+  html += renderCurvaBradley();
+
+  // Target de eventos por persona (fijo/dinámico)
+  html += renderTargetEventos();
+
   // Sección Participación del equipo (BBS / DSS+) — empuja a que todos reporten
   html += renderParticipacion();
 
@@ -1432,6 +1669,32 @@ function render() {
   html += '<div class="grid">';
   html += '<div class="card"><h2>Pirámide de seguridad</h2>'+renderPyramid(counts)+'</div>';
   html += '<div class="card"><h2>Acciones correctivas <span style="font-weight:400;font-size:13px;color:var(--t2);">('+ACCIONES.length+' totales)</span></h2>'+renderActionsSummary()+'</div>';
+  html += '</div>';
+
+  // Gráfico de evolución
+  html += '<div class="card" style="margin-top:16px;">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">';
+  html += '<h2 style="margin:0;">Evolución <span id="evoSubtitulo" style="font-weight:400;font-size:13px;color:var(--t2);">· mensual, últimos 6 meses</span></h2>';
+  // Toggle
+  html += '<div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;">'
+    + '<button id="btnEvoMensual" onclick="cambiarVistaEvolucion(\'mensual\')" style="border:none;background:var(--brand-600);color:#fff;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Mensual</button>'
+    + '<button id="btnEvoAcum" onclick="cambiarVistaEvolucion(\'acumulado\')" style="border:none;background:transparent;color:var(--t2);padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Acumulado</button>'
+    + '</div>';
+  html += '</div>';
+  html += '<p id="evoDescripcion" style="font-size:13px;color:var(--t2);margin:8px 0 16px;">Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.</p>';
+  html += '<div style="position:relative;width:100%;height:320px;"><canvas id="evolucionChart"></canvas></div>';
+  // Leyenda mensual
+  html += '<div id="evoLeyendaMensual" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#185FA5;"></span>Eventos generados</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#059669;"></span>Acciones cerradas</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#D85A30;"></span>Backlog abierto (acumulado)</span>'
+    + '</div>';
+  // Leyenda acumulada (oculta por defecto)
+  html += '<div id="evoLeyendaAcum" style="display:none;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#185FA5;"></span>Eventos generados (acum.)</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#059669;"></span>Acciones cerradas (acum.)</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:rgba(216,90,48,0.25);"></span>Brecha = backlog</span>'
+    + '</div>';
   html += '</div>';
 
   // Filtros
@@ -1479,6 +1742,195 @@ function render() {
     + '</div>';
 
   document.getElementById("app").innerHTML = html;
+
+  // Dibujar el gráfico de evolución (después de que el canvas exista en el DOM)
+  dibujarEvolucionMensual();
+}
+
+// Estado de la vista del gráfico: "mensual" o "acumulado"
+var _vistaEvolucion = "mensual";
+var _chartEvolucion = null;
+
+function dibujarEvolucionMensual() {
+  var canvas = document.getElementById("evolucionChart");
+  if (!canvas || typeof Chart === "undefined") return;
+
+  var datos = calcularEvolucionMensual(6);
+
+  // Destruir gráfico anterior si existe (evita duplicados al re-renderizar)
+  if (_chartEvolucion) { _chartEvolucion.destroy(); _chartEvolucion = null; }
+
+  var config;
+  if (_vistaEvolucion === "acumulado") {
+    // Vista acumulada: dos líneas que crecen; la brecha entre ellas = backlog
+    config = {
+      type: "line",
+      data: {
+        labels: datos.labels,
+        datasets: [
+          { label:"Generados acum.", data:datos.generadosAcum, borderColor:"#185FA5", backgroundColor:"rgba(216,90,48,0.16)", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#185FA5", fill:"+1" },
+          { label:"Cerradas acum.", data:datos.cerradasAcum, borderColor:"#059669", backgroundColor:"transparent", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#059669", fill:false }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
+        scales:{
+          x:{ ticks:{autoSkip:false}, grid:{display:false} },
+          y:{ beginAtZero:true, title:{display:true,text:"Total acumulado"}, grid:{color:"rgba(128,128,128,0.1)"} }
+        }
+      }
+    };
+  } else {
+    // Vista mensual: barras de generados/cerradas + línea de backlog
+    config = {
+      data: {
+        labels: datos.labels,
+        datasets: [
+          { type:"bar", label:"Generados", data:datos.generados, backgroundColor:"#185FA5", borderRadius:4, order:2 },
+          { type:"bar", label:"Cerradas", data:datos.cerradas, backgroundColor:"#059669", borderRadius:4, order:2 },
+          { type:"line", label:"Backlog", data:datos.backlog, borderColor:"#D85A30", backgroundColor:"#D85A30", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#D85A30", order:1, yAxisID:"y1" }
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
+        scales:{
+          x:{ ticks:{autoSkip:false}, grid:{display:false} },
+          y:{ beginAtZero:true, title:{display:true,text:"Por mes"}, grid:{color:"rgba(128,128,128,0.1)"} },
+          y1:{ beginAtZero:true, position:"right", title:{display:true,text:"Backlog acumulado"}, grid:{display:false} }
+        }
+      }
+    };
+  }
+
+  _chartEvolucion = new Chart(canvas, config);
+}
+
+// Cambia entre vista mensual y acumulada
+function cambiarVistaEvolucion(vista) {
+  _vistaEvolucion = vista;
+
+  // Actualizar botones
+  var btnM = document.getElementById("btnEvoMensual");
+  var btnA = document.getElementById("btnEvoAcum");
+  if (btnM && btnA) {
+    var activo = "var(--brand-600)", inactivo = "transparent";
+    var colorAct = "#fff", colorInact = "var(--t2)";
+    btnM.style.background = (vista==="mensual") ? activo : inactivo;
+    btnM.style.color = (vista==="mensual") ? colorAct : colorInact;
+    btnA.style.background = (vista==="acumulado") ? activo : inactivo;
+    btnA.style.color = (vista==="acumulado") ? colorAct : colorInact;
+  }
+
+  // Actualizar subtítulo y descripción
+  var sub = document.getElementById("evoSubtitulo");
+  var desc = document.getElementById("evoDescripcion");
+  if (sub) sub.textContent = (vista==="acumulado") ? "· acumulado histórico" : "· mensual, últimos 6 meses";
+  if (desc) desc.textContent = (vista==="acumulado")
+    ? "Total de eventos generados y acciones cerradas que se acumulan mes a mes. La brecha entre las líneas es el backlog."
+    : "Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.";
+
+  // Mostrar la leyenda correspondiente
+  var legM = document.getElementById("evoLeyendaMensual");
+  var legA = document.getElementById("evoLeyendaAcum");
+  if (legM) legM.style.display = (vista==="mensual") ? "flex" : "none";
+  if (legA) legA.style.display = (vista==="acumulado") ? "flex" : "none";
+
+  dibujarEvolucionMensual();
+}
+
+// Devuelve {labels, generados, cerradas, backlog} de los últimos N meses
+function calcularEvolucionMensual(nMeses) {
+  var hoy = new Date();
+  var meses = [];
+  // Construir array de los últimos N meses (clave YYYY-MM)
+  for (var i = nMeses-1; i >= 0; i--) {
+    var d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
+    meses.push({
+      clave: d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"),
+      label: ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][d.getMonth()] + " " + String(d.getFullYear()).slice(2)
+    });
+  }
+  var clavesValidas = {};
+  meses.forEach(function(m){ clavesValidas[m.clave] = true; });
+
+  // Eventos generados por mes (por fecha_evento)
+  var generadosPorMes = {};
+  (EVENTOS||[]).forEach(function(e){
+    var clave = mesDeFecha(e.fecha_evento);
+    if (clave && clavesValidas[clave]) generadosPorMes[clave] = (generadosPorMes[clave]||0) + 1;
+  });
+
+  // Acciones cerradas por mes (por fecha_cierre)
+  var cerradasPorMes = {};
+  (ACCIONES||[]).forEach(function(a){
+    if (String(a.estado||"") === "Cerrada") {
+      var clave = mesDeFecha(a.fecha_cierre);
+      if (clave && clavesValidas[clave]) cerradasPorMes[clave] = (cerradasPorMes[clave]||0) + 1;
+    }
+  });
+
+  // Backlog acumulado: acciones abiertas al final de cada mes
+  // = creadas hasta fin de mes - cerradas hasta fin de mes
+  var labels=[], generados=[], cerradas=[], backlog=[];
+  var generadosAcum=[], cerradasAcum=[];
+  meses.forEach(function(m){
+    labels.push(m.label);
+    generados.push(generadosPorMes[m.clave] || 0);
+    cerradas.push(cerradasPorMes[m.clave] || 0);
+
+    var finMes = m.clave + "-31"; // comparación string YYYY-MM-DD funciona
+
+    // Acumulado de EVENTOS generados hasta fin de este mes
+    var evGenHasta = 0;
+    (EVENTOS||[]).forEach(function(e){
+      var fe = normalizarFechaStr(e.fecha_evento);
+      if (fe && fe <= finMes) evGenHasta++;
+    });
+    generadosAcum.push(evGenHasta);
+
+    // Acumulado de ACCIONES creadas y cerradas hasta fin de este mes
+    var creadasHasta = 0, cerradasHasta = 0;
+    (ACCIONES||[]).forEach(function(a){
+      var fc = normalizarFechaStr(a.fecha_creacion);
+      if (fc && fc <= finMes) creadasHasta++;
+      if (String(a.estado||"") === "Cerrada") {
+        var fcierre = normalizarFechaStr(a.fecha_cierre);
+        if (fcierre && fcierre <= finMes) cerradasHasta++;
+      }
+    });
+    cerradasAcum.push(cerradasHasta);
+    backlog.push(Math.max(0, creadasHasta - cerradasHasta));
+  });
+
+  return {
+    labels:labels,
+    generados:generados, cerradas:cerradas, backlog:backlog,
+    generadosAcum:generadosAcum, cerradasAcum:cerradasAcum
+  };
+}
+
+// Extrae "YYYY-MM" de una fecha (Date o string)
+function mesDeFecha(f) {
+  var s = normalizarFechaStr(f);
+  return s ? s.substring(0,7) : null;
+}
+
+// Normaliza una fecha a string "YYYY-MM-DD"
+function normalizarFechaStr(f) {
+  if (!f) return null;
+  if (f instanceof Date) {
+    return f.getFullYear() + "-" + String(f.getMonth()+1).padStart(2,"0") + "-" + String(f.getDate()).padStart(2,"0");
+  }
+  var s = String(f).trim();
+  // Puede venir como "2026-05-19" o "2026-05-19 00:00:00" o ISO
+  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[1]+"-"+m[2]+"-"+m[3];
+  // Intentar parsear como Date
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  return null;
 }
 
 function renderPyramid(counts) {
