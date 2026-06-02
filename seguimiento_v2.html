@@ -391,6 +391,14 @@ function renderAccionCard(a) {
     html += '<button class="btn-sm" onclick="abrirNota(\''+a.accion_id+'\')">📝 Nota</button>';
     html += '<button class="btn-sm" onclick="abrirReprogramar(\''+a.accion_id+'\')">📅 Reprogramar</button>';
     html += '<button class="btn-sm" onclick="abrirCambioResp(\''+a.accion_id+'\')">👤 Responsable</button>';
+    if (ev.evento_id) {
+      html += '<button class="btn-sm" onclick="abrirDetalleEvento(\''+escapeHTML(ev.evento_id)+'\')">👁 Ver evento</button>';
+    }
+    html += '</div>';
+  } else if (ev.evento_id) {
+    // Para acciones cerradas/canceladas, igual mostrar el botón Ver evento
+    html += '<div class="action-buttons">';
+    html += '<button class="btn-sm" onclick="abrirDetalleEvento(\''+escapeHTML(ev.evento_id)+'\')">👁 Ver evento</button>';
     html += '</div>';
   }
 
@@ -432,21 +440,68 @@ function abrirCierre(accionId) {
   html += '<h3>✓ Cerrar acción</h3>';
   html += '<div style="font-size:12px;color:var(--t2);margin-bottom:14px;">'+escapeHTML(a.descripcion)+'</div>';
   html += '<label>¿Quién cierra?</label>';
-  html += '<select id="cierreSelect"><option value="">— Seleccionar —</option>';
+
+  // Construir lista: responsables primero (con ★) + todo el personal
+  // Filtrar duplicados por legajo o nombre
+  var personas = [];
+  var vistos = {};
   (MAESTROS.responsables||[]).forEach(function(r){
-    html += '<option value="'+(r.nombre||"")+'" data-legajo="'+(r.legajo||"")+'">'+(r.nombre||"")+'</option>';
+    if (r.nombre) {
+      var key = (r.legajo || "n:"+(r.nombre||"").toUpperCase());
+      if (!vistos[key]) {
+        personas.push({legajo:r.legajo||"", nombre:r.nombre||"", esResp:true});
+        vistos[key] = true;
+      }
+    }
+  });
+  (MAESTROS.personal||[]).forEach(function(p){
+    if (p.nombre) {
+      var key = (p.legajo || "n:"+(p.nombre||"").toUpperCase());
+      if (!vistos[key]) {
+        personas.push({legajo:p.legajo||"", nombre:p.nombre||"", esResp:false});
+        vistos[key] = true;
+      }
+    }
+  });
+
+  // Input de búsqueda + select grande
+  html += '<input type="text" id="cierreBuscar" placeholder="Buscar por nombre o legajo..." '
+       +  'oninput="filtrarCierre(this.value)" '
+       +  'style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;margin-bottom:6px;box-sizing:border-box;"/>';
+  html += '<select id="cierreSelect" size="6" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;">';
+  html += '<option value="">— Seleccionar —</option>';
+  personas.forEach(function(p){
+    var label = (p.esResp?"★ ":"") + p.nombre + (p.legajo?" (#"+p.legajo+")":"");
+    html += '<option value="'+escapeHTML(p.nombre)+'" data-nombre="'+escapeHTML(p.nombre)+'" data-legajo="'+escapeHTML(p.legajo)+'">'+escapeHTML(label)+'</option>';
   });
   html += '</select>';
+  html += '<div style="font-size:11px;color:var(--t3);margin-top:4px;">★ = responsables · '+personas.length+' personas</div>';
   html += '<div class="modal-btns">';
   html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>';
   html += '<button class="modal-btn modal-btn-ok" onclick="confirmarCierre(\''+accionId+'\')">Confirmar cierre</button>';
   html += '</div></div></div>';
   document.body.insertAdjacentHTML("beforeend",html);
 }
+
+// Filtro en vivo para el select de cierre
+function filtrarCierre(query) {
+  var sel = document.getElementById("cierreSelect");
+  if (!sel) return;
+  var q = String(query||"").toLowerCase().trim();
+  for (var i=0; i<sel.options.length; i++) {
+    var opt = sel.options[i];
+    if (!opt.value) continue; // saltear "— Seleccionar —"
+    var nombre = (opt.getAttribute("data-nombre")||"").toLowerCase();
+    var legajo = (opt.getAttribute("data-legajo")||"").toLowerCase();
+    var match = !q || nombre.indexOf(q) !== -1 || legajo.indexOf(q) !== -1;
+    opt.style.display = match ? "" : "none";
+  }
+}
 function confirmarCierre(accionId) {
   var sel = document.getElementById("cierreSelect");
-  var nombre = sel.value;
-  var legajo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].getAttribute("data-legajo") : "";
+  var opt = sel.options[sel.selectedIndex];
+  var nombre = opt ? (opt.getAttribute("data-nombre") || sel.value) : sel.value;
+  var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
   if (!nombre) { alert("Seleccioná quién cierra"); return; }
 
   var params = new URLSearchParams();
@@ -592,6 +647,58 @@ function confirmarCambioResp(accionId) {
 function cerrarModal() {
   var m = document.getElementById("modalOv");
   if (m) m.remove();
+}
+
+// Abre un modal con el detalle del evento asociado a la acción
+function abrirDetalleEvento(eventoId) {
+  var ev = EVENTOS.filter(function(e){ return String(e.evento_id) === String(eventoId); })[0];
+  if (!ev) { alert("No se encontró el evento " + eventoId); return; }
+
+  var html = '<div class="modal-overlay" id="modalOv" onclick="if(event.target.id===\'modalOv\')cerrarModal()">';
+  html += '<div class="modal-box" style="max-width:560px;">';
+  html += '<h3>👁 Detalle del evento</h3>';
+
+  // ID + tipo + subtipo
+  html += '<div style="font-size:11px;color:var(--t2);margin-bottom:4px;">'+escapeHTML(ev.evento_id||"")+'</div>';
+  html += '<div style="font-weight:700;font-size:15px;margin-bottom:14px;">'
+       + escapeHTML(ev.tipo||"") + (ev.subtipo?' · '+escapeHTML(ev.subtipo):'') + '</div>';
+
+  // Datos principales
+  html += '<div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px;">';
+  if (ev.fecha_evento)        html += detRow("Fecha", formatDate(ev.fecha_evento) + (ev.hora_evento?' '+ev.hora_evento:''));
+  if (ev.sector)              html += detRow("Sector", ev.sector);
+  if (ev.turno)               html += detRow("Turno", ev.turno);
+  if (ev.reportado_por_nombre) html += detRow("Reportado por", ev.reportado_por_nombre + (ev.reportado_por_legajo?' (#'+ev.reportado_por_legajo+')':''));
+  if (ev.prioridad)           html += detRow("Prioridad", ev.prioridad);
+  if (ev.persona_nombre)      html += detRow("Persona involucrada", ev.persona_nombre);
+  html += '</div>';
+
+  // Descripción
+  if (ev.descripcion) {
+    html += '<div style="margin-top:14px;">';
+    html += '<div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:4px;">Descripción</div>';
+    html += '<div style="font-size:13px;background:var(--bg3);padding:10px 12px;border-radius:6px;">'+escapeHTML(ev.descripcion)+'</div>';
+    html += '</div>';
+  }
+
+  // Foto si existe
+  if (ev.foto_url) {
+    html += '<div style="margin-top:12px;text-align:center;">';
+    html += '<div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:6px;">📷 Foto</div>';
+    html += '<a href="'+escapeHTML(ev.foto_url)+'" target="_blank" rel="noopener">';
+    html += '<img src="'+escapeHTML(ev.foto_url)+'" style="max-width:100%;max-height:280px;border-radius:8px;border:1px solid var(--border);cursor:pointer;" alt="Foto del evento"/>';
+    html += '</a></div>';
+  }
+
+  html += '<div class="modal-btns" style="margin-top:18px;">';
+  html += '<button class="modal-btn modal-btn-ok" onclick="cerrarModal()">Cerrar</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML("beforeend", html);
+}
+
+function detRow(label, value) {
+  return '<div style="color:var(--t2);font-weight:600;">'+escapeHTML(label)+':</div>'
+       + '<div>'+escapeHTML(value)+'</div>';
 }
 
 // Init
