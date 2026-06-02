@@ -1380,8 +1380,11 @@ function calcularParticipacionPersonas() {
   var arr = [];
   for (var k in statsByPerson) arr.push(statsByPerson[k]);
 
-  // Calcular cumplimiento contra objetivo
-  var objetivo = OBJETIVOS[PARTICIPACION.periodo];
+  // Calcular cumplimiento contra el target del recuadro (fijo o dinámico según toggle).
+  // Antes usaba OBJETIVOS[periodo] (1/4/12) — ahora se sincroniza con el target del Mes.
+  var t = calcularTargetEventos();
+  var modo = getModoTarget();
+  var objetivo = (modo === "dinamico") ? t.targetDinamico : t.targetFijo;
   arr.forEach(function(p){
     p.objetivo = objetivo;
     p.cumplio = p.total >= objetivo;
@@ -1551,10 +1554,17 @@ function renderParticipacion() {
 
   html += '</div>';
 
+  // Calcular target usado para mostrar en el header (mismo cálculo que en cumplio)
+  var _t = calcularTargetEventos();
+  var _modo = getModoTarget();
+  var _target = (_modo === "dinamico") ? _t.targetDinamico : _t.targetFijo;
+  var _modoLabel = (_modo === "dinamico") ? "dinámico" : "fijo";
+
   // Tabla con header (filtros pills + título)
   html += '<div class="part-table-wrap">';
   html += '<div class="part-table-header">';
-  html += '<div class="part-table-title">Ranking de participación · '+personasFiltradas.length+' personas</div>';
+  html += '<div class="part-table-title">Ranking de participación · '+personasFiltradas.length+' personas '
+       + '<span style="font-weight:400;font-size:12px;color:var(--t2);">· target '+_target+' eventos ('+_modoLabel+')</span></div>';
   html += '<div class="part-filter-pills">';
   var pills = [
     ["todos","Todos",false],
