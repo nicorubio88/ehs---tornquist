@@ -29,7 +29,7 @@
   .topbar a { font-size:13px; color:var(--t2); text-decoration:none; }
   .topbar a:hover { color:var(--t1); }
   .topbar-title { font-size:14px; font-weight:600; }
-  .container { max-width:1100px; margin:0 auto; padding:20px 16px; }
+  .container { max-width:1400px; margin:0 auto; padding:20px 16px; }
   h1 { font-size:24px; font-weight:700; margin-bottom:4px; letter-spacing:-.02em; }
   .last-update { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); margin-bottom:18px; }
 
@@ -51,6 +51,71 @@
   .kpi.cerradas .kpi-value { color:#065F46; }
   .kpi.vencidas .kpi-value { color:#7F1D1D; }
 
+  /* ── PANEL DE INTELIGENCIA (KPIs avanzados) ── */
+  .panel-inteligencia {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:12px; margin-bottom:18px;
+  }
+  .panel-box {
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    padding:14px 16px;
+  }
+  .panel-box h3 {
+    font-size:11px; font-weight:700; color:var(--t2); text-transform:uppercase;
+    letter-spacing:.05em; margin-bottom:10px;
+  }
+  .matriz-crit {
+    display:grid; grid-template-columns:auto repeat(2, 1fr); gap:4px 8px;
+    font-size:12px; align-items:center;
+  }
+  .matriz-crit .mh {
+    font-size:10px; color:var(--t3); font-weight:600; text-transform:uppercase;
+    text-align:center;
+  }
+  .matriz-crit .ml {
+    font-weight:600; padding:4px 0;
+  }
+  .matriz-crit .mv {
+    text-align:center; font-weight:700; padding:6px 0; border-radius:6px;
+  }
+  .matriz-crit .cr-alta .ml { color:#991B1B; }
+  .matriz-crit .cr-alta .mv { background:#FEE2E2; }
+  .matriz-crit .cr-media .ml { color:#92400E; }
+  .matriz-crit .cr-media .mv { background:#FEF3C7; }
+  .matriz-crit .cr-baja .ml { color:#065F46; }
+  .matriz-crit .cr-baja .mv { background:#D1FAE5; }
+
+  .aging-bar {
+    display:flex; gap:6px; font-size:12px;
+  }
+  .aging-cell {
+    flex:1; padding:10px 8px; border-radius:8px; text-align:center;
+  }
+  .aging-cell .av { font-size:22px; font-weight:700; line-height:1; }
+  .aging-cell .al { font-size:10px; margin-top:4px; opacity:.8; }
+  .aging-7  { background:#FEF3C7; color:#92400E; }
+  .aging-14 { background:#FED7AA; color:#9A3412; }
+  .aging-21 { background:#FECACA; color:#7F1D1D; }
+
+  .lista-top {
+    font-size:12px; margin:0;
+  }
+  .lista-top-item {
+    display:flex; justify-content:space-between; padding:5px 0;
+    border-bottom:1px dashed var(--border);
+  }
+  .lista-top-item:last-child { border-bottom:none; }
+  .lista-top-item .nom { color:var(--t1); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%; }
+  .lista-top-item .cnt { font-weight:700; color:#991B1B; }
+
+  .cumpl-bar {
+    text-align:center; padding:8px 0;
+  }
+  .cumpl-num { font-size:36px; font-weight:800; color:var(--brand-700); line-height:1; }
+  .cumpl-lbl { font-size:11px; color:var(--t2); margin-top:6px; }
+  .cumpl-det { font-size:10px; color:var(--t3); margin-top:4px; font-family:'JetBrains Mono',monospace; }
+
+  /* ── FILTROS ── */
   .filters {
     display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;
   }
@@ -60,19 +125,99 @@
     padding:6px 10px;
   }
   .filter-label { font-size:11px; color:var(--t2); font-weight:600; }
-  .filter-group select {
+  .filter-group select, .filter-group input {
     border:none; background:transparent; font:inherit; font-size:13px;
-    color:var(--t1); cursor:pointer;
+    color:var(--t1); cursor:pointer; min-width:0;
   }
-  .filter-group select:focus { outline:none; }
+  .filter-group select:focus, .filter-group input:focus { outline:none; }
+  .filter-group input[type="date"] { font-size:12px; padding:0; }
+  .filter-group input[type="text"] { min-width:150px; cursor:text; }
+  .btn-toggle {
+    padding:6px 12px; border-radius:8px; border:1px solid var(--border);
+    background:#fff; font-size:12px; font-weight:600; cursor:pointer;
+    color:var(--t1);
+  }
+  .btn-toggle.active {
+    background:#DC2626; color:#fff; border-color:#DC2626;
+  }
+  .btn-clear {
+    padding:6px 10px; border-radius:8px; border:1px dashed var(--border);
+    background:transparent; font-size:11px; color:var(--t3); cursor:pointer;
+  }
+  .btn-clear:hover { color:var(--t1); border-color:var(--t2); }
 
+  /* ── KANBAN ── */
+  .kanban {
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;
+    align-items:flex-start;
+  }
+  @media (max-width: 900px) {
+    .kanban { grid-template-columns:1fr; }
+  }
+  .kanban-col {
+    background:#F8FAFC; border:1px solid var(--border); border-radius:12px;
+    padding:12px; min-height:200px;
+  }
+  .kanban-col.col-abiertas { border-top:4px solid #DC2626; }
+  .kanban-col.col-proceso  { border-top:4px solid #F59E0B; }
+  .kanban-col.col-cerradas { border-top:4px solid #10B981; }
+  .kanban-col-header {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:12px;
+  }
+  .kanban-col-title {
+    font-size:13px; font-weight:700; color:var(--t1);
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .kanban-col-count {
+    background:#fff; padding:2px 10px; border-radius:999px;
+    font-size:12px; font-weight:700; color:var(--t2);
+    border:1px solid var(--border);
+  }
+  .kanban-empty {
+    font-size:12px; color:var(--t3); text-align:center; padding:24px 12px;
+    font-style:italic;
+  }
+
+  /* Card mejorada con criticidad y aging */
   .action-card {
     background:#fff; border:1px solid var(--border); border-radius:10px;
-    padding:14px 16px; margin-bottom:8px;
+    padding:12px 14px; margin-bottom:8px;
+    transition:box-shadow .15s;
   }
-  .action-card.vencida { border-left:4px solid #DC2626; }
+  .action-card:hover { box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  .action-card.vencida { border-left:4px solid #DC2626; background:#FFFBFB; }
   .action-card.proxima { border-left:4px solid #F59E0B; }
-  .action-card.cerrada { opacity:.6; }
+  .action-card.cerrada { opacity:.7; }
+
+  /* Badge de criticidad arriba a la izquierda */
+  .crit-badge {
+    display:inline-block; font-size:9px; font-weight:700; padding:2px 8px;
+    border-radius:4px; text-transform:uppercase; letter-spacing:.05em;
+    margin-right:6px;
+  }
+  .crit-badge.alta  { background:#FEE2E2; color:#991B1B; }
+  .crit-badge.media { background:#FEF3C7; color:#92400E; }
+  .crit-badge.baja  { background:#D1FAE5; color:#065F46; }
+  .crit-badge.sin   { background:#F3F4F6; color:#6B7280; }
+
+  /* Aging chip — días vencidos prominentes */
+  .aging-chip {
+    display:inline-block; font-size:10px; font-weight:700; padding:3px 8px;
+    border-radius:6px; margin-left:4px;
+  }
+  .aging-chip.venc {
+    background:#7F1D1D; color:#fff;
+  }
+  .aging-chip.hoy {
+    background:#DC2626; color:#fff;
+  }
+  .aging-chip.cerca {
+    background:#FEF3C7; color:#92400E;
+  }
+  .aging-chip.ok {
+    background:#F1F5F9; color:var(--t2);
+  }
   .action-header {
     display:flex; justify-content:space-between; align-items:flex-start;
     gap:10px; margin-bottom:6px;
@@ -175,7 +320,20 @@ var ACCIONES = [];
 var EVENTOS = [];
 var MAESTROS = { personal:[], responsables:[], sectores:[] };
 
-var FILTERS = { responsable:"Todos", estado:"Todos", sector:"Todos", soloMias:false };
+var FILTERS = {
+  responsable:"Todos",
+  estado:"Todos",
+  sector:"Todos",
+  criticidad:"Todos",     // Alta / Media / Baja
+  creador:"Todos",        // Quien reportó el evento de origen
+  cerradaPor:"Todos",     // Quien cerró la acción
+  tipoEvento:"Todos",     // OBSERVACION, INCIDENTE, etc.
+  fechaCreDesde:"",       // Fecha creación >= esta
+  fechaCreHasta:"",       // Fecha creación <= esta
+  busqueda:"",            // Texto libre en descripción
+  soloVencidas:false,     // Solo las vencidas
+  soloMias:false
+};
 
 // Identidad cargada desde localStorage (compartida con dashboard)
 var IDENTIDAD = { legajo: "", nombre: "" };
@@ -221,12 +379,59 @@ function getEventoOf(accion) {
 
 function applyFilters(acciones) {
   return acciones.filter(function(a){
+    var ev = getEventoOf(a);
+
+    // Filtros básicos
     if (FILTERS.responsable !== "Todos" && a.responsable_nombre !== FILTERS.responsable) return false;
     if (FILTERS.estado !== "Todos" && a.estado !== FILTERS.estado) return false;
-    if (FILTERS.sector !== "Todos") {
-      var ev = getEventoOf(a);
-      if (ev.sector !== FILTERS.sector) return false;
+    if (FILTERS.sector !== "Todos" && ev.sector !== FILTERS.sector) return false;
+
+    // Criticidad (viene del evento como ev.prioridad)
+    if (FILTERS.criticidad !== "Todos") {
+      var prio = String(ev.prioridad || "").trim();
+      if (prio !== FILTERS.criticidad) return false;
     }
+
+    // Tipo de evento de origen
+    if (FILTERS.tipoEvento !== "Todos" && ev.tipo !== FILTERS.tipoEvento) return false;
+
+    // Creador del evento de origen
+    if (FILTERS.creador !== "Todos") {
+      var creador = String(ev.reportado_por_nombre || "");
+      if (creador !== FILTERS.creador) return false;
+    }
+
+    // Cerrada por (solo aplica a cerradas)
+    if (FILTERS.cerradaPor !== "Todos") {
+      var cerradaPor = String(a.cerrada_por_nombre || "");
+      if (cerradaPor !== FILTERS.cerradaPor) return false;
+    }
+
+    // Rango de fechas de creación
+    if (FILTERS.fechaCreDesde) {
+      var fc = String(a.fecha_creacion || "").substring(0,10);
+      if (!fc || fc < FILTERS.fechaCreDesde) return false;
+    }
+    if (FILTERS.fechaCreHasta) {
+      var fc2 = String(a.fecha_creacion || "").substring(0,10);
+      if (!fc2 || fc2 > FILTERS.fechaCreHasta) return false;
+    }
+
+    // Búsqueda libre (descripción de la acción o del evento)
+    if (FILTERS.busqueda) {
+      var q = FILTERS.busqueda.toLowerCase();
+      var texto = (a.descripcion || "") + " " + (ev.descripcion || "") + " " + (a.responsable_nombre || "") + " " + (ev.reportado_por_nombre || "");
+      if (texto.toLowerCase().indexOf(q) === -1) return false;
+    }
+
+    // Solo vencidas
+    if (FILTERS.soloVencidas) {
+      if (a.estado === "Cerrada" || a.estado === "Cancelada") return false;
+      var d = diasAlVencimiento(a.fecha_vencimiento);
+      if (d === null || d >= 0) return false;
+    }
+
+    // Solo mis acciones
     if (FILTERS.soloMias) {
       var legY = String(IDENTIDAD.legajo || "").trim();
       var nomY = String(IDENTIDAD.nombre || "").trim().toUpperCase();
@@ -237,6 +442,37 @@ function applyFilters(acciones) {
     }
     return true;
   });
+}
+
+function clearFilters() {
+  FILTERS.responsable = "Todos";
+  FILTERS.estado = "Todos";
+  FILTERS.sector = "Todos";
+  FILTERS.criticidad = "Todos";
+  FILTERS.creador = "Todos";
+  FILTERS.cerradaPor = "Todos";
+  FILTERS.tipoEvento = "Todos";
+  FILTERS.fechaCreDesde = "";
+  FILTERS.fechaCreHasta = "";
+  FILTERS.busqueda = "";
+  FILTERS.soloVencidas = false;
+  // soloMias se conserva (es una preferencia del usuario)
+  render();
+}
+
+function toggleVencidas() {
+  FILTERS.soloVencidas = !FILTERS.soloVencidas;
+  render();
+}
+
+function setBusqueda(v) {
+  FILTERS.busqueda = v;
+  render();
+}
+
+function setFechaCre(campo, valor) {
+  FILTERS[campo] = valor;
+  render();
 }
 
 function setFilter(key, value) {
@@ -265,15 +501,15 @@ function render() {
   var html = '';
 
   html += '<h1>Seguimiento</h1>';
-  html += '<div class="last-update">Última actualización: '+new Date().toLocaleString("es-AR")+' · '+ACCIONES.length+' acciones totales</div>';
+  html += '<div class="last-update">Última actualización: '+new Date().toLocaleString("es-AR")+' · '+ACCIONES.length+' acciones totales · '+filtered.length+' visibles</div>';
 
-  // KPIs
+  // ── KPIs básicos ──
   var abiertas = ACCIONES.filter(function(a){return a.estado === "Abierta"}).length;
   var enProceso = ACCIONES.filter(function(a){return a.estado === "En proceso"}).length;
   var cerradas = ACCIONES.filter(function(a){return a.estado === "Cerrada"}).length;
   var vencidas = 0;
   ACCIONES.forEach(function(a){
-    if (a.estado !== "Cerrada" && a.fecha_vencimiento) {
+    if (a.estado !== "Cerrada" && a.estado !== "Cancelada" && a.fecha_vencimiento) {
       var d = diasAlVencimiento(a.fecha_vencimiento);
       if (d !== null && d < 0) vencidas++;
     }
@@ -286,93 +522,414 @@ function render() {
   html += '<div class="kpi vencidas"><div class="kpi-label">Vencidas</div><div class="kpi-value">'+vencidas+'</div></div>';
   html += '</div>';
 
-  // Filtros
-  var responsablesUnicos = ["Todos"];
-  var seen = {};
-  ACCIONES.forEach(function(a){
-    if (a.responsable_nombre && !seen[a.responsable_nombre]) {
-      seen[a.responsable_nombre] = true;
-      responsablesUnicos.push(a.responsable_nombre);
-    }
-  });
+  // ── PANEL DE INTELIGENCIA ──
+  html += renderPanelInteligencia(filtered);
 
-  html += '<div class="filters">';
+  // ── FILTROS ──
+  html += renderFiltros();
 
-  // Toggle "Solo mis acciones" — solo aparece si tengo identidad seteada
-  if (IDENTIDAD.nombre) {
-    var btnStyle = FILTERS.soloMias
-      ? 'background:#10B981;color:#fff;border-color:#10B981;'
-      : 'background:#fff;color:var(--t1);border-color:var(--border);';
-    html += '<button onclick="toggleSoloMias()" style="padding:8px 14px;border-radius:8px;border:1px solid;font-size:12px;font-weight:600;cursor:pointer;'+btnStyle+'">'
-      + (FILTERS.soloMias ? '✓ ' : '👤 ')
-      + 'Solo mis acciones'
-      + '</button>';
-    html += '<div style="font-size:11px;color:var(--t2);align-self:center;">('+escapeHTML(IDENTIDAD.nombre)+')</div>';
-  } else {
-    html += '<div style="font-size:11px;color:var(--t2);padding:8px 12px;background:#FFFBEB;border:1px dashed #FDE68A;border-radius:8px;align-self:center;">💡 Tip: Elegí tu identidad en el Dashboard para filtrar tus acciones.</div>';
-  }
+  html += '<h3 style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--t1);">Tablero ('+filtered.length+' acciones visibles)</h3>';
 
-  html += filterSelect("responsable","Responsable",responsablesUnicos);
-  html += filterSelect("estado","Estado",["Todos","Abierta","En proceso","Cerrada","Cancelada"]);
-  html += filterSelect("sector","Sector",["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;})));
-  html += '</div>';
-
-  html += '<h3 style="font-size:14px;font-weight:700;margin-bottom:10px;color:var(--t1);">Acciones cargadas ('+filtered.length+')</h3>';
-
-  // Lista
+  // ── KANBAN ──
   if (filtered.length === 0) {
-    html += '<div class="empty">No hay acciones con estos filtros.</div>';
+    html += '<div class="empty" style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:30px;text-align:center;color:var(--t2);">No hay acciones con estos filtros. <button class="btn-clear" onclick="clearFilters()" style="margin-left:10px;">Limpiar filtros</button></div>';
   } else {
-    // Ordenar: vencidas primero, luego por vencimiento ascendente, cerradas al final
-    filtered.slice().sort(function(a,b){
-      if (a.estado === "Cerrada" && b.estado !== "Cerrada") return 1;
-      if (b.estado === "Cerrada" && a.estado !== "Cerrada") return -1;
-      var da = diasAlVencimiento(a.fecha_vencimiento);
-      var db = diasAlVencimiento(b.fecha_vencimiento);
-      if (da === null) return 1;
-      if (db === null) return -1;
-      return da - db;
-    }).forEach(function(a){
-      html += renderAccionCard(a);
-    });
+    html += renderKanban(filtered);
   }
 
   document.getElementById("app").innerHTML = html;
 }
 
+// ─────────────────────────────────────────────────
+// PANEL DE INTELIGENCIA — KPIs avanzados
+// ─────────────────────────────────────────────────
+function renderPanelInteligencia(acciones) {
+  // 1. Matriz Criticidad × Estado
+  var matriz = {
+    alta: { pendientes:0, cerradas:0 },
+    media: { pendientes:0, cerradas:0 },
+    baja: { pendientes:0, cerradas:0 }
+  };
+
+  // 2. Aging buckets (días desde creación para no-cerradas)
+  var aging = { ok7:0, dias14:0, dias21mas:0 };
+
+  // 3. Top responsables con más vencidas
+  var vencPorResp = {};
+  // 4. Top sectores con más pendientes
+  var pendPorSector = {};
+
+  // 5. Cumplimiento (cerradas a tiempo / total cerradas con fecha)
+  var cerradasATiempo = 0;
+  var cerradasConFecha = 0;
+  // Tiempo promedio de cierre por criticidad
+  var tcierre = { alta:[], media:[], baja:[] };
+
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+
+  acciones.forEach(function(a){
+    var ev = getEventoOf(a);
+    var crit = String(ev.prioridad || "").toLowerCase();
+    var critKey = (crit === "alta" || crit === "media" || crit === "baja") ? crit : "media";
+
+    var esCerrada = (a.estado === "Cerrada");
+    var esCancelada = (a.estado === "Cancelada");
+
+    // Matriz criticidad x estado (pendientes = abiertas + en proceso, cerradas = cerradas)
+    if (esCerrada) matriz[critKey].cerradas++;
+    else if (!esCancelada) matriz[critKey].pendientes++;
+
+    // Aging para pendientes
+    if (!esCerrada && !esCancelada && a.fecha_creacion) {
+      var fc = new Date(String(a.fecha_creacion).substring(0,10) + "T00:00:00");
+      var diasPend = Math.floor((hoy - fc) / (1000*60*60*24));
+      if (diasPend <= 7) aging.ok7++;
+      else if (diasPend <= 14) aging.dias14++;
+      else aging.dias21mas++;
+    }
+
+    // Vencidas por responsable
+    if (!esCerrada && !esCancelada && a.fecha_vencimiento) {
+      var dv = diasAlVencimiento(a.fecha_vencimiento);
+      if (dv !== null && dv < 0) {
+        var resp = a.responsable_nombre || "Sin asignar";
+        vencPorResp[resp] = (vencPorResp[resp] || 0) + 1;
+      }
+    }
+
+    // Sectores con más pendientes
+    if (!esCerrada && !esCancelada) {
+      var sec = ev.sector || "Sin sector";
+      pendPorSector[sec] = (pendPorSector[sec] || 0) + 1;
+    }
+
+    // Cumplimiento a tiempo
+    if (esCerrada && a.fecha_vencimiento && a.fecha_cierre) {
+      cerradasConFecha++;
+      var fv = String(a.fecha_vencimiento).substring(0,10);
+      var fc2 = String(a.fecha_cierre).substring(0,10);
+      if (fc2 <= fv) cerradasATiempo++;
+      // Tiempo promedio
+      if (a.fecha_creacion) {
+        var fcre = new Date(String(a.fecha_creacion).substring(0,10) + "T00:00:00");
+        var fcie = new Date(fc2 + "T00:00:00");
+        var dias = Math.floor((fcie - fcre) / (1000*60*60*24));
+        if (dias >= 0) tcierre[critKey].push(dias);
+      }
+    }
+  });
+
+  function topN(obj, n) {
+    return Object.keys(obj).map(function(k){ return {k:k, v:obj[k]}; })
+      .sort(function(a,b){ return b.v - a.v; }).slice(0, n);
+  }
+  var topResp = topN(vencPorResp, 3);
+  var topSec = topN(pendPorSector, 3);
+  var pctCumpl = cerradasConFecha > 0 ? Math.round((cerradasATiempo / cerradasConFecha) * 100) : null;
+
+  function avg(arr) {
+    if (arr.length === 0) return null;
+    return Math.round(arr.reduce(function(a,b){return a+b;}, 0) / arr.length);
+  }
+
+  var html = '<div class="panel-inteligencia">';
+
+  // 1. Matriz Criticidad x Estado
+  html += '<div class="panel-box">';
+  html += '<h3>📊 Criticidad × estado</h3>';
+  html += '<div class="matriz-crit">';
+  html += '<div></div><div class="mh">Pendientes</div><div class="mh">Cerradas</div>';
+  ["alta","media","baja"].forEach(function(c){
+    var label = c.charAt(0).toUpperCase() + c.slice(1);
+    html += '<div class="cr-'+c+' ml" style="grid-column:1;">'+label+'</div>';
+    html += '<div class="cr-'+c+' mv">'+matriz[c].pendientes+'</div>';
+    html += '<div class="cr-'+c+' mv">'+matriz[c].cerradas+'</div>';
+  });
+  html += '</div></div>';
+
+  // 2. Aging — antigüedad de pendientes
+  html += '<div class="panel-box">';
+  html += '<h3>⏱ Antigüedad de pendientes</h3>';
+  html += '<div class="aging-bar">';
+  html += '<div class="aging-cell aging-7"><div class="av">'+aging.ok7+'</div><div class="al">≤ 7 días</div></div>';
+  html += '<div class="aging-cell aging-14"><div class="av">'+aging.dias14+'</div><div class="al">8–14 días</div></div>';
+  html += '<div class="aging-cell aging-21"><div class="av">'+aging.dias21mas+'</div><div class="al">+21 días</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:10px;color:var(--t3);margin-top:8px;text-align:center;">Acciones acumuladas que llevan abiertas más tiempo del razonable</div>';
+  html += '</div>';
+
+  // 3. Cumplimiento + tiempo de cierre
+  html += '<div class="panel-box">';
+  html += '<h3>✓ Cumplimiento a tiempo</h3>';
+  if (pctCumpl !== null) {
+    html += '<div class="cumpl-bar">';
+    html += '<div class="cumpl-num">'+pctCumpl+'%</div>';
+    html += '<div class="cumpl-lbl">Cerradas dentro de plazo</div>';
+    html += '<div class="cumpl-det">'+cerradasATiempo+' / '+cerradasConFecha+' acciones</div>';
+    html += '</div>';
+    // Tiempo promedio
+    var tA = avg(tcierre.alta), tM = avg(tcierre.media), tB = avg(tcierre.baja);
+    if (tA !== null || tM !== null || tB !== null) {
+      html += '<div style="font-size:11px;color:var(--t2);border-top:1px dashed var(--border);padding-top:8px;margin-top:8px;">';
+      html += '<div style="font-weight:600;color:var(--t1);margin-bottom:4px;">Tiempo promedio cierre:</div>';
+      if (tA !== null) html += '<div>Alta: <strong>'+tA+'d</strong></div>';
+      if (tM !== null) html += '<div>Media: <strong>'+tM+'d</strong></div>';
+      if (tB !== null) html += '<div>Baja: <strong>'+tB+'d</strong></div>';
+      html += '</div>';
+    }
+  } else {
+    html += '<div style="font-size:12px;color:var(--t3);text-align:center;padding:20px 0;">Sin datos suficientes todavía</div>';
+  }
+  html += '</div>';
+
+  // 4. Top 3 responsables con vencidas
+  html += '<div class="panel-box">';
+  html += '<h3>🚨 Top responsables con vencidas</h3>';
+  if (topResp.length === 0) {
+    html += '<div style="font-size:12px;color:#065F46;text-align:center;padding:20px 0;">✓ Sin acciones vencidas</div>';
+  } else {
+    html += '<div class="lista-top">';
+    topResp.forEach(function(t){
+      html += '<div class="lista-top-item">';
+      html += '<span class="nom">'+escapeHTML(t.k)+'</span>';
+      html += '<span class="cnt">'+t.v+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // 5. Top 3 sectores con más pendientes
+  html += '<div class="panel-box">';
+  html += '<h3>🏭 Top sectores con pendientes</h3>';
+  if (topSec.length === 0) {
+    html += '<div style="font-size:12px;color:#065F46;text-align:center;padding:20px 0;">✓ Sin acciones pendientes</div>';
+  } else {
+    html += '<div class="lista-top">';
+    topSec.forEach(function(t){
+      html += '<div class="lista-top-item">';
+      html += '<span class="nom">'+escapeHTML(t.k)+'</span>';
+      html += '<span class="cnt" style="color:#92400E;">'+t.v+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  html += '</div>'; // /panel-inteligencia
+  return html;
+}
+
+// ─────────────────────────────────────────────────
+// FILTROS
+// ─────────────────────────────────────────────────
+function renderFiltros() {
+  var html = '<div class="filters">';
+
+  // Toggle "Solo mis acciones"
+  if (IDENTIDAD.nombre) {
+    var btnStyle = FILTERS.soloMias
+      ? 'background:#10B981;color:#fff;border-color:#10B981;'
+      : 'background:#fff;color:var(--t1);border-color:var(--border);';
+    html += '<button onclick="toggleSoloMias()" class="btn-toggle" style="'+btnStyle+'">'
+      + (FILTERS.soloMias ? '✓ ' : '👤 ')
+      + 'Solo mis acciones</button>';
+  }
+
+  // Toggle "Solo vencidas"
+  html += '<button onclick="toggleVencidas()" class="btn-toggle '+(FILTERS.soloVencidas?'active':'')+'">'
+    + (FILTERS.soloVencidas ? '✓ ' : '⚠️ ')
+    + 'Solo vencidas</button>';
+
+  // Búsqueda libre
+  html += '<div class="filter-group"><span class="filter-label">🔍</span>'
+    + '<input type="text" placeholder="Buscar..." value="'+escapeHTML(FILTERS.busqueda)+'" oninput="setBusqueda(this.value)" /></div>';
+
+  // Selects clásicos + nuevos
+  var responsablesUnicos = ["Todos"], creadoresUnicos = ["Todos"], cerradasPorUnicos = ["Todos"];
+  var seenR = {}, seenC = {}, seenCe = {};
+  ACCIONES.forEach(function(a){
+    if (a.responsable_nombre && !seenR[a.responsable_nombre]) {
+      seenR[a.responsable_nombre] = true;
+      responsablesUnicos.push(a.responsable_nombre);
+    }
+    if (a.cerrada_por_nombre && !seenCe[a.cerrada_por_nombre]) {
+      seenCe[a.cerrada_por_nombre] = true;
+      cerradasPorUnicos.push(a.cerrada_por_nombre);
+    }
+  });
+  EVENTOS.forEach(function(e){
+    if (e.reportado_por_nombre && !seenC[e.reportado_por_nombre]) {
+      seenC[e.reportado_por_nombre] = true;
+      creadoresUnicos.push(e.reportado_por_nombre);
+    }
+  });
+  responsablesUnicos.sort(); creadoresUnicos.sort(); cerradasPorUnicos.sort();
+
+  html += filterSelect("criticidad","Criticidad",["Todos","Alta","Media","Baja"]);
+  html += filterSelect("estado","Estado",["Todos","Abierta","En proceso","Cerrada","Cancelada"]);
+  html += filterSelect("responsable","Responsable",responsablesUnicos);
+  html += filterSelect("creador","Creador",creadoresUnicos);
+  html += filterSelect("cerradaPor","Cerrada por",cerradasPorUnicos);
+  html += filterSelect("sector","Sector",["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;})));
+  html += filterSelect("tipoEvento","Tipo evento",["Todos","OBSERVACION","CONVERSACION","INCIDENTE","ACCIDENTE","AMBIENTE"]);
+
+  // Rango de fechas de creación
+  html += '<div class="filter-group"><span class="filter-label">Creación desde:</span>'
+    + '<input type="date" value="'+FILTERS.fechaCreDesde+'" onchange="setFechaCre(\'fechaCreDesde\',this.value)" /></div>';
+  html += '<div class="filter-group"><span class="filter-label">hasta:</span>'
+    + '<input type="date" value="'+FILTERS.fechaCreHasta+'" onchange="setFechaCre(\'fechaCreHasta\',this.value)" /></div>';
+
+  // Identidad y limpiar
+  if (IDENTIDAD.nombre) {
+    html += '<div style="font-size:11px;color:var(--t2);align-self:center;">('+escapeHTML(IDENTIDAD.nombre)+')</div>';
+  }
+  html += '<button class="btn-clear" onclick="clearFilters()">✕ Limpiar filtros</button>';
+
+  html += '</div>';
+
+  // Tip si no hay identidad
+  if (!IDENTIDAD.nombre) {
+    html += '<div style="font-size:11px;color:var(--t2);padding:8px 12px;background:#FFFBEB;border:1px dashed #FDE68A;border-radius:8px;margin-bottom:12px;">💡 Tip: Elegí tu identidad en el Dashboard para filtrar tus acciones.</div>';
+  }
+
+  return html;
+}
+
+// ─────────────────────────────────────────────────
+// KANBAN — 3 columnas: Abiertas | En proceso | Cerradas
+// ─────────────────────────────────────────────────
+function renderKanban(acciones) {
+  // Agrupar por estado
+  var grupos = { abiertas:[], proceso:[], cerradas:[] };
+  acciones.forEach(function(a){
+    if (a.estado === "Cerrada") grupos.cerradas.push(a);
+    else if (a.estado === "En proceso") grupos.proceso.push(a);
+    else if (a.estado === "Abierta") grupos.abiertas.push(a);
+    // Canceladas no entran al kanban (poco frecuente, podría filtrarse aparte)
+  });
+
+  // Ordenar cada columna: vencidas primero (más vencidas arriba)
+  function ordenarPorVencimiento(arr) {
+    return arr.slice().sort(function(a,b){
+      var da = diasAlVencimiento(a.fecha_vencimiento);
+      var db = diasAlVencimiento(b.fecha_vencimiento);
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db; // negativos (vencidos) primero
+    });
+  }
+  // Cerradas: más reciente primero
+  function ordenarPorCierre(arr) {
+    return arr.slice().sort(function(a,b){
+      return String(b.fecha_cierre||"").localeCompare(String(a.fecha_cierre||""));
+    });
+  }
+
+  grupos.abiertas = ordenarPorVencimiento(grupos.abiertas);
+  grupos.proceso = ordenarPorVencimiento(grupos.proceso);
+  grupos.cerradas = ordenarPorCierre(grupos.cerradas);
+
+  var html = '<div class="kanban">';
+
+  // Columna 1: Abiertas
+  html += '<div class="kanban-col col-abiertas">';
+  html += '<div class="kanban-col-header">';
+  html += '<div class="kanban-col-title">🔴 Abiertas</div>';
+  html += '<div class="kanban-col-count">'+grupos.abiertas.length+'</div>';
+  html += '</div>';
+  if (grupos.abiertas.length === 0) {
+    html += '<div class="kanban-empty">Sin acciones abiertas</div>';
+  } else {
+    grupos.abiertas.forEach(function(a){ html += renderAccionCard(a); });
+  }
+  html += '</div>';
+
+  // Columna 2: En proceso
+  html += '<div class="kanban-col col-proceso">';
+  html += '<div class="kanban-col-header">';
+  html += '<div class="kanban-col-title">🟡 En proceso</div>';
+  html += '<div class="kanban-col-count">'+grupos.proceso.length+'</div>';
+  html += '</div>';
+  if (grupos.proceso.length === 0) {
+    html += '<div class="kanban-empty">Sin acciones en proceso</div>';
+  } else {
+    grupos.proceso.forEach(function(a){ html += renderAccionCard(a); });
+  }
+  html += '</div>';
+
+  // Columna 3: Cerradas
+  html += '<div class="kanban-col col-cerradas">';
+  html += '<div class="kanban-col-header">';
+  html += '<div class="kanban-col-title">🟢 Cerradas</div>';
+  html += '<div class="kanban-col-count">'+grupos.cerradas.length+'</div>';
+  html += '</div>';
+  if (grupos.cerradas.length === 0) {
+    html += '<div class="kanban-empty">Sin acciones cerradas</div>';
+  } else {
+    grupos.cerradas.forEach(function(a){ html += renderAccionCard(a); });
+  }
+  html += '</div>';
+
+  html += '</div>'; // /kanban
+  return html;
+}
+
 function renderAccionCard(a) {
   var ev = getEventoOf(a);
   var diasV = diasAlVencimiento(a.fecha_vencimiento);
-  var estadoClass = "abierta";
-  if (a.estado === "En proceso") estadoClass = "proceso";
-  else if (a.estado === "Cerrada") estadoClass = "cerrada";
-  else if (a.estado === "Cancelada") estadoClass = "cancelada";
+  var esCerrada = (a.estado === "Cerrada");
+  var esCancelada = (a.estado === "Cancelada");
 
+  // Clase de card según vencimiento
   var cardClass = "action-card";
-  if (a.estado === "Cerrada") cardClass += " cerrada";
-  else if (diasV !== null && diasV < 0) cardClass += " vencida";
-  else if (diasV !== null && diasV <= 3) cardClass += " proxima";
+  if (esCerrada) cardClass += " cerrada";
+  else if (!esCancelada && diasV !== null && diasV < 0) cardClass += " vencida";
+  else if (!esCancelada && diasV !== null && diasV <= 3) cardClass += " proxima";
+
+  // Criticidad del evento de origen
+  var critRaw = String(ev.prioridad || "").toLowerCase().trim();
+  var critKey = (critRaw === "alta" || critRaw === "media" || critRaw === "baja") ? critRaw : "sin";
+  var critLabel = critKey === "sin" ? "—" : critKey.charAt(0).toUpperCase()+critKey.slice(1);
 
   var html = '<div class="'+cardClass+'">';
-  html += '<div class="action-header">';
-  html += '<div class="action-title">'+escapeHTML(a.descripcion)+'</div>';
-  html += '<span class="badge '+estadoClass+'">'+a.estado+'</span>';
+
+  // Header: criticidad + aging chip + título + estado
+  html += '<div style="margin-bottom:6px;">';
+  html += '<span class="crit-badge '+critKey+'">'+critLabel+'</span>';
+
+  // Aging chip prominente para no-cerradas
+  if (!esCerrada && !esCancelada) {
+    if (diasV !== null) {
+      if (diasV < 0) {
+        html += '<span class="aging-chip venc">⚠ Vencida hace '+(-diasV)+'d</span>';
+      } else if (diasV === 0) {
+        html += '<span class="aging-chip hoy">⏰ Vence HOY</span>';
+      } else if (diasV <= 3) {
+        html += '<span class="aging-chip cerca">⏳ Vence en '+diasV+'d</span>';
+      } else {
+        html += '<span class="aging-chip ok">en '+diasV+'d</span>';
+      }
+    }
+  }
   html += '</div>';
 
-  html += '<div class="action-meta">';
-  html += '<span class="action-meta-item">👤 '+(a.responsable_nombre||"Sin asignar")+'</span>';
+  // Título
+  html += '<div style="font-size:13px;font-weight:600;line-height:1.35;margin-bottom:6px;color:var(--t1);">'+escapeHTML(a.descripcion)+'</div>';
+
+  // Meta compacta
+  html += '<div style="font-size:11px;color:var(--t2);line-height:1.55;">';
+  html += '<div>👤 '+escapeHTML(a.responsable_nombre||"Sin asignar")+'</div>';
   if (a.fecha_vencimiento) {
-    var fechaStr = formatDate(a.fecha_vencimiento);
-    var dStr = "";
-    if (diasV !== null && a.estado !== "Cerrada") {
-      if (diasV < 0) dStr = ' (vencida hace '+(-diasV)+' día'+(diasV===-1?'':'s')+')';
-      else if (diasV === 0) dStr = ' (vence hoy)';
-      else dStr = ' (en '+diasV+' día'+(diasV===1?'':'s')+')';
-    }
-    html += '<span class="action-meta-item">📅 '+fechaStr+dStr+'</span>';
+    html += '<div>📅 '+formatDate(a.fecha_vencimiento)+'</div>';
   }
   if (ev.evento_id) {
-    html += '<span class="action-meta-item">🎯 <code>'+escapeHTML(ev.evento_id)+'</code> · '+escapeHTML(ev.sector||"")+'</span>';
+    html += '<div>🎯 <code style="font-family:JetBrains Mono,monospace;font-size:10px;">'+escapeHTML(ev.evento_id)+'</code>'
+         + (ev.sector ? ' · '+escapeHTML(ev.sector) : '')+'</div>';
+  }
+  if (ev.reportado_por_nombre) {
+    html += '<div style="color:var(--t3);font-size:10px;">Creado por: '+escapeHTML(ev.reportado_por_nombre)+'</div>';
   }
   html += '</div>';
 
@@ -380,12 +937,12 @@ function renderAccionCard(a) {
     html += '<div style="margin-top:8px;font-size:11px;color:var(--t2);background:var(--bg3);padding:6px 10px;border-radius:6px;">'+escapeHTML(a.notas)+'</div>';
   }
 
-  if (a.estado === "Cerrada" && a.cerrada_por_nombre) {
+  if (esCerrada && a.cerrada_por_nombre) {
     html += '<div style="margin-top:8px;font-size:11px;color:#065F46;">✓ Cerrada el '+formatDate(a.fecha_cierre)+' por '+escapeHTML(a.cerrada_por_nombre)+'</div>';
   }
 
   // Botones de acción
-  if (a.estado !== "Cerrada" && a.estado !== "Cancelada") {
+  if (!esCerrada && !esCancelada) {
     html += '<div class="action-buttons">';
     html += '<button class="btn-sm primary" onclick="abrirCierre(\''+a.accion_id+'\')">✓ Cerrar</button>';
     html += '<button class="btn-sm" onclick="abrirNota(\''+a.accion_id+'\')">📝 Nota</button>';
@@ -396,7 +953,6 @@ function renderAccionCard(a) {
     }
     html += '</div>';
   } else if (ev.evento_id) {
-    // Para acciones cerradas/canceladas, igual mostrar el botón Ver evento
     html += '<div class="action-buttons">';
     html += '<button class="btn-sm" onclick="abrirDetalleEvento(\''+escapeHTML(ev.evento_id)+'\')">👁 Ver evento</button>';
     html += '</div>';
