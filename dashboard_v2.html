@@ -528,6 +528,101 @@ var OBJETIVOS = {
 };
 var MODAL_EVENT = null;
 
+// ─────────────────────────────────────────────────────
+// PERÍODO GLOBAL — afecta a KPIs Cultura BBS, Target y Bradley
+// ─────────────────────────────────────────────────────
+// preset: "semana" | "mes" | "30d" | "90d" | "custom"
+// Si preset === "custom", se usan desde/hasta (YYYY-MM-DD)
+var PERIODO_GLOBAL = { preset: "30d", desde: "", hasta: "" };
+
+try {
+  var savedPer = localStorage.getItem("ehs_periodo_global");
+  if (savedPer) {
+    var pp = JSON.parse(savedPer);
+    PERIODO_GLOBAL.preset = pp.preset || "30d";
+    PERIODO_GLOBAL.desde = pp.desde || "";
+    PERIODO_GLOBAL.hasta = pp.hasta || "";
+  }
+} catch(e) { /* ignore */ }
+
+function guardarPeriodo() {
+  try { localStorage.setItem("ehs_periodo_global", JSON.stringify(PERIODO_GLOBAL)); } catch(e) {}
+}
+
+function setPeriodoPreset(preset) {
+  PERIODO_GLOBAL.preset = preset;
+  if (preset !== "custom") {
+    PERIODO_GLOBAL.desde = "";
+    PERIODO_GLOBAL.hasta = "";
+  }
+  guardarPeriodo();
+  render();
+}
+
+function setPeriodoCustom(desde, hasta) {
+  PERIODO_GLOBAL.preset = "custom";
+  if (desde !== undefined) PERIODO_GLOBAL.desde = desde;
+  if (hasta !== undefined) PERIODO_GLOBAL.hasta = hasta;
+  guardarPeriodo();
+  render();
+}
+
+// Calcula el rango {desde, hasta} en string YYYY-MM-DD según preset
+function getRangoPeriodo() {
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  function fmtFecha(d) {
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  var hastaStr = fmtFecha(hoy);
+  var desdeStr = "";
+  var label = "";
+
+  if (PERIODO_GLOBAL.preset === "semana") {
+    // Lunes de esta semana
+    var d = new Date(hoy);
+    var dow = d.getDay();
+    var diff = (dow === 0 ? 6 : dow - 1);
+    d.setDate(d.getDate() - diff);
+    desdeStr = fmtFecha(d);
+    label = "Esta semana";
+  } else if (PERIODO_GLOBAL.preset === "mes") {
+    // Día 1 del mes actual
+    var dm = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    desdeStr = fmtFecha(dm);
+    var nombresMes = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    label = nombresMes[hoy.getMonth()] + " " + hoy.getFullYear();
+  } else if (PERIODO_GLOBAL.preset === "30d") {
+    var d30 = new Date(hoy);
+    d30.setDate(d30.getDate() - 30);
+    desdeStr = fmtFecha(d30);
+    label = "Últimos 30 días";
+  } else if (PERIODO_GLOBAL.preset === "90d") {
+    var d90 = new Date(hoy);
+    d90.setDate(d90.getDate() - 90);
+    desdeStr = fmtFecha(d90);
+    label = "Últimos 90 días";
+  } else if (PERIODO_GLOBAL.preset === "custom") {
+    desdeStr = PERIODO_GLOBAL.desde || fmtFecha(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+    hastaStr = PERIODO_GLOBAL.hasta || fmtFecha(hoy);
+    label = "Del " + formatDateBR(desdeStr) + " al " + formatDateBR(hastaStr);
+  }
+
+  // Cantidad de días del rango (inclusive)
+  var dDesde = new Date(desdeStr + "T00:00:00");
+  var dHasta = new Date(hastaStr + "T00:00:00");
+  var dias = Math.floor((dHasta - dDesde) / (1000*60*60*24)) + 1;
+
+  return { desde: desdeStr, hasta: hastaStr, label: label, dias: dias };
+}
+
+function formatDateBR(s) {
+  if (!s) return "";
+  var parts = String(s).substring(0,10).split("-");
+  if (parts.length !== 3) return s;
+  return parts[2] + "/" + parts[1] + "/" + parts[0];
+}
+
 // Estado de "Mis Pendientes" — la persona elige su identidad una sola vez,
 // queda guardada en localStorage del navegador para próximas visitas.
 var MIS_PENDIENTES = {
@@ -702,16 +797,28 @@ function inLast30Days(fechaStr) {
   return fechaEvento >= hace30Str && fechaEvento <= hoyStr;
 }
 
+// Verifica si una fecha está en el rango global actual
+function inPeriodoGlobal(fechaStr) {
+  if (!fechaStr) return false;
+  var rango = getRangoPeriodo();
+  var f = String(fechaStr).substring(0,10);
+  return f >= rango.desde && f <= rango.hasta;
+}
+
 function calculateLeadingKPIs() {
-  // Universo: últimos 30 días
-  var ultimoMes = EVENTOS.filter(function(e){ return inLast30Days(e.fecha_evento); });
-  var observacionesMes = ultimoMes.filter(function(e){ return e.tipo === "OBSERVACION"; });
-  var accidentesMes = ultimoMes.filter(function(e){ return e.tipo === "ACCIDENTE"; });
+  // Universo: rango global (configurable). Antes era fijo "últimos 30 días".
+  var rango = getRangoPeriodo();
+  var enRango = EVENTOS.filter(function(e){
+    var f = String(e.fecha_evento||"").substring(0,10);
+    return f >= rango.desde && f <= rango.hasta;
+  });
+  var observacionesMes = enRango.filter(function(e){ return e.tipo === "OBSERVACION"; });
+  var accidentesMes = enRango.filter(function(e){ return e.tipo === "ACCIDENTE"; });
 
   // KPI 1 — % cargado por operarios (no por jefes/supervisores)
   // Si no hay reportes, es 0. Si todos son de supervisores, también es 0 (correcto).
-  var totalReportes = ultimoMes.length;
-  var deOperarios = ultimoMes.filter(function(e){
+  var totalReportes = enRango.length;
+  var deOperarios = enRango.filter(function(e){
     return !esSupervisor(e.reportado_por_legajo, e.reportado_por_nombre);
   }).length;
   var pctOperarios = totalReportes > 0 ? Math.round((deOperarios / totalReportes) * 100) : 0;
@@ -758,7 +865,7 @@ function calculateLeadingKPIs() {
     : null;
 
   // Contar conversaciones del mes para Bradley
-  var conversacionesMes = ultimoMes.filter(function(e){ return e.tipo === "CONVERSACION"; }).length;
+  var conversacionesMes = enRango.filter(function(e){ return e.tipo === "CONVERSACION"; }).length;
 
   return {
     pctOperarios: { value: pctOperarios, target: 50, unit: "%", detalle: deOperarios + " de " + totalReportes + " reportes" },
@@ -982,10 +1089,13 @@ function cerrarMiAccion(accionId) {
 
 function renderLeadingKPIs() {
   var k = calculateLeadingKPIs();
+  var rango = getRangoPeriodo();
 
   var html = '<div class="culture-section">';
   html += '<div class="culture-section-title">Indicadores de cultura BBS</div>';
-  html += '<div class="culture-section-subtitle">Últimos 30 días · Cuantos más arriba estos números, más cerca de "Interdependiente" en la curva de Bradley.</div>';
+  html += '<div class="culture-section-subtitle"><strong>'+escapeHTML(rango.label)+'</strong> · '+rango.dias+' días · '
+       + 'del '+formatDateBR(rango.desde)+' al '+formatDateBR(rango.hasta)
+       + ' — Cuanto más arriba estos números, más cerca de "Interdependiente".</div>';
   html += '<div class="leading-kpis">';
 
   // KPI 1
@@ -1050,13 +1160,11 @@ function calcularEtapaBradley() {
   var ratio = k.ratioCultura.value;
   var pctOp = k.pctOperarios.value;
 
-  // Cantidad de observaciones del mes (vital para distinguir etapa 1 de 2)
-  var hoy = new Date();
-  var hace30 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()-30);
-  var hace30Str = hace30.toISOString().slice(0,10);
+  // Cantidad de observaciones EN EL RANGO GLOBAL (no hardcoded 30 días)
+  var rango = getRangoPeriodo();
   var obsMes = (EVENTOS||[]).filter(function(e){
     var f = String(e.fecha_evento||"").substring(0,10);
-    return e.tipo === "OBSERVACION" && f >= hace30Str;
+    return e.tipo === "OBSERVACION" && f >= rango.desde && f <= rango.hasta;
   }).length;
 
   // Ratio obs/accidente como número
@@ -1074,7 +1182,6 @@ function calcularEtapaBradley() {
   // 4. Interdependiente: lo anterior + ratio muy alto (≥100, ≥70% op) + conversaciones activas
 
   if (obsMes < 3) {
-    // Casi sin observaciones → cultura reactiva
     etapa = 1;
     razon = "Casi sin observaciones reportadas. La cultura aún reacciona post-accidente.";
   } else if (ratioNum >= 100 && pctOp >= 70 && hayConversaciones) {
@@ -1084,12 +1191,44 @@ function calcularEtapaBradley() {
     etapa = 3;
     razon = "Buen flujo de observaciones, operarios participan activamente.";
   } else {
-    // Hay observaciones pero falla algún criterio (típicamente bajo % operarios)
     etapa = 2;
     razon = "Hay reportes pero principalmente impulsados por supervisión.";
   }
 
-  return { etapa: etapa, razon: razon, ratioObservado: ratio, pctOperariosObs: pctOp, observacionesMes: obsMes };
+  // Criterios numéricos por etapa (para el panel expandible)
+  var criterios = {
+    1: ["Sin observaciones suficientes (<3 reportes en el período)"],
+    2: ["Al menos 3 observaciones cargadas en el período"],
+    3: ["Ratio obs/accid ≥ 50:1", "% reportes de operarios ≥ 50%"],
+    4: ["Ratio obs/accid ≥ 100:1", "% reportes de operarios ≥ 70%", "Conversaciones de seguridad activas"]
+  };
+
+  // Cálculo de "lo que falta" para llegar a la etapa siguiente
+  var faltaMsg = "";
+  if (etapa === 1) {
+    var faltaObs = Math.max(0, 3 - obsMes);
+    faltaMsg = "Para pasar a etapa 2: cargá " + faltaObs + " observación" + (faltaObs===1?"":"es") + " más.";
+  } else if (etapa === 2) {
+    var partes = [];
+    if (ratioNum < 50) partes.push("subir el ratio obs/accid a 50:1 (hoy " + ratio + ")");
+    if (pctOp < 50) partes.push("aumentar reportes de operarios al 50% (hoy " + pctOp + "%)");
+    faltaMsg = "Para pasar a etapa 3: " + partes.join(" y ") + ".";
+  } else if (etapa === 3) {
+    var partes2 = [];
+    if (ratioNum < 100) partes2.push("ratio ≥ 100:1 (hoy " + ratio + ")");
+    if (pctOp < 70) partes2.push("operarios ≥ 70% (hoy " + pctOp + "%)");
+    if (!hayConversaciones) partes2.push("cargar al menos 1 conversación de seguridad");
+    faltaMsg = "Para pasar a etapa 4: " + partes2.join(", ") + ".";
+  } else {
+    faltaMsg = "🏆 Estás en la etapa máxima. Sostenelo en el tiempo.";
+  }
+
+  return {
+    etapa: etapa, razon: razon,
+    ratioObservado: ratio, pctOperariosObs: pctOp, observacionesMes: obsMes,
+    conversacionesMes: k.conversacionesMes || 0,
+    criterios: criterios, faltaMsg: faltaMsg
+  };
 }
 
 function renderCurvaBradley() {
@@ -1103,9 +1242,9 @@ function renderCurvaBradley() {
 
   var html = '<div class="card" style="margin-top:16px;">';
   html += '<h2 style="margin-bottom:4px;">Curva de Bradley · etapa cultural</h2>';
-  html += '<p style="font-size:13px;color:var(--t2);margin:0 0 16px;">Dónde estamos ubicados en la madurez de cultura de seguridad. Calculado a partir del ratio obs/accidente y participación de operarios.</p>';
+  html += '<p style="font-size:13px;color:var(--t2);margin:0 0 16px;">Dónde estamos ubicados en la madurez de cultura de seguridad. Hacé click en cada etapa para ver qué requiere alcanzarla.</p>';
 
-  // Barra con las 4 etapas
+  // Barra con las 4 etapas (ahora clickeables para expandir criterios)
   html += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
   etapas.forEach(function(e){
     var activa = (e.num === b.etapa);
@@ -1113,7 +1252,9 @@ function renderCurvaBradley() {
     var fg = activa ? "#FFFFFF" : "var(--t2)";
     var border = activa ? ("2px solid " + e.color) : "2px solid transparent";
     var pesoNum = activa ? "800" : "600";
-    html += '<div style="flex:1;padding:14px 10px;background:'+bg+';color:'+fg+';border-radius:8px;border:'+border+';text-align:center;transition:all .2s;">';
+    html += '<div onclick="toggleBradleyEtapa('+e.num+')" '
+         +  'style="flex:1;padding:14px 10px;background:'+bg+';color:'+fg+';border-radius:8px;border:'+border+';text-align:center;cursor:pointer;transition:all .2s;" '
+         +  'title="Click para ver los criterios de esta etapa">';
     html += '<div style="font-size:24px;font-weight:'+pesoNum+';line-height:1;">'+e.num+'</div>';
     html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">'+e.label+'</div>';
     html += '<div style="font-size:10px;opacity:.85;margin-top:2px;line-height:1.3;">'+e.desc+'</div>';
@@ -1122,21 +1263,52 @@ function renderCurvaBradley() {
   });
   html += '</div>';
 
-  // Indicador con flecha apuntando a la etapa actual
-  var pos = ((b.etapa - 1) / 3) * 100; // 0%, 33%, 66%, 100%
-  html += '<div style="position:relative;height:12px;background:linear-gradient(to right, #FEE2E2, #FEF3C7, #DBEAFE, #D1FAE5);border-radius:6px;margin-bottom:18px;">';
+  // Barra de gradiente con marcador
+  var pos = ((b.etapa - 1) / 3) * 100;
+  html += '<div style="position:relative;height:12px;background:linear-gradient(to right, #FEE2E2, #FEF3C7, #DBEAFE, #D1FAE5);border-radius:6px;margin-bottom:14px;">';
   html += '<div style="position:absolute;top:-4px;left:calc('+pos+'% - 8px);width:16px;height:20px;background:#111827;border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,.2);"></div>';
   html += '</div>';
 
-  // Métricas de soporte
+  // Mensaje "te falta X" — central y prominente
+  var faltaColor = (b.etapa === 4) ? "#065F46" : "#92400E";
+  var faltaBg = (b.etapa === 4) ? "#D1FAE5" : "#FEF3C7";
+  var faltaBorder = (b.etapa === 4) ? "#10B981" : "#F59E0B";
+  html += '<div style="margin-bottom:14px;padding:12px 16px;background:'+faltaBg+';border-left:4px solid '+faltaBorder+';border-radius:6px;">';
+  html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:'+faltaColor+';margin-bottom:4px;">Próximo paso</div>';
+  html += '<div style="font-size:13px;color:'+faltaColor+';line-height:1.5;">'+escapeHTML(b.faltaMsg)+'</div>';
+  html += '</div>';
+
+  // Panel de criterios expandible (controlado por estado BRADLEY_EXPANDIDA)
+  var etapaExpandida = (typeof BRADLEY_EXPANDIDA !== "undefined" && BRADLEY_EXPANDIDA) ? BRADLEY_EXPANDIDA : b.etapa;
+  var critsEtapa = b.criterios[etapaExpandida] || [];
+  var etapaInfo = etapas[etapaExpandida - 1];
+  html += '<div id="bradleyCriterios" style="margin-bottom:14px;padding:14px 16px;background:#F9FAFB;border:1px solid var(--border);border-radius:8px;">';
+  html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin-bottom:8px;">'
+       +  'Criterios para etapa ' + etapaInfo.num + ' — ' + etapaInfo.label + '</div>';
+  html += '<ul style="margin:0;padding-left:20px;font-size:13px;color:var(--t1);line-height:1.7;">';
+  critsEtapa.forEach(function(c){
+    html += '<li>'+escapeHTML(c)+'</li>';
+  });
+  html += '</ul>';
+  html += '</div>';
+
+  // Métricas actuales de soporte
   html += '<div style="display:flex;flex-wrap:wrap;gap:18px;padding:12px 14px;background:#F9FAFB;border-radius:8px;font-size:13px;">';
   html += '<div><strong>Ratio obs/accid:</strong> <span style="color:var(--brand-700);font-weight:700;">'+(b.ratioObservado===Infinity||b.ratioObservado==="∞"?"∞":b.ratioObservado+":1")+'</span></div>';
-  html += '<div><strong>% reportes de operarios:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.pctOperariosObs+'%</span></div>';
-  html += '<div style="flex:1;min-width:200px;font-size:12px;color:var(--t2);">'+b.razon+'</div>';
+  html += '<div><strong>% reportes operarios:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.pctOperariosObs+'%</span></div>';
+  html += '<div><strong>Observaciones en período:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.observacionesMes+'</span></div>';
+  html += '<div><strong>Conversaciones:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.conversacionesMes+'</span></div>';
   html += '</div>';
 
   html += '</div>';
   return html;
+}
+
+// Estado para etapa expandida en el panel de criterios
+var BRADLEY_EXPANDIDA = null;
+function toggleBradleyEtapa(num) {
+  BRADLEY_EXPANDIDA = (BRADLEY_EXPANDIDA === num) ? null : num;
+  render();
 }
 
 // =============================================
@@ -1168,13 +1340,13 @@ function calcularTargetEventos() {
   // El dinámico nunca puede ser menor al fijo (4 es el piso recomendado)
   if (targetDinamico < targetFijo) targetDinamico = targetFijo;
 
-  // Cumplimiento actual: cuántas personas alcanzaron el target en el último mes
-  var ahora = new Date();
-  var inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString().slice(0,10);
+  // Cumplimiento: cuántas personas alcanzaron el target EN EL RANGO GLOBAL
+  // (antes era hardcoded "este mes")
+  var rango = getRangoPeriodo();
   var conteoPorPersona = {};
   (EVENTOS||[]).forEach(function(e){
     var f = String(e.fecha_evento||"").substring(0,10);
-    if (f < inicioMes) return;
+    if (f < rango.desde || f > rango.hasta) return;
     var key = String(e.reportado_por_legajo||"") || String(e.reportado_por_nombre||"").toUpperCase();
     if (!key) return;
     conteoPorPersona[key] = (conteoPorPersona[key]||0) + 1;
@@ -1185,7 +1357,8 @@ function calcularTargetEventos() {
     targetDinamico: targetDinamico,
     accidUlt12m: accidUlt12m,
     totalPersonal: totalPersonal,
-    conteoPorPersona: conteoPorPersona
+    conteoPorPersona: conteoPorPersona,
+    rangoLabel: rango.label
   };
 }
 
@@ -1221,11 +1394,14 @@ function renderTargetEventos() {
     + '</div>';
   html += '</div>';
 
+  // Subtítulo con período evaluado
+  html += '<div style="font-size:12px;color:var(--t2);margin-top:4px;">Período evaluado: <strong>'+escapeHTML(t.rangoLabel)+'</strong> (cambialo desde el selector de período arriba)</div>';
+
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:14px;">';
 
   // Target actual
   html += '<div style="padding:14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;">'
-    + '<div style="font-size:10px;color:#075985;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Target del mes</div>'
+    + '<div style="font-size:10px;color:#075985;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Target del período</div>'
     + '<div style="font-size:32px;font-weight:800;color:#075985;line-height:1;margin-top:6px;">'+targetUsado+'</div>'
     + '<div style="font-size:11px;color:#0369A1;margin-top:4px;">eventos por persona</div>'
     + '</div>';
@@ -1235,7 +1411,7 @@ function renderTargetEventos() {
   var bgCump   = pctCumplimiento >= 80 ? "#D1FAE5" : (pctCumplimiento >= 40 ? "#FEF3C7" : "#FEE2E2");
   var bdCump   = pctCumplimiento >= 80 ? "#A7F3D0" : (pctCumplimiento >= 40 ? "#FDE68A" : "#FCA5A5");
   html += '<div style="padding:14px;background:'+bgCump+';border:1px solid '+bdCump+';border-radius:10px;">'
-    + '<div style="font-size:10px;color:'+colorCump+';font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cumplimiento mes</div>'
+    + '<div style="font-size:10px;color:'+colorCump+';font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cumplimiento</div>'
     + '<div style="font-size:32px;font-weight:800;color:'+colorCump+';line-height:1;margin-top:6px;">'+pctCumplimiento+'%</div>'
     + '<div style="font-size:11px;color:'+colorCump+';margin-top:4px;">'+alcanzaron+' de '+totalPersonas+' personas</div>'
     + '</div>';
@@ -1638,6 +1814,276 @@ function renderParticipacionCell(num) {
   return '<td class="center"><span class="'+cls+'">'+val+'</span></td>';
 }
 
+// =============================================
+// SELECTOR DE PERÍODO GLOBAL
+// =============================================
+// Afecta a: KPIs Cultura BBS, Curva de Bradley, Target eventos por persona
+function renderSelectorPeriodo() {
+  var p = PERIODO_GLOBAL.preset;
+  var rango = getRangoPeriodo();
+
+  function pill(value, label) {
+    var active = (p === value);
+    var bg = active ? "var(--brand-600)" : "transparent";
+    var fg = active ? "#fff" : "var(--t1)";
+    var border = active ? "var(--brand-600)" : "var(--border-strong)";
+    return '<button onclick="setPeriodoPreset(\''+value+'\')" '
+      + 'style="border:1px solid '+border+';background:'+bg+';color:'+fg+';padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;border-radius:7px;">'
+      + label + '</button>';
+  }
+
+  var html = '<div class="card" style="margin-bottom:16px;background:linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%);border-left:4px solid var(--brand-600);">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">';
+
+  // Label izquierda
+  html += '<div>';
+  html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand-700);">📅 Período de análisis</div>';
+  html += '<div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:4px;">'+escapeHTML(rango.label)+'</div>';
+  html += '<div style="font-size:11px;color:var(--t2);margin-top:2px;font-family:JetBrains Mono,monospace;">'
+       +  formatDateBR(rango.desde) + ' → ' + formatDateBR(rango.hasta) + ' · ' + rango.dias + ' días</div>';
+  html += '</div>';
+
+  // Pills derecha
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
+  html += pill("semana", "Esta semana");
+  html += pill("mes", "Este mes");
+  html += pill("30d", "Últimos 30 días");
+  html += pill("90d", "Últimos 90 días");
+  html += pill("custom", "Personalizado");
+  html += '</div>';
+
+  html += '</div>';
+
+  // Inputs custom (solo se muestran si preset === custom)
+  if (p === "custom") {
+    html += '<div style="display:flex;gap:14px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);">';
+    html += '<div style="display:flex;align-items:center;gap:8px;">'
+         +  '<label style="font-size:12px;font-weight:600;color:var(--t2);">Desde:</label>'
+         +  '<input type="date" value="'+rango.desde+'" onchange="setPeriodoCustom(this.value, undefined)" '
+         +  'style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;" />'
+         +  '</div>';
+    html += '<div style="display:flex;align-items:center;gap:8px;">'
+         +  '<label style="font-size:12px;font-weight:600;color:var(--t2);">Hasta:</label>'
+         +  '<input type="date" value="'+rango.hasta+'" onchange="setPeriodoCustom(undefined, this.value)" '
+         +  'style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;" />'
+         +  '</div>';
+    html += '</div>';
+  }
+
+  html += '<div style="font-size:11px;color:var(--t3);margin-top:10px;font-style:italic;">'
+       +  'Este selector afecta a Indicadores de Cultura, Curva de Bradley y Target de eventos por persona.</div>';
+  html += '</div>';
+
+  return html;
+}
+
+// =============================================
+// GRÁFICO DE ACCIDENTES
+// =============================================
+// Barras: accidentes/mes (últimos 12 meses) + Línea: ratio obs/accid acumulado
+function calcularDataAccidentes(nMeses) {
+  nMeses = nMeses || 12;
+  var meses = [];
+  var hoy = new Date();
+  hoy.setDate(1); hoy.setHours(0,0,0,0);
+
+  // Generar lista de N meses hacia atrás
+  for (var i = nMeses - 1; i >= 0; i--) {
+    var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    var mesStr = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+    var nombresMes = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+    meses.push({
+      key: mesStr,
+      label: nombresMes[d.getMonth()] + " " + String(d.getFullYear()).slice(2),
+      accidentes: 0,
+      observaciones: 0
+    });
+  }
+
+  // Contar accidentes y observaciones por mes
+  var idx = {};
+  meses.forEach(function(m, i){ idx[m.key] = i; });
+  (EVENTOS||[]).forEach(function(e){
+    var f = String(e.fecha_evento||"").substring(0,7); // YYYY-MM
+    if (idx[f] === undefined) return;
+    if (e.tipo === "ACCIDENTE") meses[idx[f]].accidentes++;
+    if (e.tipo === "OBSERVACION") meses[idx[f]].observaciones++;
+  });
+
+  // Calcular ratio acumulado (acumular obs y accid mes a mes)
+  var obsAcum = 0, accAcum = 0;
+  meses.forEach(function(m){
+    obsAcum += m.observaciones;
+    accAcum += m.accidentes;
+    m.ratioAcumulado = accAcum > 0 ? Math.round(obsAcum / accAcum * 10) / 10 : (obsAcum > 0 ? null : 0);
+    // null cuando ratio = infinito (sin accidentes pero con obs): mejor no graficar (queda mejor)
+  });
+
+  return { meses: meses };
+}
+
+var _chartAccidentes = null;
+function dibujarGraficoAccidentes() {
+  if (typeof Chart === "undefined") return;
+  var canvas = document.getElementById("accidentesChart");
+  if (!canvas || typeof canvas.getContext !== "function") return;
+
+  var data = calcularDataAccidentes(12);
+  var labels = data.meses.map(function(m){return m.label;});
+  var accidentes = data.meses.map(function(m){return m.accidentes;});
+  var ratios = data.meses.map(function(m){return m.ratioAcumulado;});
+
+  if (_chartAccidentes) { _chartAccidentes.destroy(); _chartAccidentes = null; }
+
+  var ctx = canvas.getContext("2d");
+  _chartAccidentes = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          type: "bar",
+          label: "Accidentes",
+          data: accidentes,
+          backgroundColor: "#DC2626",
+          borderColor: "#7F1D1D",
+          borderWidth: 1,
+          yAxisID: "y",
+          order: 2
+        },
+        {
+          type: "line",
+          label: "Ratio obs/accid (acumulado)",
+          data: ratios,
+          borderColor: "#059669",
+          backgroundColor: "rgba(5,150,105,0.1)",
+          borderWidth: 3,
+          pointBackgroundColor: "#059669",
+          pointRadius: 4,
+          tension: 0.3,
+          fill: false,
+          yAxisID: "y1",
+          order: 1,
+          spanGaps: true
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false }, // tenemos leyenda custom abajo
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              if (ctx.datasetIndex === 0) return "Accidentes: " + ctx.parsed.y;
+              if (ctx.parsed.y === null) return "Ratio: sin accidentes";
+              return "Ratio: " + ctx.parsed.y + ":1";
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          type: "linear", position: "left", beginAtZero: true,
+          title: { display: true, text: "Accidentes / mes", color: "#7F1D1D", font:{size:11,weight:"600"} },
+          ticks: { stepSize: 1, color: "#7F1D1D" },
+          grid: { color: "rgba(220,38,38,0.08)" }
+        },
+        y1: {
+          type: "linear", position: "right", beginAtZero: true,
+          title: { display: true, text: "Ratio obs/accid acumulado", color: "#065F46", font:{size:11,weight:"600"} },
+          ticks: { color: "#065F46" },
+          grid: { drawOnChartArea: false }
+        },
+        x: {
+          ticks: { color: "var(--t2)", font:{size:11} },
+          grid: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderGraficoAccidentes() {
+  // Calcular números resumen para mostrar arriba del gráfico
+  var data = calcularDataAccidentes(12);
+  var totalAccid = data.meses.reduce(function(a,m){return a + m.accidentes;}, 0);
+  var totalObs = data.meses.reduce(function(a,m){return a + m.observaciones;}, 0);
+  var ratioGlobal = totalAccid > 0 ? Math.round(totalObs / totalAccid * 10) / 10 : (totalObs > 0 ? "∞" : 0);
+  // Días desde el último accidente
+  var ultimoAccid = null;
+  (EVENTOS||[]).forEach(function(e){
+    if (e.tipo !== "ACCIDENTE") return;
+    var f = String(e.fecha_evento||"").substring(0,10);
+    if (!ultimoAccid || f > ultimoAccid) ultimoAccid = f;
+  });
+  var diasSinAccid = null;
+  if (ultimoAccid) {
+    var hoy = new Date(); hoy.setHours(0,0,0,0);
+    var fu = new Date(ultimoAccid + "T00:00:00");
+    diasSinAccid = Math.floor((hoy - fu) / (1000*60*60*24));
+  }
+
+  var html = '<div class="card" style="margin-top:16px;">';
+  html += '<h2 style="margin-bottom:4px;">📊 Accidentes y madurez de cultura · últimos 12 meses</h2>';
+  html += '<p style="font-size:13px;color:var(--t2);margin:0 0 16px;">'
+       +  'La barra roja baja y la línea verde sube cuando la cultura madura. Esta es la métrica final del impacto del sistema.</p>';
+
+  // 3 mini-KPIs resumen
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">';
+
+  // Total accidentes 12m
+  var colorA = totalAccid === 0 ? "#065F46" : (totalAccid <= 3 ? "#92400E" : "#991B1B");
+  var bgA = totalAccid === 0 ? "#D1FAE5" : (totalAccid <= 3 ? "#FEF3C7" : "#FEE2E2");
+  html += '<div style="padding:12px;background:'+bgA+';border-radius:8px;">'
+       +  '<div style="font-size:10px;font-weight:700;color:'+colorA+';text-transform:uppercase;letter-spacing:.05em;">Accidentes 12 meses</div>'
+       +  '<div style="font-size:28px;font-weight:800;color:'+colorA+';margin-top:4px;line-height:1;">'+totalAccid+'</div>'
+       +  '</div>';
+
+  // Ratio global 12m
+  var ratioDisp = ratioGlobal === "∞" ? "∞" : (ratioGlobal + ":1");
+  var ratioColor = (ratioGlobal === "∞" || (typeof ratioGlobal === "number" && ratioGlobal >= 100)) ? "#065F46" :
+                   (typeof ratioGlobal === "number" && ratioGlobal >= 50) ? "#1E40AF" : "#92400E";
+  var ratioBg = ratioColor === "#065F46" ? "#D1FAE5" : (ratioColor === "#1E40AF" ? "#DBEAFE" : "#FEF3C7");
+  html += '<div style="padding:12px;background:'+ratioBg+';border-radius:8px;">'
+       +  '<div style="font-size:10px;font-weight:700;color:'+ratioColor+';text-transform:uppercase;letter-spacing:.05em;">Ratio obs/accid 12m</div>'
+       +  '<div style="font-size:28px;font-weight:800;color:'+ratioColor+';margin-top:4px;line-height:1;">'+ratioDisp+'</div>'
+       +  '<div style="font-size:10px;color:'+ratioColor+';margin-top:2px;">meta ≥ 100:1</div>'
+       +  '</div>';
+
+  // Días sin accidentes
+  if (diasSinAccid !== null) {
+    var colorD = diasSinAccid >= 90 ? "#065F46" : (diasSinAccid >= 30 ? "#92400E" : "#991B1B");
+    var bgD = diasSinAccid >= 90 ? "#D1FAE5" : (diasSinAccid >= 30 ? "#FEF3C7" : "#FEE2E2");
+    html += '<div style="padding:12px;background:'+bgD+';border-radius:8px;">'
+         +  '<div style="font-size:10px;font-weight:700;color:'+colorD+';text-transform:uppercase;letter-spacing:.05em;">Días sin accidentes</div>'
+         +  '<div style="font-size:28px;font-weight:800;color:'+colorD+';margin-top:4px;line-height:1;">'+diasSinAccid+'</div>'
+         +  '</div>';
+  } else {
+    html += '<div style="padding:12px;background:#D1FAE5;border-radius:8px;">'
+         +  '<div style="font-size:10px;font-weight:700;color:#065F46;text-transform:uppercase;letter-spacing:.05em;">Días sin accidentes</div>'
+         +  '<div style="font-size:28px;font-weight:800;color:#065F46;margin-top:4px;line-height:1;">∞</div>'
+         +  '<div style="font-size:10px;color:#065F46;margin-top:2px;">sin registros</div>'
+         +  '</div>';
+  }
+
+  html += '</div>';
+
+  // Gráfico
+  html += '<div style="position:relative;width:100%;height:300px;"><canvas id="accidentesChart"></canvas></div>';
+
+  // Leyenda custom
+  html += '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes por mes (escala izquierda)</span>'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#059669;border-radius:2px;"></span>Ratio obs/accid acumulado (escala derecha)</span>'
+       +  '</div>';
+
+  html += '</div>';
+  return html;
+}
+
 
 function render() {
   var filtered = applyFilters(EVENTOS);
@@ -1647,21 +2093,30 @@ function render() {
   html += '<h1>Dashboard EHS</h1>';
   html += '<div class="last-update">Última actualización: '+new Date().toLocaleString("es-AR")+' · '+EVENTOS.length+' eventos · '+ACCIONES.length+' acciones</div>';
 
-  // Leading KPIs (cultura BBS) — siempre visibles, no se ven afectados por filtros
+  // Mis pendientes (identidad)
   html += renderMisPendientes();
 
+  // ═══ SECCIÓN CULTURA — KPIs CRÍTICOS ARRIBA ═══
+  // 1. Selector global de período (afecta a Cultura BBS, Bradley, Target)
+  html += renderSelectorPeriodo();
+
+  // 2. Indicadores de Cultura BBS (5 KPIs leading)
   html += renderLeadingKPIs();
 
-  // Curva de Bradley — etapa cultural
+  // 3. Curva de Bradley con criterios expandibles y "te falta X"
   html += renderCurvaBradley();
 
-  // Target de eventos por persona (fijo/dinámico)
+  // 4. Target de eventos por persona (fijo/dinámico)
   html += renderTargetEventos();
 
-  // Sección Participación del equipo (BBS / DSS+) — empuja a que todos reporten
+  // 5. Gráfico de accidentes (la métrica de impacto)
+  html += renderGraficoAccidentes();
+
+  // ═══ SECCIÓN PARTICIPACIÓN ═══
   html += renderParticipacion();
 
-  // KPIs por tipo (afectados por filtros)
+  // ═══ SECCIÓN PIRÁMIDE + ACCIONES (afectada por filtros) ═══
+  // KPIs por tipo
   var counts = { OBSERVACION:0, CONVERSACION:0, INCIDENTE:0, ACCIDENTE:0, AMBIENTE:0 };
   filtered.forEach(function(e){ if(counts[e.tipo]!==undefined) counts[e.tipo]++; });
 
@@ -1753,8 +2208,9 @@ function render() {
 
   document.getElementById("app").innerHTML = html;
 
-  // Dibujar el gráfico de evolución (después de que el canvas exista en el DOM)
+  // Dibujar gráficos (después de que los canvas existan en el DOM)
   dibujarEvolucionMensual();
+  dibujarGraficoAccidentes();
 }
 
 // Estado de la vista del gráfico: "mensual" o "acumulado"
@@ -1763,7 +2219,7 @@ var _chartEvolucion = null;
 
 function dibujarEvolucionMensual() {
   var canvas = document.getElementById("evolucionChart");
-  if (!canvas || typeof Chart === "undefined") return;
+  if (!canvas || typeof canvas.getContext !== "function" || typeof Chart === "undefined") return;
 
   var datos = calcularEvolucionMensual(6);
 
