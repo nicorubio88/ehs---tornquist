@@ -513,8 +513,10 @@ var FILTERS = { tipo:"Todos", sector:"Todos", prioridad:"Todos", estado:"Todos" 
 // Estado de la sección Participación del equipo (BBS DSS+)
 // Periodo, universo, orden y filtro de cumplimiento son seleccionables
 var PARTICIPACION = {
-  periodo: "semana",       // "semana" | "mes" | "trimestre"
-  universo: "convenio",    // "convenio" (109) | "todos" (convenio + supervisión)
+  periodo: "semana",       // "semana" | "mes" | "trimestre" | "custom"
+  desde: "",               // YYYY-MM-DD si periodo === "custom"
+  hasta: "",               // YYYY-MM-DD si periodo === "custom"
+  universo: "todos",       // "operarios" | "supervision" | "todos"
   orden: "no_cumplio",     // "no_cumplio" | "total_desc" | "total_asc" | "alfabetico"
   filtroCumplimiento: "todos", // "todos" | "cumplio" | "no_cumplio"
   expandido: false         // si false, muestra solo top 15 + botón "ver más"
@@ -531,17 +533,22 @@ var MODAL_EVENT = null;
 // ─────────────────────────────────────────────────────
 // PERÍODO GLOBAL — afecta a KPIs Cultura BBS, Target y Bradley
 // ─────────────────────────────────────────────────────
-// preset: "semana" | "mes" | "30d" | "90d" | "custom"
+// preset: "semana" | "mes" | "mesEspecifico" | "custom"
+// Si preset === "mesEspecifico", se usa mesYYYYMM (ej. "2026-04")
 // Si preset === "custom", se usan desde/hasta (YYYY-MM-DD)
-var PERIODO_GLOBAL = { preset: "30d", desde: "", hasta: "" };
+var PERIODO_GLOBAL = { preset: "mes", desde: "", hasta: "", mesYYYYMM: "" };
 
 try {
   var savedPer = localStorage.getItem("ehs_periodo_global");
   if (savedPer) {
     var pp = JSON.parse(savedPer);
-    PERIODO_GLOBAL.preset = pp.preset || "30d";
+    var presetGuardado = pp.preset || "mes";
+    // Migración: si el preset guardado era "30d" (ya removido), pasar a "mes"
+    if (presetGuardado === "30d") presetGuardado = "mes";
+    PERIODO_GLOBAL.preset = presetGuardado;
     PERIODO_GLOBAL.desde = pp.desde || "";
     PERIODO_GLOBAL.hasta = pp.hasta || "";
+    PERIODO_GLOBAL.mesYYYYMM = pp.mesYYYYMM || "";
   }
 } catch(e) { /* ignore */ }
 
@@ -555,6 +562,9 @@ function setPeriodoPreset(preset) {
     PERIODO_GLOBAL.desde = "";
     PERIODO_GLOBAL.hasta = "";
   }
+  if (preset !== "mesEspecifico") {
+    PERIODO_GLOBAL.mesYYYYMM = "";
+  }
   guardarPeriodo();
   render();
 }
@@ -567,6 +577,13 @@ function setPeriodoCustom(desde, hasta) {
   render();
 }
 
+function setPeriodoMesEspecifico(mesYYYYMM) {
+  PERIODO_GLOBAL.preset = "mesEspecifico";
+  PERIODO_GLOBAL.mesYYYYMM = mesYYYYMM;
+  guardarPeriodo();
+  render();
+}
+
 // Calcula el rango {desde, hasta} en string YYYY-MM-DD según preset
 function getRangoPeriodo() {
   var hoy = new Date();
@@ -574,6 +591,7 @@ function getRangoPeriodo() {
   function fmtFecha(d) {
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
   }
+  var nombresMes = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
   var hastaStr = fmtFecha(hoy);
   var desdeStr = "";
   var label = "";
@@ -587,25 +605,30 @@ function getRangoPeriodo() {
     desdeStr = fmtFecha(d);
     label = "Esta semana";
   } else if (PERIODO_GLOBAL.preset === "mes") {
-    // Día 1 del mes actual
+    // Mes actual completo (día 1 hasta hoy)
     var dm = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
     desdeStr = fmtFecha(dm);
-    var nombresMes = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
     label = nombresMes[hoy.getMonth()] + " " + hoy.getFullYear();
-  } else if (PERIODO_GLOBAL.preset === "30d") {
-    var d30 = new Date(hoy);
-    d30.setDate(d30.getDate() - 30);
-    desdeStr = fmtFecha(d30);
-    label = "Últimos 30 días";
-  } else if (PERIODO_GLOBAL.preset === "90d") {
-    var d90 = new Date(hoy);
-    d90.setDate(d90.getDate() - 90);
-    desdeStr = fmtFecha(d90);
-    label = "Últimos 90 días";
+  } else if (PERIODO_GLOBAL.preset === "mesEspecifico") {
+    // Mes histórico elegido por el usuario
+    var mesSel = PERIODO_GLOBAL.mesYYYYMM || (hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0"));
+    var partes = mesSel.split("-");
+    var año = parseInt(partes[0], 10);
+    var mes = parseInt(partes[1], 10) - 1;
+    var inicioMes = new Date(año, mes, 1);
+    var finMes = new Date(año, mes + 1, 0);
+    desdeStr = fmtFecha(inicioMes);
+    hastaStr = fmtFecha(finMes);
+    label = nombresMes[mes] + " " + año;
   } else if (PERIODO_GLOBAL.preset === "custom") {
     desdeStr = PERIODO_GLOBAL.desde || fmtFecha(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
     hastaStr = PERIODO_GLOBAL.hasta || fmtFecha(hoy);
     label = "Del " + formatDateBR(desdeStr) + " al " + formatDateBR(hastaStr);
+  } else {
+    // Fallback de seguridad
+    var dm2 = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    desdeStr = fmtFecha(dm2);
+    label = nombresMes[hoy.getMonth()] + " " + hoy.getFullYear();
   }
 
   // Cantidad de días del rango (inclusive)
@@ -1446,38 +1469,79 @@ function renderTargetEventos() {
 // PARTICIPACIÓN DEL EQUIPO (BBS / DSS+)
 // =============================================
 // Setters
-function setParticipacionPeriodo(v) { PARTICIPACION.periodo = v; render(); }
+function setParticipacionPeriodo(v) {
+  PARTICIPACION.periodo = v;
+  // Si no es custom, limpiar fechas
+  if (v !== "custom") {
+    PARTICIPACION.desde = "";
+    PARTICIPACION.hasta = "";
+  }
+  render();
+}
 function setParticipacionUniverso(v) { PARTICIPACION.universo = v; render(); }
 function setParticipacionOrden(v) { PARTICIPACION.orden = v; render(); }
 function setParticipacionFiltroCumplimiento(v) { PARTICIPACION.filtroCumplimiento = v; render(); }
 function toggleParticipacionExpandido() { PARTICIPACION.expandido = !PARTICIPACION.expandido; render(); }
+function setParticipacionFecha(campo, valor) {
+  PARTICIPACION.periodo = "custom";
+  PARTICIPACION[campo] = valor;
+  render();
+}
+
+// Devuelve {desde, hasta, label, dias} según el período de Participación
+function getRangoParticipacion() {
+  var hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  function fmt(d) { return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+  var hastaStr = fmt(hoy);
+  var desdeStr = "";
+  var label = "";
+
+  if (PARTICIPACION.periodo === "custom") {
+    desdeStr = PARTICIPACION.desde || fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+    hastaStr = PARTICIPACION.hasta || fmt(hoy);
+    label = "Personalizado: " + formatDateBR(desdeStr) + " → " + formatDateBR(hastaStr);
+  } else {
+    var dias = PARTICIPACION.periodo === "semana" ? 7
+             : PARTICIPACION.periodo === "mes" ? 30 : 90;
+    var hace = new Date(hoy.getTime() - dias*24*60*60*1000);
+    desdeStr = fmt(hace);
+    label = "Últimos " + dias + " días";
+  }
+  var dDesde = new Date(desdeStr + "T00:00:00");
+  var dHasta = new Date(hastaStr + "T00:00:00");
+  var diasRango = Math.floor((dHasta - dDesde) / (1000*60*60*24)) + 1;
+  return { desde: desdeStr, hasta: hastaStr, label: label, dias: diasRango };
+}
 
 // Filtra eventos según el período seleccionado
 function eventoEnPeriodoParticipacion(fechaStr) {
   if (!fechaStr) return false;
-  var dias = PARTICIPACION.periodo === "semana" ? 7
-           : PARTICIPACION.periodo === "mes" ? 30 : 90;
+  var rango = getRangoParticipacion();
   var fechaEvento = String(fechaStr).substring(0,10);
-  var hoy = new Date();
-  var hace = new Date(hoy.getTime() - dias*24*60*60*1000);
-  var hoyStr = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
-  var haceStr = hace.getFullYear() + "-" + String(hace.getMonth()+1).padStart(2,"0") + "-" + String(hace.getDate()).padStart(2,"0");
-  return fechaEvento >= haceStr && fechaEvento <= hoyStr;
+  return fechaEvento >= rango.desde && fechaEvento <= rango.hasta;
 }
 
 // Construye el universo de personas según selección
+// "operarios" → solo personal del convenio
+// "supervision" → solo responsables (jefatura/gerencia/supervisión)
+// "todos" → operarios + supervisión (toda la planta)
 function getUniversoPersonas() {
   var personas = [];
-  // Personal del convenio
-  (MAESTROS.personal || []).forEach(function(p){
-    personas.push({
-      legajo: String(p.legajo || ""),
-      nombre: String(p.nombre || ""),
-      esSupervisor: false
+
+  // Agregar operarios (MAESTROS.personal) salvo si universo === "supervision"
+  if (PARTICIPACION.universo !== "supervision") {
+    (MAESTROS.personal || []).forEach(function(p){
+      personas.push({
+        legajo: String(p.legajo || ""),
+        nombre: String(p.nombre || ""),
+        esSupervisor: false
+      });
     });
-  });
-  // Si universo === "todos", agregar también responsables
-  if (PARTICIPACION.universo === "todos") {
+  }
+
+  // Agregar supervisión (MAESTROS.responsables) si universo === "supervision" o "todos"
+  if (PARTICIPACION.universo === "supervision" || PARTICIPACION.universo === "todos") {
     (MAESTROS.responsables || []).forEach(function(r){
       var legajoRespStr = String(r.legajo || "");
       var nombreRespStr = String(r.nombre || "");
@@ -1495,6 +1559,7 @@ function getUniversoPersonas() {
       }
     });
   }
+
   return personas;
 }
 
@@ -1635,14 +1700,18 @@ function renderParticipacion() {
   var personasMostrar = PARTICIPACION.expandido ? personasFiltradas : personasFiltradas.slice(0, 5);
 
   // Etiquetas legibles según período
-  var labelPeriodo = PARTICIPACION.periodo === "semana" ? "Últimos 7 días"
-                   : PARTICIPACION.periodo === "mes" ? "Últimos 30 días"
-                   : "Últimos 90 días";
-  var objetivo = OBJETIVOS[PARTICIPACION.periodo];
+  var rangoPart = getRangoParticipacion();
+  var labelPeriodo = rangoPart.label;
+  var objetivo = OBJETIVOS[PARTICIPACION.periodo] || 1; // Para custom usa el de semana por defecto
+
+  // Etiqueta del universo
+  var labelUniverso = PARTICIPACION.universo === "operarios" ? "Operarios"
+                    : PARTICIPACION.universo === "supervision" ? "Supervisión, jefatura y gerencia"
+                    : "Toda la planta";
 
   var html = '<div class="participacion-section">';
   html += '<div class="culture-section-title">Participación del equipo</div>';
-  html += '<div class="culture-section-subtitle">'+labelPeriodo+' · Objetivo: ≥ '+objetivo+' reporte'+(objetivo>1?'s':'')+' por persona en este período. Esta tabla empuja a que <strong>todos participen</strong>, no solo los referentes.</div>';
+  html += '<div class="culture-section-subtitle">'+escapeHTML(labelPeriodo)+' · '+escapeHTML(labelUniverso)+' · Objetivo: ≥ '+objetivo+' reporte'+(objetivo>1?'s':'')+' por persona. Esta tabla empuja a que <strong>todos participen</strong>, no solo los referentes.</div>';
 
   // Controles
   html += '<div class="part-controls">';
@@ -1650,18 +1719,34 @@ function renderParticipacion() {
   html += '<div class="part-control-group">';
   html += '<span class="part-control-label">Período:</span>';
   html += '<select class="part-control-select" onchange="setParticipacionPeriodo(this.value)">';
-  ["semana","mes","trimestre"].forEach(function(p){
-    var label = p==="semana"?"Semana":p==="mes"?"Mes":"Trimestre";
-    var sel = PARTICIPACION.periodo===p?' selected':'';
-    html += '<option value="'+p+'"'+sel+'>'+label+'</option>';
+  [["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["custom","Personalizado"]].forEach(function(o){
+    var sel = PARTICIPACION.periodo===o[0]?' selected':'';
+    html += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
   });
   html += '</select>';
   html += '</div>';
 
+  // Inputs custom (solo si periodo === "custom")
+  if (PARTICIPACION.periodo === "custom") {
+    html += '<div class="part-control-group">';
+    html += '<span class="part-control-label">Desde:</span>';
+    html += '<input type="date" class="part-control-select" value="'+rangoPart.desde+'" onchange="setParticipacionFecha(\'desde\', this.value)" style="min-width:140px;padding:6px 8px;" />';
+    html += '</div>';
+
+    html += '<div class="part-control-group">';
+    html += '<span class="part-control-label">Hasta:</span>';
+    html += '<input type="date" class="part-control-select" value="'+rangoPart.hasta+'" onchange="setParticipacionFecha(\'hasta\', this.value)" style="min-width:140px;padding:6px 8px;" />';
+    html += '</div>';
+  }
+
   html += '<div class="part-control-group">';
   html += '<span class="part-control-label">Universo:</span>';
   html += '<select class="part-control-select" onchange="setParticipacionUniverso(this.value)">';
-  [["convenio","Convenio"],["todos","Convenio + supervisión"]].forEach(function(o){
+  [
+    ["operarios","Operarios"],
+    ["supervision","Supervisión + jefatura + gerencia"],
+    ["todos","Toda la planta"]
+  ].forEach(function(o){
     var sel = PARTICIPACION.universo===o[0]?' selected':'';
     html += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
   });
@@ -1818,6 +1903,28 @@ function renderParticipacionCell(num) {
 // SELECTOR DE PERÍODO GLOBAL
 // =============================================
 // Afecta a: KPIs Cultura BBS, Curva de Bradley, Target eventos por persona
+
+// Devuelve la lista de meses con eventos cargados (más reciente primero)
+function obtenerMesesConDatos() {
+  var mesesSet = {};
+  (EVENTOS||[]).forEach(function(e){
+    var f = String(e.fecha_evento||"").substring(0,7); // YYYY-MM
+    if (f && f.length === 7) mesesSet[f] = true;
+  });
+  // También agregar los últimos 12 meses por si no hay datos en alguno (para que pueda elegir igual)
+  var hoy = new Date();
+  for (var i = 0; i < 12; i++) {
+    var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+    var key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
+    mesesSet[key] = true;
+  }
+  var nombresMes = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  return Object.keys(mesesSet).sort().reverse().map(function(k){
+    var p = k.split("-");
+    return { key: k, label: nombresMes[parseInt(p[1],10)-1] + " " + p[0] };
+  });
+}
+
 function renderSelectorPeriodo() {
   var p = PERIODO_GLOBAL.preset;
   var rango = getRangoPeriodo();
@@ -1843,12 +1950,27 @@ function renderSelectorPeriodo() {
        +  formatDateBR(rango.desde) + ' → ' + formatDateBR(rango.hasta) + ' · ' + rango.dias + ' días</div>';
   html += '</div>';
 
-  // Pills derecha
+  // Pills + dropdown derecha
   html += '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
   html += pill("semana", "Esta semana");
   html += pill("mes", "Este mes");
-  html += pill("30d", "Últimos 30 días");
-  html += pill("90d", "Últimos 90 días");
+
+  // Dropdown "Mes específico" — siempre visible, listando los meses con datos
+  var mesesDisponibles = obtenerMesesConDatos();
+  var mesSelActivo = (p === "mesEspecifico");
+  var bgMS = mesSelActivo ? "var(--brand-600)" : "transparent";
+  var fgMS = mesSelActivo ? "#fff" : "var(--t1)";
+  var bdMS = mesSelActivo ? "var(--brand-600)" : "var(--border-strong)";
+  var valorActual = (mesSelActivo && PERIODO_GLOBAL.mesYYYYMM) ? PERIODO_GLOBAL.mesYYYYMM : "";
+  html += '<select onchange="if(this.value){setPeriodoMesEspecifico(this.value);}else{setPeriodoPreset(\'mes\');}" '
+       +  'style="border:1px solid '+bdMS+';background:'+bgMS+';color:'+fgMS+';padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;border-radius:7px;font-family:inherit;">';
+  html += '<option value="" '+(!mesSelActivo?"selected":"")+'>📆 Elegir mes...</option>';
+  mesesDisponibles.forEach(function(m){
+    var sel = (valorActual === m.key) ? " selected" : "";
+    html += '<option value="'+m.key+'"'+sel+'>'+escapeHTML(m.label)+'</option>';
+  });
+  html += '</select>';
+
   html += pill("custom", "Personalizado");
   html += '</div>';
 
@@ -1910,19 +2032,51 @@ function calcularDataAccidentes(nMeses) {
     if (e.tipo === "OBSERVACION") meses[idx[f]].observaciones++;
   });
 
-  // Calcular ratio acumulado (acumular obs y accid mes a mes)
+  // Calcular ratio MENSUAL (de cada mes) y ratio ACUMULADO (12m running)
   var obsAcum = 0, accAcum = 0;
   meses.forEach(function(m){
+    // Ratio mensual: obs del mes / accid del mes (null si sin accidentes)
+    m.ratioMensual = m.accidentes > 0 ? Math.round(m.observaciones / m.accidentes * 10) / 10 : null;
+    // Ratio acumulado
     obsAcum += m.observaciones;
     accAcum += m.accidentes;
     m.ratioAcumulado = accAcum > 0 ? Math.round(obsAcum / accAcum * 10) / 10 : (obsAcum > 0 ? null : 0);
-    // null cuando ratio = infinito (sin accidentes pero con obs): mejor no graficar (queda mejor)
   });
 
   return { meses: meses };
 }
 
 var _chartAccidentes = null;
+var _vistaAccidentes = "ambos"; // "ambos" | "mensual" | "acumulado"
+
+function cambiarVistaAccidentes(vista) {
+  _vistaAccidentes = vista;
+  // Actualizar visibilidad de leyendas
+  ["legMensual","legAcum","legBoth"].forEach(function(id){
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = "none";
+  });
+  var idLeg = vista === "ambos" ? "legBoth" : (vista === "mensual" ? "legMensual" : "legAcum");
+  var elActiva = document.getElementById(idLeg);
+  if (elActiva) elActiva.style.display = "flex";
+  // Actualizar botones
+  ["btnAccMensual","btnAccAcum","btnAccAmbos"].forEach(function(id){
+    var b = document.getElementById(id);
+    if (b) {
+      b.style.background = "transparent";
+      b.style.color = "var(--t2)";
+    }
+  });
+  var btnId = "btnAcc" + (vista === "ambos" ? "Ambos" : (vista === "mensual" ? "Mensual" : "Acum"));
+  var btn = document.getElementById(btnId);
+  if (btn) {
+    btn.style.background = "var(--brand-600)";
+    btn.style.color = "#fff";
+  }
+  dibujarGraficoAccidentes();
+}
+
 function dibujarGraficoAccidentes() {
   if (typeof Chart === "undefined") return;
   var canvas = document.getElementById("accidentesChart");
@@ -1931,57 +2085,106 @@ function dibujarGraficoAccidentes() {
   var data = calcularDataAccidentes(12);
   var labels = data.meses.map(function(m){return m.label;});
   var accidentes = data.meses.map(function(m){return m.accidentes;});
-  var ratios = data.meses.map(function(m){return m.ratioAcumulado;});
+  var ratiosMensual = data.meses.map(function(m){return m.ratioMensual;});
+  var ratiosAcum = data.meses.map(function(m){return m.ratioAcumulado;});
 
   if (_chartAccidentes) { _chartAccidentes.destroy(); _chartAccidentes = null; }
+
+  // Determinar qué datasets mostrar según la vista
+  var showMensual = (_vistaAccidentes === "ambos" || _vistaAccidentes === "mensual");
+  var showAcum = (_vistaAccidentes === "ambos" || _vistaAccidentes === "acumulado");
+
+  var datasets = [
+    {
+      type: "bar",
+      label: "Accidentes",
+      data: accidentes,
+      backgroundColor: "#DC2626",
+      borderColor: "#7F1D1D",
+      borderWidth: 1,
+      yAxisID: "y",
+      order: 3,
+      // Etiqueta sobre la barra mostrando el valor
+      datalabels: { display: true }
+    }
+  ];
+
+  if (showMensual) {
+    datasets.push({
+      type: "line",
+      label: "Ratio mensual",
+      data: ratiosMensual,
+      borderColor: "#0EA5E9",
+      backgroundColor: "rgba(14,165,233,0.1)",
+      borderWidth: 2,
+      borderDash: [5, 5],
+      pointBackgroundColor: "#0EA5E9",
+      pointRadius: 4,
+      tension: 0.2,
+      fill: false,
+      yAxisID: "y1",
+      order: 2,
+      spanGaps: true
+    });
+  }
+
+  if (showAcum) {
+    datasets.push({
+      type: "line",
+      label: "Ratio acumulado",
+      data: ratiosAcum,
+      borderColor: "#059669",
+      backgroundColor: "rgba(5,150,105,0.1)",
+      borderWidth: 3,
+      pointBackgroundColor: "#059669",
+      pointRadius: 4,
+      tension: 0.3,
+      fill: false,
+      yAxisID: "y1",
+      order: 1,
+      spanGaps: true
+    });
+  }
 
   var ctx = canvas.getContext("2d");
   _chartAccidentes = new Chart(ctx, {
     type: "bar",
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          type: "bar",
-          label: "Accidentes",
-          data: accidentes,
-          backgroundColor: "#DC2626",
-          borderColor: "#7F1D1D",
-          borderWidth: 1,
-          yAxisID: "y",
-          order: 2
-        },
-        {
-          type: "line",
-          label: "Ratio obs/accid (acumulado)",
-          data: ratios,
-          borderColor: "#059669",
-          backgroundColor: "rgba(5,150,105,0.1)",
-          borderWidth: 3,
-          pointBackgroundColor: "#059669",
-          pointRadius: 4,
-          tension: 0.3,
-          fill: false,
-          yAxisID: "y1",
-          order: 1,
-          spanGaps: true
-        }
-      ]
-    },
+    data: { labels: labels, datasets: datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { display: false }, // tenemos leyenda custom abajo
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: function(ctx) {
-              if (ctx.datasetIndex === 0) return "Accidentes: " + ctx.parsed.y;
-              if (ctx.parsed.y === null) return "Ratio: sin accidentes";
-              return "Ratio: " + ctx.parsed.y + ":1";
+              if (ctx.dataset.type === "bar") return "Accidentes: " + ctx.parsed.y;
+              if (ctx.parsed.y === null) return ctx.dataset.label + ": sin accidentes en el mes";
+              return ctx.dataset.label + ": " + ctx.parsed.y + ":1";
             }
           }
+        }
+      },
+      animation: {
+        onComplete: function(){
+          // Dibujar números sobre cada barra
+          var chart = this;
+          var c = chart.ctx;
+          c.font = "bold 12px Inter Tight, system-ui";
+          c.fillStyle = "#7F1D1D";
+          c.textAlign = "center";
+          c.textBaseline = "bottom";
+          chart.data.datasets.forEach(function(dataset, di) {
+            if (dataset.type !== "bar") return;
+            var meta = chart.getDatasetMeta(di);
+            meta.data.forEach(function(bar, idx) {
+              var val = dataset.data[idx];
+              if (val > 0) {
+                c.fillText(val, bar.x, bar.y - 4);
+              }
+            });
+          });
         }
       },
       scales: {
@@ -1993,7 +2196,7 @@ function dibujarGraficoAccidentes() {
         },
         y1: {
           type: "linear", position: "right", beginAtZero: true,
-          title: { display: true, text: "Ratio obs/accid acumulado", color: "#065F46", font:{size:11,weight:"600"} },
+          title: { display: true, text: "Ratio obs/accid", color: "#065F46", font:{size:11,weight:"600"} },
           ticks: { color: "#065F46" },
           grid: { drawOnChartArea: false }
         },
@@ -2027,9 +2230,24 @@ function renderGraficoAccidentes() {
   }
 
   var html = '<div class="card" style="margin-top:16px;">';
-  html += '<h2 style="margin-bottom:4px;">📊 Accidentes y madurez de cultura · últimos 12 meses</h2>';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">';
+  html += '<h2 style="margin:0;">📊 Accidentes y madurez de cultura · últimos 12 meses</h2>';
+  // Toggle de vista
+  html += '<div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;">'
+    + '<button id="btnAccMensual" onclick="cambiarVistaAccidentes(\'mensual\')" '
+    +   'style="border:none;background:'+(_vistaAccidentes==="mensual"?"var(--brand-600)":"transparent")+';'
+    +   'color:'+(_vistaAccidentes==="mensual"?"#fff":"var(--t2)")+';padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Mensual</button>'
+    + '<button id="btnAccAcum" onclick="cambiarVistaAccidentes(\'acumulado\')" '
+    +   'style="border:none;background:'+(_vistaAccidentes==="acumulado"?"var(--brand-600)":"transparent")+';'
+    +   'color:'+(_vistaAccidentes==="acumulado"?"#fff":"var(--t2)")+';padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Acumulado</button>'
+    + '<button id="btnAccAmbos" onclick="cambiarVistaAccidentes(\'ambos\')" '
+    +   'style="border:none;background:'+(_vistaAccidentes==="ambos"?"var(--brand-600)":"transparent")+';'
+    +   'color:'+(_vistaAccidentes==="ambos"?"#fff":"var(--t2)")+';padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Ambos</button>'
+    + '</div>';
+  html += '</div>';
   html += '<p style="font-size:13px;color:var(--t2);margin:0 0 16px;">'
-       +  'La barra roja baja y la línea verde sube cuando la cultura madura. Esta es la métrica final del impacto del sistema.</p>';
+       +  'Las barras muestran accidentes por mes (con cantidad exacta sobre cada una). '
+       +  'La línea de ratio mensual mide el desempeño aislado de cada mes; la línea acumulada muestra la tendencia consolidada.</p>';
 
   // 3 mini-KPIs resumen
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">';
@@ -2072,12 +2290,27 @@ function renderGraficoAccidentes() {
   html += '</div>';
 
   // Gráfico
-  html += '<div style="position:relative;width:100%;height:300px;"><canvas id="accidentesChart"></canvas></div>';
+  html += '<div style="position:relative;width:100%;height:320px;"><canvas id="accidentesChart"></canvas></div>';
 
-  // Leyenda custom
-  html += '<div style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes por mes (escala izquierda)</span>'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#059669;border-radius:2px;"></span>Ratio obs/accid acumulado (escala derecha)</span>'
+  // Leyendas (una por vista, controladas por _vistaAccidentes)
+  var displayBoth = _vistaAccidentes === "ambos" ? "flex" : "none";
+  var displayMensual = _vistaAccidentes === "mensual" ? "flex" : "none";
+  var displayAcum = _vistaAccidentes === "acumulado" ? "flex" : "none";
+
+  html += '<div id="legBoth" style="display:'+displayBoth+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes (escala izquierda)</span>'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:0;border-top:2px dashed #0EA5E9;"></span>Ratio mensual (obs / accid del mismo mes)</span>'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#059669;border-radius:2px;"></span>Ratio acumulado (tendencia 12m)</span>'
+       +  '</div>';
+
+  html += '<div id="legMensual" style="display:'+displayMensual+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes</span>'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:0;border-top:2px dashed #0EA5E9;"></span>Ratio del mes (obs ÷ accid del mismo mes)</span>'
+       +  '</div>';
+
+  html += '<div id="legAcum" style="display:'+displayAcum+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes</span>'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#059669;border-radius:2px;"></span>Ratio acumulado (suma todo el período)</span>'
        +  '</div>';
 
   html += '</div>';

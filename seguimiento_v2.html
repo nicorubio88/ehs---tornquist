@@ -146,36 +146,69 @@
   }
   .btn-clear:hover { color:var(--t1); border-color:var(--t2); }
 
-  /* ── KANBAN ── */
-  .kanban {
-    display:grid; grid-template-columns:repeat(3, 1fr); gap:14px;
-    align-items:flex-start;
+  /* ── KANBAN EN FILAS con sub-columnas por criticidad ── */
+  .kanban-rows {
+    display:flex; flex-direction:column; gap:16px;
   }
-  @media (max-width: 900px) {
-    .kanban { grid-template-columns:1fr; }
-  }
-  .kanban-col {
+
+  .kanban-row {
     background:#F8FAFC; border:1px solid var(--border); border-radius:12px;
-    padding:12px; min-height:200px;
+    padding:14px 16px;
   }
-  .kanban-col.col-abiertas { border-top:4px solid #DC2626; }
-  .kanban-col.col-proceso  { border-top:4px solid #F59E0B; }
-  .kanban-col.col-cerradas { border-top:4px solid #10B981; }
-  .kanban-col-header {
+  .kanban-row.row-abiertas { border-left:5px solid #DC2626; }
+  .kanban-row.row-proceso  { border-left:5px solid #F59E0B; }
+  .kanban-row.row-cerradas { border-left:5px solid #10B981; }
+
+  .kanban-row-header {
     display:flex; justify-content:space-between; align-items:center;
-    margin-bottom:12px;
+    margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed var(--border);
   }
-  .kanban-col-title {
-    font-size:13px; font-weight:700; color:var(--t1);
+  .kanban-row-title {
+    font-size:15px; font-weight:700; color:var(--t1);
     text-transform:uppercase; letter-spacing:.03em;
   }
-  .kanban-col-count {
-    background:#fff; padding:2px 10px; border-radius:999px;
-    font-size:12px; font-weight:700; color:var(--t2);
+  .kanban-row-count {
+    background:#fff; padding:3px 12px; border-radius:999px;
+    font-size:13px; font-weight:700; color:var(--t2);
     border:1px solid var(--border);
   }
+
+  /* Grid interno por criticidad: Alta | Media | Baja */
+  .kanban-row-grid {
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;
+  }
+  @media (max-width: 900px) {
+    .kanban-row-grid { grid-template-columns:1fr; }
+  }
+
+  .kanban-crit-col {
+    background:#fff; border:1px solid var(--border); border-radius:8px;
+    padding:10px 12px; min-height:120px;
+  }
+  .kanban-crit-col.crit-alta  { border-top:3px solid #DC2626; background:#FFF8F8; }
+  .kanban-crit-col.crit-media { border-top:3px solid #F59E0B; background:#FFFCF5; }
+  .kanban-crit-col.crit-baja  { border-top:3px solid #10B981; background:#F8FFFB; }
+
+  .kanban-crit-header {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border);
+  }
+  .kanban-crit-label {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.06em;
+  }
+  .kanban-crit-label.l-alta  { color:#991B1B; }
+  .kanban-crit-label.l-media { color:#92400E; }
+  .kanban-crit-label.l-baja  { color:#065F46; }
+  .kanban-crit-count {
+    font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px;
+  }
+  .kanban-crit-count.c-alta  { background:#FEE2E2; color:#991B1B; }
+  .kanban-crit-count.c-media { background:#FEF3C7; color:#92400E; }
+  .kanban-crit-count.c-baja  { background:#D1FAE5; color:#065F46; }
+
   .kanban-empty {
-    font-size:12px; color:var(--t3); text-align:center; padding:24px 12px;
+    font-size:11px; color:var(--t3); text-align:center; padding:18px 8px;
     font-style:italic;
   }
 
@@ -807,72 +840,96 @@ function renderKanban(acciones) {
     if (a.estado === "Cerrada") grupos.cerradas.push(a);
     else if (a.estado === "En proceso") grupos.proceso.push(a);
     else if (a.estado === "Abierta") grupos.abiertas.push(a);
-    // Canceladas no entran al kanban (poco frecuente, podría filtrarse aparte)
+    // Canceladas no entran al kanban
   });
 
-  // Ordenar cada columna: vencidas primero (más vencidas arriba)
+  // Determinar criticidad de una acción (desde el evento)
+  function getCriticidad(a) {
+    var ev = getEventoOf(a);
+    var c = String(ev.prioridad || "").toLowerCase().trim();
+    if (c === "alta" || c === "media" || c === "baja") return c;
+    return "media"; // default si no hay criticidad
+  }
+
+  // Separar cada grupo en sub-grupos por criticidad
+  function porCriticidad(arr) {
+    return {
+      alta: arr.filter(function(a){ return getCriticidad(a) === "alta"; }),
+      media: arr.filter(function(a){ return getCriticidad(a) === "media"; }),
+      baja: arr.filter(function(a){ return getCriticidad(a) === "baja"; })
+    };
+  }
+
+  // Ordenar dentro de cada sub-grupo: pendientes por vencimiento (más vencidas arriba)
+  // Cerradas por fecha de cierre descendente
   function ordenarPorVencimiento(arr) {
     return arr.slice().sort(function(a,b){
       var da = diasAlVencimiento(a.fecha_vencimiento);
       var db = diasAlVencimiento(b.fecha_vencimiento);
       if (da === null) return 1;
       if (db === null) return -1;
-      return da - db; // negativos (vencidos) primero
+      return da - db;
     });
   }
-  // Cerradas: más reciente primero
   function ordenarPorCierre(arr) {
     return arr.slice().sort(function(a,b){
       return String(b.fecha_cierre||"").localeCompare(String(a.fecha_cierre||""));
     });
   }
 
-  grupos.abiertas = ordenarPorVencimiento(grupos.abiertas);
-  grupos.proceso = ordenarPorVencimiento(grupos.proceso);
-  grupos.cerradas = ordenarPorCierre(grupos.cerradas);
+  var html = '<div class="kanban-rows">';
 
-  var html = '<div class="kanban">';
+  // Función helper para renderizar una fila completa (estado) con sus 3 sub-columnas por criticidad
+  function renderFila(estado, titulo, emoji, claseFila, acciones, ordenadora) {
+    var subg = porCriticidad(acciones);
+    var html = '<div class="kanban-row '+claseFila+'">';
 
-  // Columna 1: Abiertas
-  html += '<div class="kanban-col col-abiertas">';
-  html += '<div class="kanban-col-header">';
-  html += '<div class="kanban-col-title">🔴 Abiertas</div>';
-  html += '<div class="kanban-col-count">'+grupos.abiertas.length+'</div>';
-  html += '</div>';
-  if (grupos.abiertas.length === 0) {
-    html += '<div class="kanban-empty">Sin acciones abiertas</div>';
-  } else {
-    grupos.abiertas.forEach(function(a){ html += renderAccionCard(a); });
+    // Header de la fila
+    html += '<div class="kanban-row-header">';
+    html += '<div class="kanban-row-title">'+emoji+' '+titulo+'</div>';
+    html += '<div class="kanban-row-count">'+acciones.length+' acciones</div>';
+    html += '</div>';
+
+    // Si no hay nada en la fila, mensaje único
+    if (acciones.length === 0) {
+      html += '<div class="kanban-empty">Sin acciones en este estado</div>';
+      html += '</div>';
+      return html;
+    }
+
+    // Grid interno con 3 sub-columnas (alta / media / baja)
+    html += '<div class="kanban-row-grid">';
+
+    [
+      { crit:"alta",  label:"🔴 Alta",  data: subg.alta },
+      { crit:"media", label:"🟡 Media", data: subg.media },
+      { crit:"baja",  label:"🟢 Baja",  data: subg.baja }
+    ].forEach(function(col) {
+      var ordenada = ordenadora(col.data);
+      html += '<div class="kanban-crit-col crit-'+col.crit+'">';
+      html += '<div class="kanban-crit-header">';
+      html += '<span class="kanban-crit-label l-'+col.crit+'">'+col.label+'</span>';
+      html += '<span class="kanban-crit-count c-'+col.crit+'">'+col.data.length+'</span>';
+      html += '</div>';
+      if (col.data.length === 0) {
+        html += '<div class="kanban-empty">—</div>';
+      } else {
+        ordenada.forEach(function(a){ html += renderAccionCard(a); });
+      }
+      html += '</div>';
+    });
+
+    html += '</div>'; // /kanban-row-grid
+    html += '</div>'; // /kanban-row
+    return html;
   }
-  html += '</div>';
 
-  // Columna 2: En proceso
-  html += '<div class="kanban-col col-proceso">';
-  html += '<div class="kanban-col-header">';
-  html += '<div class="kanban-col-title">🟡 En proceso</div>';
-  html += '<div class="kanban-col-count">'+grupos.proceso.length+'</div>';
-  html += '</div>';
-  if (grupos.proceso.length === 0) {
-    html += '<div class="kanban-empty">Sin acciones en proceso</div>';
-  } else {
-    grupos.proceso.forEach(function(a){ html += renderAccionCard(a); });
-  }
-  html += '</div>';
+  // 3 filas: Abiertas | En proceso | Cerradas
+  html += renderFila("abiertas", "Abiertas", "🔴", "row-abiertas", grupos.abiertas, ordenarPorVencimiento);
+  html += renderFila("proceso", "En proceso", "🟡", "row-proceso", grupos.proceso, ordenarPorVencimiento);
+  html += renderFila("cerradas", "Cerradas", "🟢", "row-cerradas", grupos.cerradas, ordenarPorCierre);
 
-  // Columna 3: Cerradas
-  html += '<div class="kanban-col col-cerradas">';
-  html += '<div class="kanban-col-header">';
-  html += '<div class="kanban-col-title">🟢 Cerradas</div>';
-  html += '<div class="kanban-col-count">'+grupos.cerradas.length+'</div>';
-  html += '</div>';
-  if (grupos.cerradas.length === 0) {
-    html += '<div class="kanban-empty">Sin acciones cerradas</div>';
-  } else {
-    grupos.cerradas.forEach(function(a){ html += renderAccionCard(a); });
-  }
-  html += '</div>';
-
-  html += '</div>'; // /kanban
+  html += '</div>'; // /kanban-rows
   return html;
 }
 
