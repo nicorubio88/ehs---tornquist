@@ -693,6 +693,22 @@ function escapeHTML(s) {
     .replace(/'/g, "&#39;");
 }
 
+// Normaliza nombres para deduplicación: mayúsculas, sin acentos, palabras ordenadas
+// alfabéticamente para tolerar APELLIDO NOMBRE vs NOMBRE APELLIDO.
+// "José Luis Vallejos", "VALLEJOS JOSE LUIS" → ambos "JOSE LUIS VALLEJOS"
+function normalizarNombrePersona(nombre) {
+  if (!nombre) return "";
+  var limpio = String(nombre)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!limpio) return "";
+  var palabras = limpio.split(" ").filter(function(p){ return p.length > 0; });
+  palabras.sort();
+  return palabras.join(" ");
+}
+
 function loadData() {
   fetch(APPS_SCRIPT_URL + "?tipo=all")
     .then(function(r){ return r.json(); })
@@ -1573,7 +1589,7 @@ function calcularParticipacionPersonas() {
   // Mapa por legajo y por nombre normalizado para el match flexible
   var statsByPerson = {};
   personas.forEach(function(p){
-    var key = p.legajo || ("nombre:" + p.nombre.toUpperCase());
+    var key = p.legajo || ("nombre:" + normalizarNombrePersona(p.nombre));
     statsByPerson[key] = {
       legajo: p.legajo,
       nombre: p.nombre,
@@ -1591,19 +1607,20 @@ function calcularParticipacionPersonas() {
   eventosPeriodo.forEach(function(e){
     var legajoEv = String(e.reportado_por_legajo || "").trim();
     var nombreEv = String(e.reportado_por_nombre || "").trim();
+    var nombreNormEv = normalizarNombrePersona(nombreEv);
     var found = null;
-    // Match por legajo primero
+    // Match por legajo primero (exacto)
     if (legajoEv && statsByPerson[legajoEv]) {
       found = statsByPerson[legajoEv];
     } else if (nombreEv) {
-      // Match por nombre
-      var nombreKey = "nombre:" + nombreEv.toUpperCase();
+      // Match por nombre normalizado (sin acentos, mayúsculas)
+      var nombreKey = "nombre:" + nombreNormEv;
       if (statsByPerson[nombreKey]) {
         found = statsByPerson[nombreKey];
       } else {
-        // Buscar dentro de los keys por legajo cuyo nombre coincida
+        // Buscar dentro de keys por legajo cuyo nombre coincida normalizado
         for (var k in statsByPerson) {
-          if (statsByPerson[k].nombre.toUpperCase() === nombreEv.toUpperCase()) {
+          if (normalizarNombrePersona(statsByPerson[k].nombre) === nombreNormEv) {
             found = statsByPerson[k];
             break;
           }

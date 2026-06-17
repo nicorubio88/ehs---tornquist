@@ -390,6 +390,36 @@ function escapeHTML(s) {
     .replace(/'/g, "&#39;");
 }
 
+// Normaliza un nombre de persona para deduplicación: mayúsculas, sin acentos,
+// y ORDENA las palabras alfabéticamente para tolerar diferencias de orden
+// (APELLIDO NOMBRE vs NOMBRE APELLIDO).
+// "José Luis Vallejos" y "VALLEJOS JOSE LUIS" → ambos "JOSE LUIS VALLEJOS"
+function normalizarNombrePersona(nombre) {
+  if (!nombre) return "";
+  var limpio = String(nombre)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")  // Quitar acentos
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!limpio) return "";
+  // Separar en palabras y ordenar alfabéticamente para tolerar orden distinto
+  var palabras = limpio.split(" ").filter(function(p){ return p.length > 0; });
+  palabras.sort();
+  return palabras.join(" ");
+}
+
+// Elige la variante más "limpia" entre nombres equivalentes:
+// prioriza la que tiene formato APELLIDO NOMBRE (más mayúsculas, sin minúsculas mezcladas)
+function elegirVarianteCanonica(nombres) {
+  // Heurística: tomar el primero que esté completamente en MAYÚSCULAS y sin caracteres acentuados raros
+  for (var i = 0; i < nombres.length; i++) {
+    var n = nombres[i];
+    if (n === n.toUpperCase() && !/[a-z]/.test(n)) return n;
+  }
+  // Si ninguno está todo en mayúsculas, devolver el primero
+  return nombres[0];
+}
+
 function loadData() {
   fetch(APPS_SCRIPT_URL + "?tipo=all")
     .then(function(r){ return r.json(); })
@@ -414,8 +444,10 @@ function applyFilters(acciones) {
   return acciones.filter(function(a){
     var ev = getEventoOf(a);
 
-    // Filtros básicos
-    if (FILTERS.responsable !== "Todos" && a.responsable_nombre !== FILTERS.responsable) return false;
+    // Filtros básicos (responsable comparado normalizado)
+    if (FILTERS.responsable !== "Todos") {
+      if (normalizarNombrePersona(a.responsable_nombre) !== normalizarNombrePersona(FILTERS.responsable)) return false;
+    }
     if (FILTERS.estado !== "Todos" && a.estado !== FILTERS.estado) return false;
     if (FILTERS.sector !== "Todos" && ev.sector !== FILTERS.sector) return false;
 
@@ -428,16 +460,14 @@ function applyFilters(acciones) {
     // Tipo de evento de origen
     if (FILTERS.tipoEvento !== "Todos" && ev.tipo !== FILTERS.tipoEvento) return false;
 
-    // Creador del evento de origen
+    // Creador del evento de origen (normalizado)
     if (FILTERS.creador !== "Todos") {
-      var creador = String(ev.reportado_por_nombre || "");
-      if (creador !== FILTERS.creador) return false;
+      if (normalizarNombrePersona(ev.reportado_por_nombre) !== normalizarNombrePersona(FILTERS.creador)) return false;
     }
 
-    // Cerrada por (solo aplica a cerradas)
+    // Cerrada por (normalizado)
     if (FILTERS.cerradaPor !== "Todos") {
-      var cerradaPor = String(a.cerrada_por_nombre || "");
-      if (cerradaPor !== FILTERS.cerradaPor) return false;
+      if (normalizarNombrePersona(a.cerrada_por_nombre) !== normalizarNombrePersona(FILTERS.cerradaPor)) return false;
     }
 
     // Rango de fechas de creación
@@ -779,26 +809,37 @@ function renderFiltros() {
   html += '<div class="filter-group"><span class="filter-label">🔍</span>'
     + '<input type="text" placeholder="Buscar..." value="'+escapeHTML(FILTERS.busqueda)+'" oninput="setBusqueda(this.value)" /></div>';
 
-  // Selects clásicos + nuevos
-  var responsablesUnicos = ["Todos"], creadoresUnicos = ["Todos"], cerradasPorUnicos = ["Todos"];
-  var seenR = {}, seenC = {}, seenCe = {};
+  // Construir listas únicas con DEDUPE por nombre normalizado (sin acentos, sin mayús/minus)
+  // Esto evita ver "Jose Luis Vallejos", "JOSE LUIS VALLEJOS", "José Luis vallejos" como 3 personas distintas.
+  function dedupNombres(lista) {
+    var grupos = {};
+    lista.forEach(function(nombre) {
+      if (!nombre) return;
+      var key = normalizarNombrePersona(nombre);
+      if (!key) return;
+      if (!grupos[key]) grupos[key] = [];
+      if (grupos[key].indexOf(nombre) === -1) grupos[key].push(nombre);
+    });
+    // Devolver una variante canónica por grupo
+    var resultado = [];
+    Object.keys(grupos).forEach(function(key) {
+      resultado.push(elegirVarianteCanonica(grupos[key]));
+    });
+    return resultado.sort();
+  }
+
+  var responsablesCrudo = [], creadoresCrudo = [], cerradasPorCrudo = [];
   ACCIONES.forEach(function(a){
-    if (a.responsable_nombre && !seenR[a.responsable_nombre]) {
-      seenR[a.responsable_nombre] = true;
-      responsablesUnicos.push(a.responsable_nombre);
-    }
-    if (a.cerrada_por_nombre && !seenCe[a.cerrada_por_nombre]) {
-      seenCe[a.cerrada_por_nombre] = true;
-      cerradasPorUnicos.push(a.cerrada_por_nombre);
-    }
+    if (a.responsable_nombre) responsablesCrudo.push(a.responsable_nombre);
+    if (a.cerrada_por_nombre) cerradasPorCrudo.push(a.cerrada_por_nombre);
   });
   EVENTOS.forEach(function(e){
-    if (e.reportado_por_nombre && !seenC[e.reportado_por_nombre]) {
-      seenC[e.reportado_por_nombre] = true;
-      creadoresUnicos.push(e.reportado_por_nombre);
-    }
+    if (e.reportado_por_nombre) creadoresCrudo.push(e.reportado_por_nombre);
   });
-  responsablesUnicos.sort(); creadoresUnicos.sort(); cerradasPorUnicos.sort();
+
+  var responsablesUnicos = ["Todos"].concat(dedupNombres(responsablesCrudo));
+  var creadoresUnicos    = ["Todos"].concat(dedupNombres(creadoresCrudo));
+  var cerradasPorUnicos  = ["Todos"].concat(dedupNombres(cerradasPorCrudo));
 
   html += filterSelect("criticidad","Criticidad",["Todos","Alta","Media","Baja"]);
   html += filterSelect("estado","Estado",["Todos","Abierta","En proceso","Cerrada","Cancelada"]);
@@ -1117,6 +1158,10 @@ function confirmarCierre(accionId) {
   var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
   if (!nombre) { alert("Seleccioná quién cierra"); return; }
 
+  // Feedback visual: deshabilitar botón
+  var btn = document.querySelector(".modal-btn-ok");
+  if (btn) { btn.textContent = "Cerrando..."; btn.disabled = true; }
+
   var params = new URLSearchParams();
   params.append("action","actualizar_accion");
   params.append("accion_id", accionId);
@@ -1124,18 +1169,34 @@ function confirmarCierre(accionId) {
   params.append("cerrada_por_legajo", legajo || "");
   params.append("cerrada_por_nombre", nombre);
 
-  // Optimistic
-  ACCIONES.forEach(function(a){
-    if (a.accion_id === accionId) {
-      a.estado = "Cerrada";
-      a.cerrada_por_nombre = nombre;
-      a.cerrada_por_legajo = legajo;
-      a.fecha_cierre = new Date().toISOString();
-    }
-  });
-  cerrarModal();
-  render();
-  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (!resp || resp.ok === false) {
+        alert("❌ No se pudo cerrar la acción: " + (resp && resp.error ? resp.error : "respuesta inválida")
+          + "\n\nEs posible que tu sesión haya expirado o que el sistema no encuentre la acción. Recargá la página (Ctrl+F5) y volvé a intentar.");
+        if (btn) { btn.textContent = "Confirmar cierre"; btn.disabled = false; }
+        return;
+      }
+      // Backend confirmó OK → actualizar estado local
+      ACCIONES.forEach(function(a){
+        if (a.accion_id === accionId) {
+          a.estado = "Cerrada";
+          a.cerrada_por_nombre = nombre;
+          a.cerrada_por_legajo = legajo;
+          a.fecha_cierre = new Date().toISOString();
+        }
+      });
+      cerrarModal();
+      render();
+      // Recarga desde servidor para sincronizar con cualquier otro cambio
+      setTimeout(loadData, 500);
+    })
+    .catch(function(err){
+      alert("❌ Error de red al cerrar: " + err.message
+        + "\n\nProbá de nuevo en unos segundos. Si el problema persiste, recargá la página.");
+      if (btn) { btn.textContent = "Confirmar cierre"; btn.disabled = false; }
+    });
 }
 
 function abrirNota(accionId) {
@@ -1156,23 +1217,39 @@ function abrirNota(accionId) {
 function confirmarNota(accionId) {
   var nota = document.getElementById("notaText").value.trim();
   if (!nota) { alert("Escribí algo"); return; }
+
+  var btn = document.querySelector(".modal-btn-ok");
+  if (btn) { btn.textContent = "Guardando..."; btn.disabled = true; }
+
   var params = new URLSearchParams();
   params.append("action","agregar_nota");
   params.append("accion_id", accionId);
   params.append("nota", nota);
 
-  ACCIONES.forEach(function(a){
-    if (a.accion_id === accionId) {
-      var fecha = new Date().toLocaleDateString("es-AR");
-      var nuevaNota = fecha + ": " + nota;
-      a.notas = (a.notas || "") + (a.notas ? " | " : "") + nuevaNota;
-      // En proceso si estaba abierta
-      if (a.estado === "Abierta") a.estado = "En proceso";
-    }
-  });
-  cerrarModal();
-  render();
-  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (!resp || resp.ok === false) {
+        alert("Error al guardar la nota: " + (resp && resp.error ? resp.error : "respuesta inválida"));
+        if (btn) { btn.textContent = "Guardar"; btn.disabled = false; }
+        return;
+      }
+      ACCIONES.forEach(function(a){
+        if (a.accion_id === accionId) {
+          var fecha = new Date().toLocaleDateString("es-AR");
+          var nuevaNota = fecha + ": " + nota;
+          a.notas = (a.notas || "") + (a.notas ? " | " : "") + nuevaNota;
+          if (a.estado === "Abierta") a.estado = "En proceso";
+        }
+      });
+      cerrarModal();
+      render();
+      setTimeout(loadData, 500);
+    })
+    .catch(function(err){
+      alert("Error de red al guardar nota: " + err.message);
+      if (btn) { btn.textContent = "Guardar"; btn.disabled = false; }
+    });
 }
 
 function abrirReprogramar(accionId) {
@@ -1193,22 +1270,39 @@ function abrirReprogramar(accionId) {
 function confirmarReprogramar(accionId) {
   var nueva = document.getElementById("nuevaFecha").value;
   if (!nueva) { alert("Elegí una fecha"); return; }
+
+  var btn = document.querySelector(".modal-btn-ok");
+  if (btn) { btn.textContent = "Guardando..."; btn.disabled = true; }
+
   var params = new URLSearchParams();
   params.append("action","reprogramar_accion");
   params.append("accion_id", accionId);
   params.append("nueva_fecha", nueva);
 
-  ACCIONES.forEach(function(a){
-    if (a.accion_id === accionId) {
-      var fecha = new Date().toLocaleDateString("es-AR");
-      var nota = fecha + ": Reprogramada de " + a.fecha_vencimiento + " a " + nueva;
-      a.notas = (a.notas || "") + (a.notas ? " | " : "") + nota;
-      a.fecha_vencimiento = nueva;
-    }
-  });
-  cerrarModal();
-  render();
-  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (!resp || resp.ok === false) {
+        alert("Error al reprogramar: " + (resp && resp.error ? resp.error : "respuesta inválida"));
+        if (btn) { btn.textContent = "Confirmar"; btn.disabled = false; }
+        return;
+      }
+      ACCIONES.forEach(function(a){
+        if (a.accion_id === accionId) {
+          var fecha = new Date().toLocaleDateString("es-AR");
+          var nota = fecha + ": Reprogramada de " + a.fecha_vencimiento + " a " + nueva;
+          a.notas = (a.notas || "") + (a.notas ? " | " : "") + nota;
+          a.fecha_vencimiento = nueva;
+        }
+      });
+      cerrarModal();
+      render();
+      setTimeout(loadData, 500);
+    })
+    .catch(function(err){
+      alert("Error de red al reprogramar: " + err.message);
+      if (btn) { btn.textContent = "Confirmar"; btn.disabled = false; }
+    });
 }
 
 function abrirCambioResp(accionId) {
@@ -1217,25 +1311,76 @@ function abrirCambioResp(accionId) {
   var html = '<div class="modal-overlay" id="modalOv" onclick="if(event.target.id===\'modalOv\')cerrarModal()">';
   html += '<div class="modal-box">';
   html += '<h3>👤 Cambiar responsable</h3>';
-  html += '<div style="font-size:12px;color:var(--t2);margin-bottom:14px;">Responsable actual: '+escapeHTML(a.responsable_nombre)+'</div>';
+  html += '<div style="font-size:12px;color:var(--t2);margin-bottom:14px;">Responsable actual: <strong>'+escapeHTML(a.responsable_nombre||"sin asignar")+'</strong></div>';
   html += '<label>Nuevo responsable</label>';
-  html += '<select id="respSelect"><option value="">— Seleccionar —</option>';
+
+  // Construir lista: responsables (★) + todo el personal, sin duplicados
+  var personas = [];
+  var vistos = {};
   (MAESTROS.responsables||[]).forEach(function(r){
-    var sel = (r.nombre === a.responsable_nombre) ? ' selected' : '';
-    html += '<option value="'+(r.nombre||"")+'" data-legajo="'+(r.legajo||"")+'"'+sel+'>'+(r.nombre||"")+'</option>';
+    if (r.nombre) {
+      var key = r.legajo ? ("l:"+r.legajo) : ("n:"+normalizarNombrePersona(r.nombre));
+      if (!vistos[key]) {
+        personas.push({legajo:r.legajo||"", nombre:r.nombre||"", esResp:true});
+        vistos[key] = true;
+      }
+    }
+  });
+  (MAESTROS.personal||[]).forEach(function(p){
+    if (p.nombre) {
+      var key = p.legajo ? ("l:"+p.legajo) : ("n:"+normalizarNombrePersona(p.nombre));
+      if (!vistos[key]) {
+        personas.push({legajo:p.legajo||"", nombre:p.nombre||"", esResp:false});
+        vistos[key] = true;
+      }
+    }
+  });
+
+  // Input búsqueda + select grande
+  html += '<input type="text" id="cambioRespBuscar" placeholder="Buscar por nombre o legajo..." '
+       +  'oninput="filtrarCambioResp(this.value)" '
+       +  'style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;margin-bottom:6px;box-sizing:border-box;"/>';
+  html += '<select id="respSelect" size="6" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;">';
+  html += '<option value="">— Seleccionar —</option>';
+  personas.forEach(function(p){
+    var sel = (p.nombre === a.responsable_nombre) ? ' selected' : '';
+    var label = (p.esResp?"★ ":"") + p.nombre + (p.legajo?" (#"+p.legajo+")":"");
+    html += '<option value="'+escapeHTML(p.nombre)+'" data-nombre="'+escapeHTML(p.nombre)+'" data-legajo="'+escapeHTML(p.legajo)+'"'+sel+'>'+escapeHTML(label)+'</option>';
   });
   html += '</select>';
+  html += '<div style="font-size:11px;color:var(--t3);margin-top:4px;">★ = responsables · '+personas.length+' personas</div>';
   html += '<div class="modal-btns">';
   html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>';
   html += '<button class="modal-btn modal-btn-ok" onclick="confirmarCambioResp(\''+accionId+'\')">Confirmar</button>';
   html += '</div></div></div>';
   document.body.insertAdjacentHTML("beforeend",html);
 }
+
+// Filtro en vivo
+function filtrarCambioResp(query) {
+  var sel = document.getElementById("respSelect");
+  if (!sel) return;
+  var q = String(query||"").toLowerCase().trim();
+  for (var i=0; i<sel.options.length; i++) {
+    var opt = sel.options[i];
+    if (!opt.value) continue;
+    var nombre = (opt.getAttribute("data-nombre")||"").toLowerCase();
+    var legajo = (opt.getAttribute("data-legajo")||"").toLowerCase();
+    var match = !q || nombre.indexOf(q) !== -1 || legajo.indexOf(q) !== -1;
+    opt.style.display = match ? "" : "none";
+  }
+}
+
 function confirmarCambioResp(accionId) {
   var sel = document.getElementById("respSelect");
-  var nombre = sel.value;
-  var legajo = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].getAttribute("data-legajo") : "";
+  var opt = sel.options[sel.selectedIndex];
+  var nombre = opt ? (opt.getAttribute("data-nombre") || sel.value) : sel.value;
+  var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
   if (!nombre) { alert("Seleccioná un responsable"); return; }
+
+  // Deshabilitar el botón y mostrar feedback
+  var btn = document.querySelector(".modal-btn-ok");
+  if (btn) { btn.textContent = "Guardando..."; btn.disabled = true; }
 
   var params = new URLSearchParams();
   params.append("action","cambiar_responsable");
@@ -1243,18 +1388,33 @@ function confirmarCambioResp(accionId) {
   params.append("nuevo_legajo", legajo || "");
   params.append("nuevo_nombre", nombre);
 
-  ACCIONES.forEach(function(a){
-    if (a.accion_id === accionId) {
-      var fecha = new Date().toLocaleDateString("es-AR");
-      var nota = fecha + ": Responsable cambiado de " + a.responsable_nombre + " a " + nombre;
-      a.notas = (a.notas || "") + (a.notas ? " | " : "") + nota;
-      a.responsable_nombre = nombre;
-      a.responsable_legajo = legajo;
-    }
-  });
-  cerrarModal();
-  render();
-  fetch(APPS_SCRIPT_URL,{method:"POST",body:params}).catch(function(){});
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (!resp || resp.ok === false) {
+        alert("Error al cambiar el responsable: " + (resp && resp.error ? resp.error : "respuesta inválida"));
+        if (btn) { btn.textContent = "Confirmar"; btn.disabled = false; }
+        return;
+      }
+      // Backend OK → actualizar localmente y recargar desde servidor
+      ACCIONES.forEach(function(a){
+        if (a.accion_id === accionId) {
+          var fecha = new Date().toLocaleDateString("es-AR");
+          var nota = fecha + ": Responsable cambiado de " + a.responsable_nombre + " a " + nombre;
+          a.notas = (a.notas || "") + (a.notas ? " | " : "") + nota;
+          a.responsable_nombre = nombre;
+          a.responsable_legajo = legajo;
+        }
+      });
+      cerrarModal();
+      render();
+      // Sincronizar con servidor por las dudas
+      setTimeout(loadData, 500);
+    })
+    .catch(function(err){
+      alert("Error de red al cambiar responsable: " + err.message + "\nReintentá en unos segundos.");
+      if (btn) { btn.textContent = "Confirmar"; btn.disabled = false; }
+    });
 }
 
 function cerrarModal() {
