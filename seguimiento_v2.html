@@ -287,6 +287,10 @@
     background:var(--brand-600); color:#fff; border-color:var(--brand-600);
   }
   .btn-sm.primary:hover { background:var(--brand-700); border-color:var(--brand-700); }
+  .btn-sm.start {
+    background:#F59E0B; color:#fff; border-color:#F59E0B;
+  }
+  .btn-sm.start:hover { background:#D97706; border-color:#D97706; }
 
   .empty {
     text-align:center; padding:40px 20px; color:var(--t3); font-size:13px;
@@ -1041,8 +1045,13 @@ function renderAccionCard(a) {
 
   // Botones de acción
   if (!esCerrada && !esCancelada) {
+    var esAbierta = (a.estado === "Abierta");
     html += '<div class="action-buttons">';
     html += '<button class="btn-sm primary" onclick="abrirCierre(\''+a.accion_id+'\')">✓ Cerrar</button>';
+    // Botón "Iniciar" solo si está abierta (cambio rápido a En proceso)
+    if (esAbierta) {
+      html += '<button class="btn-sm start" onclick="iniciarAccion(\''+a.accion_id+'\')">▶ Iniciar</button>';
+    }
     html += '<button class="btn-sm" onclick="abrirNota(\''+a.accion_id+'\')">📝 Nota</button>';
     html += '<button class="btn-sm" onclick="abrirReprogramar(\''+a.accion_id+'\')">📅 Reprogramar</button>';
     html += '<button class="btn-sm" onclick="abrirCambioResp(\''+a.accion_id+'\')">👤 Responsable</button>';
@@ -1420,6 +1429,55 @@ function confirmarCambioResp(accionId) {
 function cerrarModal() {
   var m = document.getElementById("modalOv");
   if (m) m.remove();
+}
+
+// ============================================================
+// INICIAR ACCIÓN — cambia rápido de "Abierta" a "En proceso"
+// Sin modal, sin notificaciones, sin nota. Solo persiste el cambio.
+// ============================================================
+function iniciarAccion(accionId) {
+  // Confirmación rápida
+  if (!confirm("¿Marcar esta acción como 'En proceso'?")) return;
+
+  // Feedback visual: buscar el botón "▶ Iniciar" de esta acción y deshabilitar
+  var btns = document.querySelectorAll('button.btn-sm.start');
+  var btnClicked = null;
+  for (var i = 0; i < btns.length; i++) {
+    if (btns[i].getAttribute("onclick") && btns[i].getAttribute("onclick").indexOf(accionId) !== -1) {
+      btnClicked = btns[i];
+      break;
+    }
+  }
+  if (btnClicked) { btnClicked.textContent = "Iniciando..."; btnClicked.disabled = true; }
+
+  var params = new URLSearchParams();
+  params.append("action","actualizar_accion");
+  params.append("accion_id", accionId);
+  params.append("estado", "En proceso");
+
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (!resp || resp.ok === false) {
+        alert("❌ No se pudo iniciar la acción: " + (resp && resp.error ? resp.error : "respuesta inválida")
+          + "\n\nProbá recargar la página (Ctrl+F5) y volver a intentar.");
+        if (btnClicked) { btnClicked.textContent = "▶ Iniciar"; btnClicked.disabled = false; }
+        return;
+      }
+      // Backend OK → actualizar localmente
+      ACCIONES.forEach(function(a){
+        if (a.accion_id === accionId) {
+          a.estado = "En proceso";
+        }
+      });
+      render();
+      setTimeout(loadData, 500);
+    })
+    .catch(function(err){
+      alert("❌ Error de red al iniciar: " + err.message
+        + "\n\nProbá de nuevo en unos segundos.");
+      if (btnClicked) { btnClicked.textContent = "▶ Iniciar"; btnClicked.disabled = false; }
+    });
 }
 
 // Abre un modal con el detalle del evento asociado a la acción
