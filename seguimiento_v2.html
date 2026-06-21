@@ -361,6 +361,7 @@ var FILTERS = {
   responsable:"Todos",
   estado:"Todos",
   sector:"Todos",
+  area:"Todos",           // Área responsable (Mantenimiento, Producción, etc.)
   criticidad:"Todos",     // Alta / Media / Baja
   creador:"Todos",        // Quien reportó el evento de origen
   cerradaPor:"Todos",     // Quien cerró la acción
@@ -371,6 +372,23 @@ var FILTERS = {
   soloVencidas:false,     // Solo las vencidas
   soloMias:false
 };
+
+// Áreas disponibles para asignación
+var AREAS = ["Mantenimiento", "Producción", "I+D", "Calidad", "EHS", "Recursos Humanos", "Ingeniería"];
+
+// Color distintivo por área (para badges)
+function colorArea(area) {
+  var mapa = {
+    "Mantenimiento":   "#2563EB",  // azul
+    "Producción":      "#7C3AED",  // violeta
+    "I+D":             "#0891B2",  // cyan
+    "Calidad":         "#DB2777",  // rosa
+    "EHS":             "#059669",  // verde
+    "Recursos Humanos":"#D97706",  // ámbar
+    "Ingeniería":      "#475569"   // gris pizarra
+  };
+  return mapa[area] || "#6B7280";
+}
 
 // Identidad cargada desde localStorage (compartida con dashboard)
 var IDENTIDAD = { legajo: "", nombre: "" };
@@ -455,6 +473,16 @@ function applyFilters(acciones) {
     if (FILTERS.estado !== "Todos" && a.estado !== FILTERS.estado) return false;
     if (FILTERS.sector !== "Todos" && ev.sector !== FILTERS.sector) return false;
 
+    // Área responsable de la acción
+    if (FILTERS.area !== "Todos") {
+      var areaAccion = String(a.area || "").trim();
+      if (FILTERS.area === "(sin área)") {
+        if (areaAccion !== "") return false;
+      } else if (areaAccion !== FILTERS.area) {
+        return false;
+      }
+    }
+
     // Criticidad (viene del evento como ev.prioridad)
     if (FILTERS.criticidad !== "Todos") {
       var prio = String(ev.prioridad || "").trim();
@@ -515,6 +543,7 @@ function clearFilters() {
   FILTERS.responsable = "Todos";
   FILTERS.estado = "Todos";
   FILTERS.sector = "Todos";
+  FILTERS.area = "Todos";
   FILTERS.criticidad = "Todos";
   FILTERS.creador = "Todos";
   FILTERS.cerradaPor = "Todos";
@@ -625,6 +654,14 @@ function renderPanelInteligencia(acciones) {
   var vencPorResp = {};
   // 4. Top sectores con más pendientes
   var pendPorSector = {};
+  // 6. Stats por área: pendientes, vencidas, tiempos de cierre
+  var statsPorArea = {};
+  function ensureArea(area) {
+    if (!statsPorArea[area]) {
+      statsPorArea[area] = { pendientes:0, vencidas:0, cerradas:0, tcierre:[] };
+    }
+    return statsPorArea[area];
+  }
 
   // 5. Cumplimiento (cerradas a tiempo / total cerradas con fecha)
   var cerradasATiempo = 0;
@@ -683,6 +720,25 @@ function renderPanelInteligencia(acciones) {
         var fcie = new Date(fc2 + "T00:00:00");
         var dias = Math.floor((fcie - fcre) / (1000*60*60*24));
         if (dias >= 0) tcierre[critKey].push(dias);
+      }
+    }
+
+    // Stats por área
+    var areaA = String(a.area || "").trim() || "(sin área)";
+    var sa = ensureArea(areaA);
+    if (esCerrada) {
+      sa.cerradas++;
+      if (a.fecha_creacion && a.fecha_cierre) {
+        var fcreA = new Date(String(a.fecha_creacion).substring(0,10) + "T00:00:00");
+        var fcieA = new Date(String(a.fecha_cierre).substring(0,10) + "T00:00:00");
+        var diasA = Math.floor((fcieA - fcreA) / (1000*60*60*24));
+        if (diasA >= 0) sa.tcierre.push(diasA);
+      }
+    } else if (!esCancelada) {
+      sa.pendientes++;
+      if (a.fecha_vencimiento) {
+        var dvA = diasAlVencimiento(a.fecha_vencimiento);
+        if (dvA !== null && dvA < 0) sa.vencidas++;
       }
     }
   });
@@ -784,6 +840,44 @@ function renderPanelInteligencia(acciones) {
   }
   html += '</div>';
 
+  // 6. Panel por ÁREA (ancho completo) — pendientes, vencidas, tiempo cierre
+  var areasConDatos = Object.keys(statsPorArea).filter(function(ar){
+    var s = statsPorArea[ar];
+    return s.pendientes > 0 || s.cerradas > 0;
+  }).sort(function(x, y){
+    // Ordenar por vencidas desc, luego pendientes desc
+    return (statsPorArea[y].vencidas - statsPorArea[x].vencidas) || (statsPorArea[y].pendientes - statsPorArea[x].pendientes);
+  });
+
+  if (areasConDatos.length > 0) {
+    html += '<div class="panel-box" style="grid-column:1/-1;">';
+    html += '<h3>🏢 Desempeño por área</h3>';
+    html += '<div style="overflow-x:auto;">';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+    html += '<thead><tr style="border-bottom:2px solid var(--border);">'
+         +  '<th style="text-align:left;padding:6px 8px;color:var(--t2);font-weight:700;">Área</th>'
+         +  '<th style="text-align:center;padding:6px 8px;color:var(--t2);font-weight:700;">Pendientes</th>'
+         +  '<th style="text-align:center;padding:6px 8px;color:var(--t2);font-weight:700;">Vencidas</th>'
+         +  '<th style="text-align:center;padding:6px 8px;color:var(--t2);font-weight:700;">Cerradas</th>'
+         +  '<th style="text-align:center;padding:6px 8px;color:var(--t2);font-weight:700;">T. prom. cierre</th>'
+         +  '</tr></thead><tbody>';
+    areasConDatos.forEach(function(ar){
+      var s = statsPorArea[ar];
+      var tProm = avg(s.tcierre);
+      var colorAr = (ar === "(sin área)") ? "#6B7280" : colorArea(ar);
+      html += '<tr style="border-bottom:1px solid var(--border);">';
+      html += '<td style="padding:6px 8px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:'+colorAr+';margin-right:6px;"></span>'+escapeHTML(ar)+'</td>';
+      html += '<td style="text-align:center;padding:6px 8px;font-weight:700;color:#92400E;">'+s.pendientes+'</td>';
+      html += '<td style="text-align:center;padding:6px 8px;font-weight:700;color:'+(s.vencidas>0?'#991B1B':'var(--t3)')+';">'+s.vencidas+'</td>';
+      html += '<td style="text-align:center;padding:6px 8px;font-weight:700;color:#065F46;">'+s.cerradas+'</td>';
+      html += '<td style="text-align:center;padding:6px 8px;color:var(--t2);">'+(tProm !== null ? tProm+'d' : '—')+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    html += '</div>';
+    html += '</div>';
+  }
+
   html += '</div>'; // /panel-inteligencia
   return html;
 }
@@ -847,6 +941,7 @@ function renderFiltros() {
 
   html += filterSelect("criticidad","Criticidad",["Todos","Alta","Media","Baja"]);
   html += filterSelect("estado","Estado",["Todos","Abierta","En proceso","Cerrada","Cancelada"]);
+  html += filterSelect("area","Área",["Todos"].concat(AREAS).concat(["(sin área)"]));
   html += filterSelect("responsable","Responsable",responsablesUnicos);
   html += filterSelect("creador","Creador",creadoresUnicos);
   html += filterSelect("cerradaPor","Cerrada por",cerradasPorUnicos);
@@ -1022,7 +1117,13 @@ function renderAccionCard(a) {
 
   // Meta compacta
   html += '<div style="font-size:11px;color:var(--t2);line-height:1.55;">';
-  html += '<div>👤 '+escapeHTML(a.responsable_nombre||"Sin asignar")+'</div>';
+  // Responsable con badge de área antes del nombre
+  var areaAccion = String(a.area || "").trim();
+  var areaBadge = "";
+  if (areaAccion) {
+    areaBadge = '<span style="display:inline-block;background:'+colorArea(areaAccion)+';color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;margin-right:5px;text-transform:uppercase;letter-spacing:.03em;">'+escapeHTML(areaAccion)+'</span>';
+  }
+  html += '<div>👤 '+areaBadge+escapeHTML(a.responsable_nombre||"Sin asignar")+'</div>';
   if (a.fecha_vencimiento) {
     html += '<div>📅 '+formatDate(a.fecha_vencimiento)+'</div>';
   }
@@ -1032,6 +1133,11 @@ function renderAccionCard(a) {
   }
   if (ev.reportado_por_nombre) {
     html += '<div style="color:var(--t3);font-size:10px;">Creado por: '+escapeHTML(ev.reportado_por_nombre)+'</div>';
+  }
+  // Trazabilidad de inicio
+  if (a.fecha_inicio) {
+    html += '<div style="color:#92400E;font-size:10px;">▶ Iniciada el '+formatDate(a.fecha_inicio)
+         + (a.iniciada_por_nombre ? ' por '+escapeHTML(a.iniciada_por_nombre) : '')+'</div>';
   }
   html += '</div>';
 
@@ -1046,12 +1152,14 @@ function renderAccionCard(a) {
   // Botones de acción
   if (!esCerrada && !esCancelada) {
     var esAbierta = (a.estado === "Abierta");
+    var nComentarios = contarComentarios(a);
     html += '<div class="action-buttons">';
     html += '<button class="btn-sm primary" onclick="abrirCierre(\''+a.accion_id+'\')">✓ Cerrar</button>';
     // Botón "Iniciar" solo si está abierta (cambio rápido a En proceso)
     if (esAbierta) {
       html += '<button class="btn-sm start" onclick="iniciarAccion(\''+a.accion_id+'\')">▶ Iniciar</button>';
     }
+    html += '<button class="btn-sm" onclick="abrirComentarios(\''+a.accion_id+'\')">💬 Comentarios'+(nComentarios>0?' ('+nComentarios+')':'')+'</button>';
     html += '<button class="btn-sm" onclick="abrirNota(\''+a.accion_id+'\')">📝 Nota</button>';
     html += '<button class="btn-sm" onclick="abrirReprogramar(\''+a.accion_id+'\')">📅 Reprogramar</button>';
     html += '<button class="btn-sm" onclick="abrirCambioResp(\''+a.accion_id+'\')">👤 Responsable</button>';
@@ -1060,7 +1168,9 @@ function renderAccionCard(a) {
     }
     html += '</div>';
   } else if (ev.evento_id) {
+    var nComentariosC = contarComentarios(a);
     html += '<div class="action-buttons">';
+    html += '<button class="btn-sm" onclick="abrirComentarios(\''+a.accion_id+'\')">💬 Comentarios'+(nComentariosC>0?' ('+nComentariosC+')':'')+'</button>';
     html += '<button class="btn-sm" onclick="abrirDetalleEvento(\''+escapeHTML(ev.evento_id)+'\')">👁 Ver evento</button>';
     html += '</div>';
   }
@@ -1358,6 +1468,17 @@ function abrirCambioResp(accionId) {
   });
   html += '</select>';
   html += '<div style="font-size:11px;color:var(--t3);margin-top:4px;">★ = responsables · '+personas.length+' personas</div>';
+
+  // Selector de área responsable
+  html += '<label style="margin-top:12px;display:block;">Área responsable</label>';
+  html += '<select id="areaSelect" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box;">';
+  html += '<option value="">— Sin área —</option>';
+  AREAS.forEach(function(ar){
+    var selA = (ar === a.area) ? ' selected' : '';
+    html += '<option value="'+escapeHTML(ar)+'"'+selA+'>'+escapeHTML(ar)+'</option>';
+  });
+  html += '</select>';
+
   html += '<div class="modal-btns">';
   html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cancelar</button>';
   html += '<button class="modal-btn modal-btn-ok" onclick="confirmarCambioResp(\''+accionId+'\')">Confirmar</button>';
@@ -1387,6 +1508,10 @@ function confirmarCambioResp(accionId) {
   var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
   if (!nombre) { alert("Seleccioná un responsable"); return; }
 
+  // Área seleccionada
+  var areaSel = document.getElementById("areaSelect");
+  var area = areaSel ? areaSel.value : "";
+
   // Deshabilitar el botón y mostrar feedback
   var btn = document.querySelector(".modal-btn-ok");
   if (btn) { btn.textContent = "Guardando..."; btn.disabled = true; }
@@ -1396,6 +1521,7 @@ function confirmarCambioResp(accionId) {
   params.append("accion_id", accionId);
   params.append("nuevo_legajo", legajo || "");
   params.append("nuevo_nombre", nombre);
+  params.append("nueva_area", area || "");
 
   fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
     .then(function(r){ return r.json(); })
@@ -1408,11 +1534,9 @@ function confirmarCambioResp(accionId) {
       // Backend OK → actualizar localmente y recargar desde servidor
       ACCIONES.forEach(function(a){
         if (a.accion_id === accionId) {
-          var fecha = new Date().toLocaleDateString("es-AR");
-          var nota = fecha + ": Responsable cambiado de " + a.responsable_nombre + " a " + nombre;
-          a.notas = (a.notas || "") + (a.notas ? " | " : "") + nota;
           a.responsable_nombre = nombre;
           a.responsable_legajo = legajo;
+          if (area) a.area = area;
         }
       });
       cerrarModal();
@@ -1423,6 +1547,125 @@ function confirmarCambioResp(accionId) {
     .catch(function(err){
       alert("Error de red al cambiar responsable: " + err.message + "\nReintentá en unos segundos.");
       if (btn) { btn.textContent = "Confirmar"; btn.disabled = false; }
+    });
+}
+
+// ============================================================
+// COMENTARIOS — chat interno por acción
+// ============================================================
+// Parsea el campo comentarios (JSON array) de forma segura
+function parsearComentarios(a) {
+  if (!a || !a.comentarios) return [];
+  try {
+    var arr = JSON.parse(a.comentarios);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function contarComentarios(a) {
+  return parsearComentarios(a).length;
+}
+
+function abrirComentarios(accionId) {
+  var a = getAccion(accionId);
+  if (!a) return;
+  var comentarios = parsearComentarios(a);
+
+  var html = '<div class="modal-overlay" id="modalOv" onclick="if(event.target.id===\'modalOv\')cerrarModal()">';
+  html += '<div class="modal-box" style="max-width:560px;">';
+  html += '<h3>💬 Comentarios de la acción</h3>';
+  html += '<div style="font-size:12px;color:var(--t2);margin-bottom:12px;">'+escapeHTML(a.descripcion||"")+'</div>';
+
+  // Hilo de comentarios
+  html += '<div id="hiloComentarios" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;background:#F8FAFC;margin-bottom:12px;">';
+  if (comentarios.length === 0) {
+    html += '<div style="font-size:12px;color:var(--t3);text-align:center;padding:20px;font-style:italic;">Todavía no hay comentarios. Sé el primero en escribir.</div>';
+  } else {
+    comentarios.forEach(function(c){
+      var fecha = c.fecha ? new Date(c.fecha).toLocaleString("es-AR") : "";
+      var esMio = IDENTIDAD.nombre && normalizarNombrePersona(c.autor) === normalizarNombrePersona(IDENTIDAD.nombre);
+      html += '<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:'+(esMio?'#DCFCE7':'#fff')+';border:1px solid '+(esMio?'#86EFAC':'var(--border)')+';">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">';
+      html += '<span style="font-size:11px;font-weight:700;color:var(--brand-700);">'+escapeHTML(c.autor||"Anónimo")+'</span>';
+      html += '<span style="font-size:9px;color:var(--t3);">'+escapeHTML(fecha)+'</span>';
+      html += '</div>';
+      html += '<div style="font-size:12px;color:var(--t1);line-height:1.4;white-space:pre-wrap;">'+escapeHTML(c.texto||"")+'</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+
+  // Identidad para comentar
+  if (!IDENTIDAD.nombre) {
+    html += '<div style="font-size:11px;color:#92400E;background:#FFFBEB;border:1px dashed #FDE68A;border-radius:6px;padding:8px;margin-bottom:10px;">⚠ Para comentar necesitás elegir tu identidad en el Dashboard primero.</div>';
+  } else {
+    html += '<div style="font-size:11px;color:var(--t2);margin-bottom:4px;">Comentás como: <strong>'+escapeHTML(IDENTIDAD.nombre)+'</strong></div>';
+    html += '<textarea id="comentarioTexto" placeholder="Escribí un comentario o repregunta..." '
+         +  'style="width:100%;min-height:70px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font:inherit;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>';
+  }
+
+  html += '<div class="modal-btns">';
+  html += '<button class="modal-btn modal-btn-cancel" onclick="cerrarModal()">Cerrar</button>';
+  if (IDENTIDAD.nombre) {
+    html += '<button class="modal-btn modal-btn-ok" onclick="confirmarComentario(\''+accionId+'\')">Enviar comentario</button>';
+  }
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML("beforeend",html);
+
+  // Scroll al final del hilo
+  setTimeout(function(){
+    var hilo = document.getElementById("hiloComentarios");
+    if (hilo) hilo.scrollTop = hilo.scrollHeight;
+  }, 50);
+}
+
+function confirmarComentario(accionId) {
+  var texto = document.getElementById("comentarioTexto");
+  var valor = texto ? texto.value.trim() : "";
+  if (!valor) { alert("Escribí un comentario"); return; }
+
+  var btn = document.querySelector(".modal-btn-ok");
+  if (btn) { btn.textContent = "Enviando..."; btn.disabled = true; }
+
+  var params = new URLSearchParams();
+  params.append("action","agregar_comentario");
+  params.append("accion_id", accionId);
+  params.append("texto", valor);
+  params.append("autor_nombre", IDENTIDAD.nombre || "Anónimo");
+  params.append("autor_legajo", IDENTIDAD.legajo || "");
+
+  fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
+    .then(function(r){ return r.json(); })
+    .then(function(resp){
+      if (!resp || resp.ok === false) {
+        alert("Error al enviar el comentario: " + (resp && resp.error ? resp.error : "respuesta inválida"));
+        if (btn) { btn.textContent = "Enviar comentario"; btn.disabled = false; }
+        return;
+      }
+      // Actualizar localmente
+      ACCIONES.forEach(function(a){
+        if (a.accion_id === accionId) {
+          var comentarios = parsearComentarios(a);
+          comentarios.push({
+            autor: IDENTIDAD.nombre || "Anónimo",
+            legajo: IDENTIDAD.legajo || "",
+            fecha: new Date().toISOString(),
+            texto: valor
+          });
+          a.comentarios = JSON.stringify(comentarios);
+        }
+      });
+      cerrarModal();
+      // Reabrir el modal para ver el comentario recién agregado
+      abrirComentarios(accionId);
+      render();
+      setTimeout(loadData, 800);
+    })
+    .catch(function(err){
+      alert("Error de red al enviar comentario: " + err.message);
+      if (btn) { btn.textContent = "Enviar comentario"; btn.disabled = false; }
     });
 }
 
@@ -1454,6 +1697,8 @@ function iniciarAccion(accionId) {
   params.append("action","actualizar_accion");
   params.append("accion_id", accionId);
   params.append("estado", "En proceso");
+  params.append("iniciada_por_legajo", IDENTIDAD.legajo || "");
+  params.append("iniciada_por_nombre", IDENTIDAD.nombre || "");
 
   fetch(APPS_SCRIPT_URL,{method:"POST",body:params})
     .then(function(r){ return r.json(); })
@@ -1468,6 +1713,11 @@ function iniciarAccion(accionId) {
       ACCIONES.forEach(function(a){
         if (a.accion_id === accionId) {
           a.estado = "En proceso";
+          if (!a.fecha_inicio) {
+            a.fecha_inicio = new Date().toISOString();
+            a.iniciada_por_nombre = IDENTIDAD.nombre || "";
+            a.iniciada_por_legajo = IDENTIDAD.legajo || "";
+          }
         }
       });
       render();
