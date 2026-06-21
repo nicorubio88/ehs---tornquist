@@ -71,8 +71,17 @@ var HEADERS_ACCIONES = [
   "cerrada_por_legajo", "cerrada_por_nombre", "fecha_cierre",
   "foto_evidencia_url", "notas",
   // Columnas nuevas (al final, retro-compatibles)
-  "prioridad", "creada_por_legajo", "creada_por_nombre"
+  "prioridad", "creada_por_legajo", "creada_por_nombre",
+  // Área responsable
+  "area",
+  // Trazabilidad de inicio
+  "iniciada_por_legajo", "iniciada_por_nombre", "fecha_inicio",
+  // Chat interno (JSON array de {autor, fecha, texto})
+  "comentarios"
 ];
+
+// Áreas válidas para asignación de acciones
+var AREAS = ["Mantenimiento", "Producción", "I+D", "Calidad", "EHS", "Recursos Humanos", "Ingeniería"];
 
 // Tipos válidos
 var TIPOS = ["OBSERVACION", "CONVERSACION", "INCIDENTE", "ACCIDENTE", "AMBIENTE"];
@@ -177,6 +186,8 @@ function doPost(e) {
     if (action === "agregar_nota")       return agregarNota(ss, p);
     if (action === "reprogramar_accion") return reprogramarAccion(ss, p);
     if (action === "cambiar_responsable")return cambiarResponsable(ss, p);
+    if (action === "agregar_comentario") return agregarComentario(ss, p);
+    if (action === "cambiar_area")       return cambiarArea(ss, p);
 
     return jsonResponse({ ok: false, error: "Acción no reconocida: " + action });
 
@@ -411,9 +422,14 @@ function saveAccionInterna(ss, p) {
     "",                                // fecha_cierre
     "",                                // foto_evidencia_url
     "",                                // notas
-    p.prioridad || "",                 // prioridad (nueva)
-    p.creada_por_legajo || "",         // creada_por_legajo (nueva)
-    p.creada_por_nombre || ""          // creada_por_nombre (nueva)
+    p.prioridad || "",                 // prioridad
+    p.creada_por_legajo || "",         // creada_por_legajo
+    p.creada_por_nombre || "",         // creada_por_nombre
+    p.area || "",                      // area (nueva)
+    "",                                // iniciada_por_legajo (nueva)
+    "",                                // iniciada_por_nombre (nueva)
+    "",                                // fecha_inicio (nueva)
+    ""                                 // comentarios (nueva)
   ];
   sheet.appendRow(row);
 
@@ -545,110 +561,327 @@ function pintarFilaAccion(sheet, row, estado) {
 // ACTUALIZAR ACCION (cambio de estado / cierre)
 // ============================================================
 function actualizarAccion(ss, p) {
-  var sheet = getOrCreateSheet(ss, SHEET_ACCIONES, HEADERS_ACCIONES);
-  var data = sheet.getDataRange().getValues();
-  var idxId = HEADERS_ACCIONES.indexOf("accion_id");
-  var idxEstado = HEADERS_ACCIONES.indexOf("estado");
-  var idxCerradaPorLegajo = HEADERS_ACCIONES.indexOf("cerrada_por_legajo");
-  var idxCerradaPorNombre = HEADERS_ACCIONES.indexOf("cerrada_por_nombre");
-  var idxFechaCierre = HEADERS_ACCIONES.indexOf("fecha_cierre");
-  var idxFotoEvidencia = HEADERS_ACCIONES.indexOf("foto_evidencia_url");
-
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idxId]) === String(p.accion_id)) {
-      var nuevoEstado = p.estado || data[i][idxEstado];
-      sheet.getRange(i + 1, idxEstado + 1).setValue(nuevoEstado);
-      if (nuevoEstado === "Cerrada") {
-        sheet.getRange(i + 1, idxCerradaPorLegajo + 1).setValue(p.cerrada_por_legajo || "");
-        sheet.getRange(i + 1, idxCerradaPorNombre + 1).setValue(p.cerrada_por_nombre || "");
-        sheet.getRange(i + 1, idxFechaCierre + 1).setValue(new Date().toISOString());
-        if (p.foto_evidencia_url) {
-          sheet.getRange(i + 1, idxFotoEvidencia + 1).setValue(p.foto_evidencia_url);
-        }
-        enviarNotificacionCierreAccion(rowToObject(HEADERS_ACCIONES, data[i]), p);
-      }
-      pintarFilaAccion(sheet, i + 1, nuevoEstado);
-      return jsonResponse({ ok: true });
+  try {
+    if (!p.accion_id) {
+      return jsonResponse({ ok: false, error: "Falta accion_id en la request" });
     }
+
+    var sheet = getOrCreateSheet(ss, SHEET_ACCIONES, HEADERS_ACCIONES);
+    var data = sheet.getDataRange().getValues();
+    var idxId = HEADERS_ACCIONES.indexOf("accion_id");
+    var idxEstado = HEADERS_ACCIONES.indexOf("estado");
+    var idxCerradaPorLegajo = HEADERS_ACCIONES.indexOf("cerrada_por_legajo");
+    var idxCerradaPorNombre = HEADERS_ACCIONES.indexOf("cerrada_por_nombre");
+    var idxFechaCierre = HEADERS_ACCIONES.indexOf("fecha_cierre");
+    var idxFotoEvidencia = HEADERS_ACCIONES.indexOf("foto_evidencia_url");
+    var idxIniciadaPorLegajo = HEADERS_ACCIONES.indexOf("iniciada_por_legajo");
+    var idxIniciadaPorNombre = HEADERS_ACCIONES.indexOf("iniciada_por_nombre");
+    var idxFechaInicio = HEADERS_ACCIONES.indexOf("fecha_inicio");
+
+    // Normalizar el accion_id que viene del cliente (sin espacios, comparación case-insensitive opcional)
+    var accionIdBuscado = String(p.accion_id).trim();
+    var encontrada = false;
+    var filaEncontrada = -1;
+    var rowOriginal = null;
+
+    for (var i = 1; i < data.length; i++) {
+      var idEnFila = String(data[i][idxId] || "").trim();
+      if (idEnFila === accionIdBuscado) {
+        encontrada = true;
+        filaEncontrada = i;
+        rowOriginal = data[i].slice(); // copia
+        break;
+      }
+    }
+
+    if (!encontrada) {
+      // Diagnóstico: devolver muestra de IDs disponibles para debug
+      var idsDisponibles = [];
+      for (var j = 1; j < Math.min(data.length, 6); j++) {
+        idsDisponibles.push(String(data[j][idxId] || "").trim());
+      }
+      return jsonResponse({
+        ok: false,
+        error: "Acción no encontrada: '" + accionIdBuscado + "'",
+        diagnostico: {
+          totalFilas: data.length - 1,
+          primerosIds: idsDisponibles,
+          idBuscado: accionIdBuscado,
+          longitudIdBuscado: accionIdBuscado.length
+        }
+      });
+    }
+
+    // Aplicar los setValue
+    var nuevoEstado = p.estado || data[filaEncontrada][idxEstado];
+    sheet.getRange(filaEncontrada + 1, idxEstado + 1).setValue(nuevoEstado);
+
+    // Trazabilidad de inicio: si pasa a "En proceso" y no tenía fecha de inicio, registrarla
+    if (nuevoEstado === "En proceso" && idxFechaInicio >= 0) {
+      var fechaInicioActual = data[filaEncontrada][idxFechaInicio];
+      if (!fechaInicioActual) {
+        if (idxIniciadaPorLegajo >= 0) sheet.getRange(filaEncontrada + 1, idxIniciadaPorLegajo + 1).setValue(p.iniciada_por_legajo || "");
+        if (idxIniciadaPorNombre >= 0) sheet.getRange(filaEncontrada + 1, idxIniciadaPorNombre + 1).setValue(p.iniciada_por_nombre || "");
+        sheet.getRange(filaEncontrada + 1, idxFechaInicio + 1).setValue(new Date().toISOString());
+      }
+    }
+
+    if (nuevoEstado === "Cerrada") {
+      sheet.getRange(filaEncontrada + 1, idxCerradaPorLegajo + 1).setValue(p.cerrada_por_legajo || "");
+      sheet.getRange(filaEncontrada + 1, idxCerradaPorNombre + 1).setValue(p.cerrada_por_nombre || "");
+      sheet.getRange(filaEncontrada + 1, idxFechaCierre + 1).setValue(new Date().toISOString());
+      if (p.foto_evidencia_url) {
+        sheet.getRange(filaEncontrada + 1, idxFotoEvidencia + 1).setValue(p.foto_evidencia_url);
+      }
+    }
+
+    pintarFilaAccion(sheet, filaEncontrada + 1, nuevoEstado);
+
+    // FLUSH EXPLÍCITO antes de cualquier operación que pueda fallar (como envío de email)
+    // Esto garantiza que los setValue se persistan a Sheets antes de seguir.
+    SpreadsheetApp.flush();
+
+    // VERIFICAR que se escribió correctamente leyendo de nuevo la celda
+    var estadoLeido = sheet.getRange(filaEncontrada + 1, idxEstado + 1).getValue();
+    if (String(estadoLeido) !== String(nuevoEstado)) {
+      return jsonResponse({
+        ok: false,
+        error: "La actualización no persistió. Esperado: '" + nuevoEstado + "', leído: '" + estadoLeido + "'"
+      });
+    }
+
+    // Recién después del flush exitoso enviamos el email (que puede fallar sin afectar la persistencia)
+    if (nuevoEstado === "Cerrada") {
+      try {
+        enviarNotificacionCierreAccion(rowToObject(HEADERS_ACCIONES, rowOriginal), p);
+      } catch (mailErr) {
+        // El email falló pero la acción se cerró bien. Loggeamos pero devolvemos OK.
+        Logger.log("Email de cierre falló pero la acción persistió: " + mailErr.toString());
+      }
+    }
+
+    return jsonResponse({ ok: true, fila: filaEncontrada + 1, estadoFinal: estadoLeido });
+
+  } catch (err) {
+    return jsonResponse({ ok: false, error: "Error en actualizarAccion: " + err.toString() });
   }
-  return jsonResponse({ ok: false, error: "Acción no encontrada: " + p.accion_id });
 }
 
 // ============================================================
 // AGREGAR NOTA
 // ============================================================
 function agregarNota(ss, p) {
-  var sheet = ss.getSheetByName(SHEET_ACCIONES);
-  if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
-  var data = sheet.getDataRange().getValues();
-  var idxId = HEADERS_ACCIONES.indexOf("accion_id");
-  var idxNotas = HEADERS_ACCIONES.indexOf("notas");
+  try {
+    if (!p.accion_id) return jsonResponse({ ok: false, error: "Falta accion_id" });
+    var sheet = ss.getSheetByName(SHEET_ACCIONES);
+    if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
+    var data = sheet.getDataRange().getValues();
+    var idxId = HEADERS_ACCIONES.indexOf("accion_id");
+    var idxNotas = HEADERS_ACCIONES.indexOf("notas");
 
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idxId]) === String(p.accion_id)) {
-      var notasActuales = data[i][idxNotas] || "";
-      var fecha = new Date().toLocaleDateString("es-AR");
-      var nuevaNota = fecha + ": " + (p.nota || "");
-      var combinadas = notasActuales ? (notasActuales + " | " + nuevaNota) : nuevaNota;
-      sheet.getRange(i + 1, idxNotas + 1).setValue(combinadas);
-      return jsonResponse({ ok: true });
+    var accionIdBuscado = String(p.accion_id).trim();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idxId] || "").trim() === accionIdBuscado) {
+        var notasActuales = data[i][idxNotas] || "";
+        var fecha = new Date().toLocaleDateString("es-AR");
+        var nuevaNota = fecha + ": " + (p.nota || "");
+        var combinadas = notasActuales ? (notasActuales + " | " + nuevaNota) : nuevaNota;
+        sheet.getRange(i + 1, idxNotas + 1).setValue(combinadas);
+        SpreadsheetApp.flush();
+        return jsonResponse({ ok: true, fila: i + 1 });
+      }
     }
+    return jsonResponse({ ok: false, error: "Acción no encontrada: '" + accionIdBuscado + "'" });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: "Error en agregarNota: " + err.toString() });
   }
-  return jsonResponse({ ok: false, error: "Acción no encontrada" });
 }
 
 // ============================================================
 // REPROGRAMAR
 // ============================================================
 function reprogramarAccion(ss, p) {
-  var sheet = ss.getSheetByName(SHEET_ACCIONES);
-  if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
-  var data = sheet.getDataRange().getValues();
-  var idxId = HEADERS_ACCIONES.indexOf("accion_id");
-  var idxVenc = HEADERS_ACCIONES.indexOf("fecha_vencimiento");
-  var idxNotas = HEADERS_ACCIONES.indexOf("notas");
+  try {
+    if (!p.accion_id) return jsonResponse({ ok: false, error: "Falta accion_id" });
+    var sheet = ss.getSheetByName(SHEET_ACCIONES);
+    if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
+    var data = sheet.getDataRange().getValues();
+    var idxId = HEADERS_ACCIONES.indexOf("accion_id");
+    var idxVenc = HEADERS_ACCIONES.indexOf("fecha_vencimiento");
+    var idxNotas = HEADERS_ACCIONES.indexOf("notas");
 
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idxId]) === String(p.accion_id)) {
-      var anteriorVenc = data[i][idxVenc];
-      sheet.getRange(i + 1, idxVenc + 1).setValue(p.nueva_fecha);
-      var notasActuales = data[i][idxNotas] || "";
-      var fecha = new Date().toLocaleDateString("es-AR");
-      var notaRepr = fecha + ": Reprogramada de " + anteriorVenc + " a " + p.nueva_fecha;
-      var combinadas = notasActuales ? (notasActuales + " | " + notaRepr) : notaRepr;
-      sheet.getRange(i + 1, idxNotas + 1).setValue(combinadas);
-      return jsonResponse({ ok: true });
+    var accionIdBuscado = String(p.accion_id).trim();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idxId] || "").trim() === accionIdBuscado) {
+        var anteriorVenc = data[i][idxVenc];
+        sheet.getRange(i + 1, idxVenc + 1).setValue(p.nueva_fecha);
+        var notasActuales = data[i][idxNotas] || "";
+        var fecha = new Date().toLocaleDateString("es-AR");
+        var notaRepr = fecha + ": Reprogramada de " + anteriorVenc + " a " + p.nueva_fecha;
+        var combinadas = notasActuales ? (notasActuales + " | " + notaRepr) : notaRepr;
+        sheet.getRange(i + 1, idxNotas + 1).setValue(combinadas);
+        SpreadsheetApp.flush();
+        return jsonResponse({ ok: true, fila: i + 1 });
+      }
     }
+    return jsonResponse({ ok: false, error: "Acción no encontrada: '" + accionIdBuscado + "'" });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: "Error en reprogramarAccion: " + err.toString() });
   }
-  return jsonResponse({ ok: false, error: "Acción no encontrada" });
 }
 
 // ============================================================
 // CAMBIAR RESPONSABLE
 // ============================================================
 function cambiarResponsable(ss, p) {
-  var sheet = ss.getSheetByName(SHEET_ACCIONES);
-  if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
-  var data = sheet.getDataRange().getValues();
-  var idxId = HEADERS_ACCIONES.indexOf("accion_id");
-  var idxRespLeg = HEADERS_ACCIONES.indexOf("responsable_legajo");
-  var idxRespNom = HEADERS_ACCIONES.indexOf("responsable_nombre");
-  var idxNotas = HEADERS_ACCIONES.indexOf("notas");
+  try {
+    if (!p.accion_id) return jsonResponse({ ok: false, error: "Falta accion_id" });
+    var sheet = ss.getSheetByName(SHEET_ACCIONES);
+    if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
+    var data = sheet.getDataRange().getValues();
+    var idxId = HEADERS_ACCIONES.indexOf("accion_id");
+    var idxRespLeg = HEADERS_ACCIONES.indexOf("responsable_legajo");
+    var idxRespNom = HEADERS_ACCIONES.indexOf("responsable_nombre");
+    var idxNotas = HEADERS_ACCIONES.indexOf("notas");
+    var idxArea = HEADERS_ACCIONES.indexOf("area");
 
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][idxId]) === String(p.accion_id)) {
-      var anterior = data[i][idxRespNom];
-      sheet.getRange(i + 1, idxRespLeg + 1).setValue(p.nuevo_legajo || "");
-      sheet.getRange(i + 1, idxRespNom + 1).setValue(p.nuevo_nombre || "");
-      var notasActuales = data[i][idxNotas] || "";
-      var fecha = new Date().toLocaleDateString("es-AR");
-      var notaResp = fecha + ": Responsable cambiado de " + anterior + " a " + (p.nuevo_nombre || "");
-      var combinadas = notasActuales ? (notasActuales + " | " + notaResp) : notaResp;
-      sheet.getRange(i + 1, idxNotas + 1).setValue(combinadas);
-      return jsonResponse({ ok: true });
+    var accionIdBuscado = String(p.accion_id).trim();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idxId] || "").trim() === accionIdBuscado) {
+        var anterior = data[i][idxRespNom];
+        sheet.getRange(i + 1, idxRespLeg + 1).setValue(p.nuevo_legajo || "");
+        sheet.getRange(i + 1, idxRespNom + 1).setValue(p.nuevo_nombre || "");
+        var notaResp = "";
+        // Si viene área, también la actualizamos
+        if (p.nueva_area !== undefined && p.nueva_area !== "" && idxArea >= 0) {
+          var areaAnterior = data[i][idxArea] || "(sin área)";
+          sheet.getRange(i + 1, idxArea + 1).setValue(p.nueva_area);
+          notaResp = "Responsable cambiado a " + (p.nuevo_nombre || "") + " (área: " + p.nueva_area + ")";
+        } else {
+          notaResp = "Responsable cambiado de " + anterior + " a " + (p.nuevo_nombre || "");
+        }
+        var notasActuales = data[i][idxNotas] || "";
+        var fecha = new Date().toLocaleDateString("es-AR");
+        var combinadas = notasActuales ? (notasActuales + " | " + fecha + ": " + notaResp) : (fecha + ": " + notaResp);
+        sheet.getRange(i + 1, idxNotas + 1).setValue(combinadas);
+        SpreadsheetApp.flush();
+        return jsonResponse({ ok: true, fila: i + 1 });
+      }
     }
+    return jsonResponse({ ok: false, error: "Acción no encontrada: '" + accionIdBuscado + "'" });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: "Error en cambiarResponsable: " + err.toString() });
   }
-  return jsonResponse({ ok: false, error: "Acción no encontrada" });
+}
+
+// ============================================================
+// CAMBIAR ÁREA (solo el área, sin tocar responsable)
+// ============================================================
+function cambiarArea(ss, p) {
+  try {
+    if (!p.accion_id) return jsonResponse({ ok: false, error: "Falta accion_id" });
+    var sheet = ss.getSheetByName(SHEET_ACCIONES);
+    if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
+    var data = sheet.getDataRange().getValues();
+    var idxId = HEADERS_ACCIONES.indexOf("accion_id");
+    var idxArea = HEADERS_ACCIONES.indexOf("area");
+    if (idxArea < 0) return jsonResponse({ ok: false, error: "Columna 'area' no existe. Corré migrarColumnasAccion()." });
+
+    var accionIdBuscado = String(p.accion_id).trim();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idxId] || "").trim() === accionIdBuscado) {
+        sheet.getRange(i + 1, idxArea + 1).setValue(p.nueva_area || "");
+        SpreadsheetApp.flush();
+        return jsonResponse({ ok: true, fila: i + 1, area: p.nueva_area });
+      }
+    }
+    return jsonResponse({ ok: false, error: "Acción no encontrada: '" + accionIdBuscado + "'" });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: "Error en cambiarArea: " + err.toString() });
+  }
+}
+
+// ============================================================
+// AGREGAR COMENTARIO (chat interno por acción)
+// Los comentarios se guardan como JSON array de {autor, legajo, fecha, texto}
+// ============================================================
+function agregarComentario(ss, p) {
+  try {
+    if (!p.accion_id) return jsonResponse({ ok: false, error: "Falta accion_id" });
+    if (!p.texto || !String(p.texto).trim()) return jsonResponse({ ok: false, error: "El comentario está vacío" });
+
+    var sheet = ss.getSheetByName(SHEET_ACCIONES);
+    if (!sheet) return jsonResponse({ ok: false, error: "Hoja Acciones no existe" });
+    var data = sheet.getDataRange().getValues();
+    var idxId = HEADERS_ACCIONES.indexOf("accion_id");
+    var idxComentarios = HEADERS_ACCIONES.indexOf("comentarios");
+    if (idxComentarios < 0) return jsonResponse({ ok: false, error: "Columna 'comentarios' no existe. Corré migrarColumnasAccion()." });
+
+    var accionIdBuscado = String(p.accion_id).trim();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][idxId] || "").trim() === accionIdBuscado) {
+        // Parsear comentarios existentes
+        var comentariosRaw = data[i][idxComentarios] || "";
+        var comentarios = [];
+        if (comentariosRaw) {
+          try { comentarios = JSON.parse(comentariosRaw); }
+          catch (e) { comentarios = []; }
+        }
+        if (!Array.isArray(comentarios)) comentarios = [];
+
+        // Agregar el nuevo comentario
+        comentarios.push({
+          autor: String(p.autor_nombre || "Anónimo"),
+          legajo: String(p.autor_legajo || ""),
+          fecha: new Date().toISOString(),
+          texto: String(p.texto).trim()
+        });
+
+        sheet.getRange(i + 1, idxComentarios + 1).setValue(JSON.stringify(comentarios));
+        SpreadsheetApp.flush();
+        return jsonResponse({ ok: true, fila: i + 1, totalComentarios: comentarios.length });
+      }
+    }
+    return jsonResponse({ ok: false, error: "Acción no encontrada: '" + accionIdBuscado + "'" });
+  } catch (err) {
+    return jsonResponse({ ok: false, error: "Error en agregarComentario: " + err.toString() });
+  }
+}
+
+// ============================================================
+// MIGRACIÓN — agregar columnas nuevas a hoja Acciones existente
+// Corré esto UNA VEZ desde el editor de Apps Script si tu hoja
+// no tiene las columnas: area, iniciada_por_*, fecha_inicio, comentarios
+// ============================================================
+function migrarColumnasAccion() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_ACCIONES);
+  if (!sheet) { Logger.log("No existe hoja Acciones"); return; }
+
+  var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var faltantes = [];
+
+  HEADERS_ACCIONES.forEach(function(col){
+    if (headerRow.indexOf(col) === -1) faltantes.push(col);
+  });
+
+  if (faltantes.length === 0) {
+    Logger.log("✓ Todas las columnas ya existen. No hay nada que migrar.");
+    return;
+  }
+
+  Logger.log("Columnas faltantes a agregar: " + faltantes.join(", "));
+  var ultimaCol = sheet.getLastColumn();
+  faltantes.forEach(function(col, idx){
+    sheet.getRange(1, ultimaCol + 1 + idx).setValue(col);
+  });
+  SpreadsheetApp.flush();
+  Logger.log("✓ Migración completa. Se agregaron " + faltantes.length + " columnas.");
 }
 
 // ============================================================
