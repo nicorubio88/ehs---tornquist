@@ -6,18 +6,18 @@
 <title>Seguimiento de Acciones — EHS Tornquist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-600:#059669;
-    --brand-700:#047857; --brand-800:#065F46;
+    --brand-50:#EFF5EA; --brand-100:#E7F2DC; --brand-600:#548235;
+    --brand-700:#3D5F26; --brand-800:#2E4A1C;
     --bg:#F8FAFC; --bg2:#FFFFFF; --bg3:#F1F5F9;
     --border:#E2E8F0; --border-strong:#CBD5E1;
     --t1:#0F172A; --t2:#475569; --t3:#94A3B8;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    font-family:'Inter Tight',system-ui,sans-serif;
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
     background:var(--bg); color:var(--t1); min-height:100vh;
     letter-spacing:-.01em;
   }
@@ -31,7 +31,7 @@
   .topbar-title { font-size:14px; font-weight:600; }
   .container { max-width:1400px; margin:0 auto; padding:20px 16px; }
   h1 { font-size:24px; font-weight:700; margin-bottom:4px; letter-spacing:-.02em; }
-  .last-update { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); margin-bottom:18px; }
+  .last-update { font-family:'Plus Jakarta Sans',monospace; font-size:11px; color:var(--t3); margin-bottom:18px; }
 
   .kpis {
     display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
@@ -48,7 +48,7 @@
   .kpi-value { font-size:26px; font-weight:700; }
   .kpi.abiertas .kpi-value { color:#991B1B; }
   .kpi.proceso .kpi-value { color:#92400E; }
-  .kpi.cerradas .kpi-value { color:#065F46; }
+  .kpi.cerradas .kpi-value { color:#2E4A1C; }
   .kpi.vencidas .kpi-value { color:#7F1D1D; }
 
   /* ── PANEL DE INTELIGENCIA (KPIs avanzados) ── */
@@ -82,8 +82,8 @@
   .matriz-crit .cr-alta .mv { background:#FEE2E2; }
   .matriz-crit .cr-media .ml { color:#92400E; }
   .matriz-crit .cr-media .mv { background:#FEF3C7; }
-  .matriz-crit .cr-baja .ml { color:#065F46; }
-  .matriz-crit .cr-baja .mv { background:#D1FAE5; }
+  .matriz-crit .cr-baja .ml { color:#2E4A1C; }
+  .matriz-crit .cr-baja .mv { background:#E7F2DC; }
 
   .aging-bar {
     display:flex; gap:6px; font-size:12px;
@@ -113,7 +113,7 @@
   }
   .cumpl-num { font-size:36px; font-weight:800; color:var(--brand-700); line-height:1; }
   .cumpl-lbl { font-size:11px; color:var(--t2); margin-top:6px; }
-  .cumpl-det { font-size:10px; color:var(--t3); margin-top:4px; font-family:'JetBrains Mono',monospace; }
+  .cumpl-det { font-size:10px; color:var(--t3); margin-top:4px; font-family:'Plus Jakarta Sans',monospace; }
 
   /* ── FILTROS ── */
   .filters {
@@ -157,7 +157,7 @@
   }
   .kanban-row.row-abiertas { border-left:5px solid #DC2626; }
   .kanban-row.row-proceso  { border-left:5px solid #F59E0B; }
-  .kanban-row.row-cerradas { border-left:5px solid #10B981; }
+  .kanban-row.row-cerradas { border-left:5px solid #5E9A3B; }
 
   .kanban-row-header {
     display:flex; justify-content:space-between; align-items:center;
@@ -187,7 +187,7 @@
   }
   .kanban-crit-col.crit-alta  { border-top:3px solid #DC2626; background:#FFF8F8; }
   .kanban-crit-col.crit-media { border-top:3px solid #F59E0B; background:#FFFCF5; }
-  .kanban-crit-col.crit-baja  { border-top:3px solid #10B981; background:#F8FFFB; }
+  .kanban-crit-col.crit-baja  { border-top:3px solid #5E9A3B; background:#F8FFFB; }
 
   .kanban-crit-header {
     display:flex; justify-content:space-between; align-items:center;
@@ -199,13 +199,13 @@
   }
   .kanban-crit-label.l-alta  { color:#991B1B; }
   .kanban-crit-label.l-media { color:#92400E; }
-  .kanban-crit-label.l-baja  { color:#065F46; }
+  .kanban-crit-label.l-baja  { color:#2E4A1C; }
   .kanban-crit-count {
     font-size:11px; font-weight:700; padding:1px 8px; border-radius:999px;
   }
   .kanban-crit-count.c-alta  { background:#FEE2E2; color:#991B1B; }
   .kanban-crit-count.c-media { background:#FEF3C7; color:#92400E; }
-  .kanban-crit-count.c-baja  { background:#D1FAE5; color:#065F46; }
+  .kanban-crit-count.c-baja  { background:#E7F2DC; color:#2E4A1C; }
 
   .kanban-empty {
     font-size:11px; color:var(--t3); text-align:center; padding:18px 8px;
@@ -231,7 +231,7 @@
   }
   .crit-badge.alta  { background:#FEE2E2; color:#991B1B; }
   .crit-badge.media { background:#FEF3C7; color:#92400E; }
-  .crit-badge.baja  { background:#D1FAE5; color:#065F46; }
+  .crit-badge.baja  { background:#E7F2DC; color:#2E4A1C; }
   .crit-badge.sin   { background:#F3F4F6; color:#6B7280; }
 
   /* Aging chip — días vencidos prominentes */
@@ -262,7 +262,7 @@
   }
   .action-meta-item { display:inline-flex; align-items:center; gap:4px; }
   .action-meta code {
-    font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--t2);
+    font-family:'Plus Jakarta Sans',monospace; font-size:10px; color:var(--t2);
   }
   .badge {
     display:inline-block; padding:2px 8px; border-radius:999px;
@@ -271,7 +271,7 @@
   }
   .badge.abierta { background:#FEE2E2; color:#991B1B; }
   .badge.proceso { background:#FEF3C7; color:#92400E; }
-  .badge.cerrada { background:#D1FAE5; color:#065F46; }
+  .badge.cerrada { background:#E7F2DC; color:#2E4A1C; }
   .badge.cancelada { background:#E5E7EB; color:#4B5563; }
 
   .action-buttons {
@@ -383,7 +383,7 @@ function colorArea(area) {
     "Producción":      "#7C3AED",  // violeta
     "I+D":             "#0891B2",  // cyan
     "Calidad":         "#DB2777",  // rosa
-    "EHS":             "#059669",  // verde
+    "EHS":             "#548235",  // verde
     "Recursos Humanos":"#D97706",  // ámbar
     "Ingeniería":      "#475569"   // gris pizarra
   };
@@ -810,7 +810,7 @@ function renderPanelInteligencia(acciones) {
   html += '<div class="panel-box">';
   html += '<h3>🚨 Top responsables con vencidas</h3>';
   if (topResp.length === 0) {
-    html += '<div style="font-size:12px;color:#065F46;text-align:center;padding:20px 0;">✓ Sin acciones vencidas</div>';
+    html += '<div style="font-size:12px;color:#2E4A1C;text-align:center;padding:20px 0;">✓ Sin acciones vencidas</div>';
   } else {
     html += '<div class="lista-top">';
     topResp.forEach(function(t){
@@ -827,7 +827,7 @@ function renderPanelInteligencia(acciones) {
   html += '<div class="panel-box">';
   html += '<h3>🏭 Top sectores con pendientes</h3>';
   if (topSec.length === 0) {
-    html += '<div style="font-size:12px;color:#065F46;text-align:center;padding:20px 0;">✓ Sin acciones pendientes</div>';
+    html += '<div style="font-size:12px;color:#2E4A1C;text-align:center;padding:20px 0;">✓ Sin acciones pendientes</div>';
   } else {
     html += '<div class="lista-top">';
     topSec.forEach(function(t){
@@ -869,7 +869,7 @@ function renderPanelInteligencia(acciones) {
       html += '<td style="padding:6px 8px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:'+colorAr+';margin-right:6px;"></span>'+escapeHTML(ar)+'</td>';
       html += '<td style="text-align:center;padding:6px 8px;font-weight:700;color:#92400E;">'+s.pendientes+'</td>';
       html += '<td style="text-align:center;padding:6px 8px;font-weight:700;color:'+(s.vencidas>0?'#991B1B':'var(--t3)')+';">'+s.vencidas+'</td>';
-      html += '<td style="text-align:center;padding:6px 8px;font-weight:700;color:#065F46;">'+s.cerradas+'</td>';
+      html += '<td style="text-align:center;padding:6px 8px;font-weight:700;color:#2E4A1C;">'+s.cerradas+'</td>';
       html += '<td style="text-align:center;padding:6px 8px;color:var(--t2);">'+(tProm !== null ? tProm+'d' : '—')+'</td>';
       html += '</tr>';
     });
@@ -891,7 +891,7 @@ function renderFiltros() {
   // Toggle "Solo mis acciones"
   if (IDENTIDAD.nombre) {
     var btnStyle = FILTERS.soloMias
-      ? 'background:#10B981;color:#fff;border-color:#10B981;'
+      ? 'background:#5E9A3B;color:#fff;border-color:#5E9A3B;'
       : 'background:#fff;color:var(--t1);border-color:var(--border);';
     html += '<button onclick="toggleSoloMias()" class="btn-toggle" style="'+btnStyle+'">'
       + (FILTERS.soloMias ? '✓ ' : '👤 ')
@@ -1128,7 +1128,7 @@ function renderAccionCard(a) {
     html += '<div>📅 '+formatDate(a.fecha_vencimiento)+'</div>';
   }
   if (ev.evento_id) {
-    html += '<div>🎯 <code style="font-family:JetBrains Mono,monospace;font-size:10px;">'+escapeHTML(ev.evento_id)+'</code>'
+    html += '<div>🎯 <code style="font-family:'Plus Jakarta Sans',monospace;font-size:10px;">'+escapeHTML(ev.evento_id)+'</code>'
          + (ev.sector ? ' · '+escapeHTML(ev.sector) : '')+'</div>';
   }
   if (ev.reportado_por_nombre) {
@@ -1146,7 +1146,7 @@ function renderAccionCard(a) {
   }
 
   if (esCerrada && a.cerrada_por_nombre) {
-    html += '<div style="margin-top:8px;font-size:11px;color:#065F46;">✓ Cerrada el '+formatDate(a.fecha_cierre)+' por '+escapeHTML(a.cerrada_por_nombre)+'</div>';
+    html += '<div style="margin-top:8px;font-size:11px;color:#2E4A1C;">✓ Cerrada el '+formatDate(a.fecha_cierre)+' por '+escapeHTML(a.cerrada_por_nombre)+'</div>';
   }
 
   // Botones de acción

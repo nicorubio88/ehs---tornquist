@@ -6,12 +6,12 @@
 <title>Dashboard EHS — Tornquist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
-    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0; --brand-600:#059669;
-    --brand-700:#047857; --brand-800:#065F46; --brand-900:#064E3B;
+    --brand-50:#EFF5EA; --brand-100:#E7F2DC; --brand-200:#D6EAC4; --brand-600:#548235;
+    --brand-700:#3D5F26; --brand-800:#2E4A1C; --brand-900:#1F3313;
     --bg:#F8FAFC; --bg2:#FFFFFF; --bg3:#F1F5F9;
     --border:#E2E8F0; --border-strong:#CBD5E1;
     --t1:#0F172A; --t2:#475569; --t3:#94A3B8;
@@ -20,7 +20,7 @@
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    font-family:'Inter Tight',system-ui,sans-serif;
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
     background:var(--bg); color:var(--t1); min-height:100vh;
     letter-spacing:-.01em;
   }
@@ -34,7 +34,7 @@
   .topbar-title { font-size:14px; font-weight:600; }
   .container { max-width:1200px; margin:0 auto; padding:20px 16px; }
   h1 { font-size:24px; font-weight:700; margin-bottom:4px; letter-spacing:-.02em; }
-  .last-update { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--t3); }
+  .last-update { font-family:'Plus Jakarta Sans',monospace; font-size:11px; color:var(--t3); }
 
   .kpis {
     display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
@@ -123,10 +123,10 @@
   .badge.conversation { background:#CCFBF1; color:var(--conversation); }
   .badge.incident { background:#FEF3C7; color:var(--incident); }
   .badge.accident { background:#FEE2E2; color:var(--accident); }
-  .badge.environment { background:#D1FAE5; color:var(--environment); }
+  .badge.environment { background:#E7F2DC; color:var(--environment); }
   .badge.estado.abierto { background:#FEE2E2; color:#991B1B; }
   .badge.estado.tratamiento { background:#FEF3C7; color:#92400E; }
-  .badge.estado.cerrado { background:#D1FAE5; color:#065F46; }
+  .badge.estado.cerrado { background:#E7F2DC; color:#2E4A1C; }
 
   /* Modal */
   .modal-overlay {
@@ -201,7 +201,7 @@
 
   /* Sección Leading KPIs (Cultura BBS) */
   .culture-section {
-    background:linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);
+    background:linear-gradient(135deg, #EFF5EA 0%, #FFFFFF 100%);
     border:1px solid var(--brand-200); border-radius:14px;
     padding:18px; margin:18px 0;
   }
@@ -241,7 +241,7 @@
   }
   .leading-kpi-target {
     font-size:11px; color:var(--t3); margin-top:4px;
-    font-family:'JetBrains Mono',monospace;
+    font-family:'Plus Jakarta Sans',monospace;
   }
   .leading-kpi.green { --status:#16A34A; }
   .leading-kpi.amber { --status:#D97706; }
@@ -252,14 +252,14 @@
     font-size:10px; font-weight:700; text-transform:uppercase;
     letter-spacing:.04em; margin-top:6px;
   }
-  .leading-kpi.green .leading-kpi-status { background:#D1FAE5; color:#065F46; }
+  .leading-kpi.green .leading-kpi-status { background:#E7F2DC; color:#2E4A1C; }
   .leading-kpi.amber .leading-kpi-status { background:#FEF3C7; color:#92400E; }
   .leading-kpi.red .leading-kpi-status { background:#FEE2E2; color:#991B1B; }
   .leading-kpi.gray .leading-kpi-status { background:#F1F5F9; color:#64748B; }
 
   /* Sección Participación del equipo */
   .participacion-section {
-    background:linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);
+    background:linear-gradient(135deg, #EFF5EA 0%, #FFFFFF 100%);
     border:1px solid var(--brand-200); border-radius:14px;
     padding:18px; margin:18px 0;
   }
@@ -304,7 +304,7 @@
   }
   .part-kpi-sub {
     font-size:11px; color:var(--t3); margin-top:4px;
-    font-family:'JetBrains Mono',monospace;
+    font-family:'Plus Jakarta Sans',monospace;
   }
 
   .part-table-wrap {
@@ -329,7 +329,7 @@
     transition:all .15s ease;
   }
   .part-filter-pill:hover { border-color:var(--border); }
-  .part-filter-pill.active { background:#D1FAE5; color:#065F46; }
+  .part-filter-pill.active { background:#E7F2DC; color:#2E4A1C; }
   .part-filter-pill.active.danger { background:#FEE2E2; color:#991B1B; }
 
   .part-table {
@@ -356,7 +356,7 @@
   }
   .part-legajo {
     font-size:10px; color:var(--t3);
-    font-family:'JetBrains Mono',monospace; margin-top:2px;
+    font-family:'Plus Jakarta Sans',monospace; margin-top:2px;
   }
   .part-total {
     font-weight:700; font-size:14px; color:var(--t1);
@@ -369,7 +369,7 @@
     display:inline-block; font-size:10px; padding:3px 8px;
     border-radius:4px; font-weight:600; white-space:nowrap;
   }
-  .part-status-badge.cumplio { background:#D1FAE5; color:#065F46; }
+  .part-status-badge.cumplio { background:#E7F2DC; color:#2E4A1C; }
   .part-status-badge.no-cumplio { background:#FEE2E2; color:#991B1B; }
   .part-status-badge.parcial { background:#FEF3C7; color:#92400E; }
 
@@ -454,7 +454,7 @@
     display:inline-flex; align-items:center; gap:4px;
   }
   .mp-action-meta-item code {
-    font-family:'JetBrains Mono',monospace; font-size:10px;
+    font-family:'Plus Jakarta Sans',monospace; font-size:10px;
   }
   .mp-action-due {
     display:inline-block; font-size:11px; padding:3px 8px;
@@ -462,7 +462,7 @@
   }
   .mp-action-due.vencida { background:#FEE2E2; color:#991B1B; }
   .mp-action-due.urgente { background:#FEF3C7; color:#92400E; }
-  .mp-action-due.normal { background:#D1FAE5; color:#065F46; }
+  .mp-action-due.normal { background:#E7F2DC; color:#2E4A1C; }
   .mp-action-buttons {
     display:flex; gap:6px; margin-top:10px;
     padding-top:10px; border-top:1px solid var(--bg3);
@@ -474,8 +474,8 @@
     transition:all .15s ease;
   }
   .mp-action-btn:hover { background:var(--brand-50); border-color:var(--brand-600); color:var(--brand-700); }
-  .mp-action-btn.primary { background:#10B981; color:#fff; border-color:#10B981; }
-  .mp-action-btn.primary:hover { background:#059669; border-color:#059669; }
+  .mp-action-btn.primary { background:#5E9A3B; color:#fff; border-color:#5E9A3B; }
+  .mp-action-btn.primary:hover { background:#548235; border-color:#548235; }
 </style>
 </head>
 <body>
@@ -1276,7 +1276,7 @@ function renderCurvaBradley() {
     { num:1, label:"Reactiva",       desc:"Se reacciona post-accidente", color:"#DC2626" },
     { num:2, label:"Dependiente",    desc:"Supervisor empuja seguridad", color:"#F59E0B" },
     { num:3, label:"Independiente",  desc:"Cada uno se cuida solo",      color:"#3B82F6" },
-    { num:4, label:"Interdependiente",desc:"El equipo se cuida entre sí",color:"#059669" }
+    { num:4, label:"Interdependiente",desc:"El equipo se cuida entre sí",color:"#548235" }
   ];
 
   var html = '<div class="card" style="margin-top:16px;">';
@@ -1304,14 +1304,14 @@ function renderCurvaBradley() {
 
   // Barra de gradiente con marcador
   var pos = ((b.etapa - 1) / 3) * 100;
-  html += '<div style="position:relative;height:12px;background:linear-gradient(to right, #FEE2E2, #FEF3C7, #DBEAFE, #D1FAE5);border-radius:6px;margin-bottom:14px;">';
+  html += '<div style="position:relative;height:12px;background:linear-gradient(to right, #FEE2E2, #FEF3C7, #DBEAFE, #E7F2DC);border-radius:6px;margin-bottom:14px;">';
   html += '<div style="position:absolute;top:-4px;left:calc('+pos+'% - 8px);width:16px;height:20px;background:#111827;border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,.2);"></div>';
   html += '</div>';
 
   // Mensaje "te falta X" — central y prominente
-  var faltaColor = (b.etapa === 4) ? "#065F46" : "#92400E";
-  var faltaBg = (b.etapa === 4) ? "#D1FAE5" : "#FEF3C7";
-  var faltaBorder = (b.etapa === 4) ? "#10B981" : "#F59E0B";
+  var faltaColor = (b.etapa === 4) ? "#2E4A1C" : "#92400E";
+  var faltaBg = (b.etapa === 4) ? "#E7F2DC" : "#FEF3C7";
+  var faltaBorder = (b.etapa === 4) ? "#5E9A3B" : "#F59E0B";
   html += '<div style="margin-bottom:14px;padding:12px 16px;background:'+faltaBg+';border-left:4px solid '+faltaBorder+';border-radius:6px;">';
   html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:'+faltaColor+';margin-bottom:4px;">Próximo paso</div>';
   html += '<div style="font-size:13px;color:'+faltaColor+';line-height:1.5;">'+escapeHTML(b.faltaMsg)+'</div>';
@@ -1446,9 +1446,9 @@ function renderTargetEventos() {
     + '</div>';
 
   // Cumplimiento
-  var colorCump = pctCumplimiento >= 80 ? "#065F46" : (pctCumplimiento >= 40 ? "#92400E" : "#991B1B");
-  var bgCump   = pctCumplimiento >= 80 ? "#D1FAE5" : (pctCumplimiento >= 40 ? "#FEF3C7" : "#FEE2E2");
-  var bdCump   = pctCumplimiento >= 80 ? "#A7F3D0" : (pctCumplimiento >= 40 ? "#FDE68A" : "#FCA5A5");
+  var colorCump = pctCumplimiento >= 80 ? "#2E4A1C" : (pctCumplimiento >= 40 ? "#92400E" : "#991B1B");
+  var bgCump   = pctCumplimiento >= 80 ? "#E7F2DC" : (pctCumplimiento >= 40 ? "#FEF3C7" : "#FEE2E2");
+  var bdCump   = pctCumplimiento >= 80 ? "#D6EAC4" : (pctCumplimiento >= 40 ? "#FDE68A" : "#FCA5A5");
   html += '<div style="padding:14px;background:'+bgCump+';border:1px solid '+bdCump+';border-radius:10px;">'
     + '<div style="font-size:10px;color:'+colorCump+';font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cumplimiento</div>'
     + '<div style="font-size:32px;font-weight:800;color:'+colorCump+';line-height:1;margin-top:6px;">'+pctCumplimiento+'%</div>'
@@ -1879,7 +1879,7 @@ function renderParticipacion() {
       var totalCls = p.total === 0 ? "part-total zero" : "part-total";
 
       html += '<tr'+rowCls+'>';
-      html += '<td style="color:var(--t3);font-family:JetBrains Mono,monospace;font-size:11px;">'+(idx+1)+'</td>';
+      html += '<td style="color:var(--t3);font-family:'Plus Jakarta Sans',monospace;font-size:11px;">'+(idx+1)+'</td>';
       html += '<td>'
         + '<div class="part-name">'+escapeHTML(p.nombre)+(p.esSupervisor?' <span style="font-size:9px;color:var(--brand-700);font-weight:600;">SUPERV.</span>':'')+'</div>'
         + (p.legajo?'<div class="part-legajo">#'+escapeHTML(p.legajo)+'</div>':'')
@@ -1963,7 +1963,7 @@ function renderSelectorPeriodo() {
   html += '<div>';
   html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand-700);">📅 Período de análisis</div>';
   html += '<div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:4px;">'+escapeHTML(rango.label)+'</div>';
-  html += '<div style="font-size:11px;color:var(--t2);margin-top:2px;font-family:JetBrains Mono,monospace;">'
+  html += '<div style="font-size:11px;color:var(--t2);margin-top:2px;font-family:'Plus Jakarta Sans',monospace;">'
        +  formatDateBR(rango.desde) + ' → ' + formatDateBR(rango.hasta) + ' · ' + rango.dias + ' días</div>';
   html += '</div>';
 
@@ -2150,10 +2150,10 @@ function dibujarGraficoAccidentes() {
       type: "line",
       label: "Ratio acumulado",
       data: ratiosAcum,
-      borderColor: "#059669",
+      borderColor: "#548235",
       backgroundColor: "rgba(5,150,105,0.1)",
       borderWidth: 3,
-      pointBackgroundColor: "#059669",
+      pointBackgroundColor: "#548235",
       pointRadius: 4,
       tension: 0.3,
       fill: false,
@@ -2188,7 +2188,7 @@ function dibujarGraficoAccidentes() {
           // Dibujar números sobre cada barra
           var chart = this;
           var c = chart.ctx;
-          c.font = "bold 12px Inter Tight, system-ui";
+          c.font = "bold 12px 'Plus Jakarta Sans', system-ui";
           c.fillStyle = "#7F1D1D";
           c.textAlign = "center";
           c.textBaseline = "bottom";
@@ -2213,8 +2213,8 @@ function dibujarGraficoAccidentes() {
         },
         y1: {
           type: "linear", position: "right", beginAtZero: true,
-          title: { display: true, text: "Ratio obs/accid", color: "#065F46", font:{size:11,weight:"600"} },
-          ticks: { color: "#065F46" },
+          title: { display: true, text: "Ratio obs/accid", color: "#2E4A1C", font:{size:11,weight:"600"} },
+          ticks: { color: "#2E4A1C" },
           grid: { drawOnChartArea: false }
         },
         x: {
@@ -2270,8 +2270,8 @@ function renderGraficoAccidentes() {
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">';
 
   // Total accidentes 12m
-  var colorA = totalAccid === 0 ? "#065F46" : (totalAccid <= 3 ? "#92400E" : "#991B1B");
-  var bgA = totalAccid === 0 ? "#D1FAE5" : (totalAccid <= 3 ? "#FEF3C7" : "#FEE2E2");
+  var colorA = totalAccid === 0 ? "#2E4A1C" : (totalAccid <= 3 ? "#92400E" : "#991B1B");
+  var bgA = totalAccid === 0 ? "#E7F2DC" : (totalAccid <= 3 ? "#FEF3C7" : "#FEE2E2");
   html += '<div style="padding:12px;background:'+bgA+';border-radius:8px;">'
        +  '<div style="font-size:10px;font-weight:700;color:'+colorA+';text-transform:uppercase;letter-spacing:.05em;">Accidentes 12 meses</div>'
        +  '<div style="font-size:28px;font-weight:800;color:'+colorA+';margin-top:4px;line-height:1;">'+totalAccid+'</div>'
@@ -2279,9 +2279,9 @@ function renderGraficoAccidentes() {
 
   // Ratio global 12m
   var ratioDisp = ratioGlobal === "∞" ? "∞" : (ratioGlobal + ":1");
-  var ratioColor = (ratioGlobal === "∞" || (typeof ratioGlobal === "number" && ratioGlobal >= 100)) ? "#065F46" :
+  var ratioColor = (ratioGlobal === "∞" || (typeof ratioGlobal === "number" && ratioGlobal >= 100)) ? "#2E4A1C" :
                    (typeof ratioGlobal === "number" && ratioGlobal >= 50) ? "#1E40AF" : "#92400E";
-  var ratioBg = ratioColor === "#065F46" ? "#D1FAE5" : (ratioColor === "#1E40AF" ? "#DBEAFE" : "#FEF3C7");
+  var ratioBg = ratioColor === "#2E4A1C" ? "#E7F2DC" : (ratioColor === "#1E40AF" ? "#DBEAFE" : "#FEF3C7");
   html += '<div style="padding:12px;background:'+ratioBg+';border-radius:8px;">'
        +  '<div style="font-size:10px;font-weight:700;color:'+ratioColor+';text-transform:uppercase;letter-spacing:.05em;">Ratio obs/accid 12m</div>'
        +  '<div style="font-size:28px;font-weight:800;color:'+ratioColor+';margin-top:4px;line-height:1;">'+ratioDisp+'</div>'
@@ -2290,17 +2290,17 @@ function renderGraficoAccidentes() {
 
   // Días sin accidentes
   if (diasSinAccid !== null) {
-    var colorD = diasSinAccid >= 90 ? "#065F46" : (diasSinAccid >= 30 ? "#92400E" : "#991B1B");
-    var bgD = diasSinAccid >= 90 ? "#D1FAE5" : (diasSinAccid >= 30 ? "#FEF3C7" : "#FEE2E2");
+    var colorD = diasSinAccid >= 90 ? "#2E4A1C" : (diasSinAccid >= 30 ? "#92400E" : "#991B1B");
+    var bgD = diasSinAccid >= 90 ? "#E7F2DC" : (diasSinAccid >= 30 ? "#FEF3C7" : "#FEE2E2");
     html += '<div style="padding:12px;background:'+bgD+';border-radius:8px;">'
          +  '<div style="font-size:10px;font-weight:700;color:'+colorD+';text-transform:uppercase;letter-spacing:.05em;">Días sin accidentes</div>'
          +  '<div style="font-size:28px;font-weight:800;color:'+colorD+';margin-top:4px;line-height:1;">'+diasSinAccid+'</div>'
          +  '</div>';
   } else {
-    html += '<div style="padding:12px;background:#D1FAE5;border-radius:8px;">'
-         +  '<div style="font-size:10px;font-weight:700;color:#065F46;text-transform:uppercase;letter-spacing:.05em;">Días sin accidentes</div>'
-         +  '<div style="font-size:28px;font-weight:800;color:#065F46;margin-top:4px;line-height:1;">∞</div>'
-         +  '<div style="font-size:10px;color:#065F46;margin-top:2px;">sin registros</div>'
+    html += '<div style="padding:12px;background:#E7F2DC;border-radius:8px;">'
+         +  '<div style="font-size:10px;font-weight:700;color:#2E4A1C;text-transform:uppercase;letter-spacing:.05em;">Días sin accidentes</div>'
+         +  '<div style="font-size:28px;font-weight:800;color:#2E4A1C;margin-top:4px;line-height:1;">∞</div>'
+         +  '<div style="font-size:10px;color:#2E4A1C;margin-top:2px;">sin registros</div>'
          +  '</div>';
   }
 
@@ -2317,7 +2317,7 @@ function renderGraficoAccidentes() {
   html += '<div id="legBoth" style="display:'+displayBoth+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
        +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes (escala izquierda)</span>'
        +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:0;border-top:2px dashed #0EA5E9;"></span>Ratio mensual (obs / accid del mismo mes)</span>'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#059669;border-radius:2px;"></span>Ratio acumulado (tendencia 12m)</span>'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#548235;border-radius:2px;"></span>Ratio acumulado (tendencia 12m)</span>'
        +  '</div>';
 
   html += '<div id="legMensual" style="display:'+displayMensual+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
@@ -2327,7 +2327,7 @@ function renderGraficoAccidentes() {
 
   html += '<div id="legAcum" style="display:'+displayAcum+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
        +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes</span>'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#059669;border-radius:2px;"></span>Ratio acumulado (suma todo el período)</span>'
+       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#548235;border-radius:2px;"></span>Ratio acumulado (suma todo el período)</span>'
        +  '</div>';
 
   html += '</div>';
@@ -2401,13 +2401,13 @@ function render() {
   // Leyenda mensual
   html += '<div id="evoLeyendaMensual" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
     + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#185FA5;"></span>Eventos generados</span>'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#059669;"></span>Acciones cerradas</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#548235;"></span>Acciones cerradas</span>'
     + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#D85A30;"></span>Backlog abierto (acumulado)</span>'
     + '</div>';
   // Leyenda acumulada (oculta por defecto)
   html += '<div id="evoLeyendaAcum" style="display:none;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
     + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#185FA5;"></span>Eventos generados (acum.)</span>'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#059669;"></span>Acciones cerradas (acum.)</span>'
+    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#548235;"></span>Acciones cerradas (acum.)</span>'
     + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:rgba(216,90,48,0.25);"></span>Brecha = backlog</span>'
     + '</div>';
   html += '</div>';
@@ -2438,7 +2438,7 @@ function render() {
       else if (e.estado === "Cerrado") estadoClass = "cerrado";
       else if (e.estado === "Sin acciones") estadoClass = "tratamiento";
       html += '<tr class="row-clickable" onclick="openModal(\''+escapeHTML(e.evento_id)+'\')">'
-        + '<td><code style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code>'+(e.foto_url?' <span title="Tiene foto">📷</span>':'')+'</td>'
+        + '<td><code style="font-family:'Plus Jakarta Sans',monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code>'+(e.foto_url?' <span title="Tiene foto">📷</span>':'')+'</td>'
         + '<td>'+formatDate(e.fecha_evento)+'</td>'
         + '<td><span class="badge '+meta.className+'">'+meta.icon+' '+meta.label+'</span></td>'
         + '<td>'+(e.sector||"—")+'</td>'
@@ -2452,7 +2452,7 @@ function render() {
   html += '</tbody></table></div>';
 
   // Footer cultural no-punitivo
-  html += '<div style="margin-top:20px;padding:14px 18px;background:linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%);border:1px solid var(--brand-200);border-radius:12px;font-size:12px;color:var(--brand-800);text-align:center;">'
+  html += '<div style="margin-top:20px;padding:14px 18px;background:linear-gradient(135deg, #EFF5EA 0%, #FFFFFF 100%);border:1px solid var(--brand-200);border-radius:12px;font-size:12px;color:var(--brand-800);text-align:center;">'
     + '<strong>Cada observación que se carga acá cuida a un compañero.</strong> Este sistema es para aprender y mejorar, no para sancionar.'
     + '</div>';
 
@@ -2485,7 +2485,7 @@ function dibujarEvolucionMensual() {
         labels: datos.labels,
         datasets: [
           { label:"Generados acum.", data:datos.generadosAcum, borderColor:"#185FA5", backgroundColor:"rgba(216,90,48,0.16)", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#185FA5", fill:"+1" },
-          { label:"Cerradas acum.", data:datos.cerradasAcum, borderColor:"#059669", backgroundColor:"transparent", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#059669", fill:false }
+          { label:"Cerradas acum.", data:datos.cerradasAcum, borderColor:"#548235", backgroundColor:"transparent", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#548235", fill:false }
         ]
       },
       options: {
@@ -2504,7 +2504,7 @@ function dibujarEvolucionMensual() {
         labels: datos.labels,
         datasets: [
           { type:"bar", label:"Generados", data:datos.generados, backgroundColor:"#185FA5", borderRadius:4, order:2 },
-          { type:"bar", label:"Cerradas", data:datos.cerradas, backgroundColor:"#059669", borderRadius:4, order:2 },
+          { type:"bar", label:"Cerradas", data:datos.cerradas, backgroundColor:"#548235", borderRadius:4, order:2 },
           { type:"line", label:"Backlog", data:datos.backlog, borderColor:"#D85A30", backgroundColor:"#D85A30", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#D85A30", order:1, yAxisID:"y1" }
         ]
       },
@@ -2680,7 +2680,7 @@ function renderActionsSummary() {
   var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">';
   html += '<div style="padding:10px;background:#FEE2E2;border-radius:8px;"><div style="font-size:11px;color:#991B1B;font-weight:600;text-transform:uppercase;">Abiertas</div><div style="font-size:22px;font-weight:700;color:#991B1B;">'+abiertas+'</div></div>';
   html += '<div style="padding:10px;background:#FEF3C7;border-radius:8px;"><div style="font-size:11px;color:#92400E;font-weight:600;text-transform:uppercase;">En proceso</div><div style="font-size:22px;font-weight:700;color:#92400E;">'+enProceso+'</div></div>';
-  html += '<div style="padding:10px;background:#D1FAE5;border-radius:8px;"><div style="font-size:11px;color:#065F46;font-weight:600;text-transform:uppercase;">Cerradas</div><div style="font-size:22px;font-weight:700;color:#065F46;">'+cerradas+'</div></div>';
+  html += '<div style="padding:10px;background:#E7F2DC;border-radius:8px;"><div style="font-size:11px;color:#2E4A1C;font-weight:600;text-transform:uppercase;">Cerradas</div><div style="font-size:22px;font-weight:700;color:#2E4A1C;">'+cerradas+'</div></div>';
   html += '<div style="padding:10px;background:'+(vencidas>0?'#FEE2E2':'#F1F5F9')+';border-radius:8px;"><div style="font-size:11px;color:'+(vencidas>0?'#991B1B':'var(--t2)')+';font-weight:600;text-transform:uppercase;">Vencidas</div><div style="font-size:22px;font-weight:700;color:'+(vencidas>0?'#991B1B':'var(--t2)')+';">'+vencidas+'</div></div>';
   html += '</div>';
   html += '<div style="margin-top:10px;text-align:center;"><a href="seguimiento_v2.html" style="font-size:12px;color:var(--brand-700);text-decoration:none;font-weight:600;">Ver seguimiento completo →</a></div>';
@@ -2824,7 +2824,7 @@ function abrirNuevaAccion(eventoId) {
   html += '<div class="modal-header"><h3>Nueva acción correctiva</h3>'
     + '<button class="modal-close" onclick="cerrarNuevaAccion()">×</button></div>';
   html += '<div class="modal-body">';
-  html += '<div style="margin-bottom:14px;font-size:12px;color:var(--t2);">Evento: <code style="font-family:JetBrains Mono,monospace;">'+eventoId+'</code> · Acción #'+nro+'</div>';
+  html += '<div style="margin-bottom:14px;font-size:12px;color:var(--t2);">Evento: <code style="font-family:'Plus Jakarta Sans',monospace;">'+eventoId+'</code> · Acción #'+nro+'</div>';
 
   html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Descripción de la acción *</label>'
     + '<textarea id="nac_desc" placeholder="¿Qué hay que hacer?" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;min-height:70px;"></textarea></div>';

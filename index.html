@@ -6,24 +6,24 @@
 <title>Sistema EHS — Planta Tornquist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0;
-    --brand-400:#34D399; --brand-500:#10B981; --brand-600:#059669;
-    --brand-700:#047857; --brand-800:#065F46; --brand-900:#064E3B;
+    --brand-50:#EFF5EA; --brand-100:#E7F2DC; --brand-200:#D6EAC4;
+    --brand-400:#7BC142; --brand-500:#5E9A3B; --brand-600:#548235;
+    --brand-700:#3D5F26; --brand-800:#2E4A1C; --brand-900:#1F3313;
     --ink-50:#F8FAFC; --ink-100:#F1F5F9; --ink-200:#E2E8F0;
     --ink-400:#94A3B8; --ink-500:#64748B; --ink-700:#334155;
     --ink-800:#1E293B; --ink-900:#0F172A;
-    --accident:#DC2626; --incident:#F59E0B; --environment:#059669;
+    --accident:#DC2626; --incident:#F59E0B; --environment:#548235;
     --shadow-sm:0 1px 2px rgba(15,23,42,.06);
     --shadow-md:0 4px 12px rgba(15,23,42,.08);
-    --shadow-lg:0 20px 40px rgba(4,120,87,.12);
+    --shadow-lg:0 20px 40px rgba(46,74,28,.12);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { height:100%; }
   body {
-    font-family:'Inter Tight',system-ui,-apple-system,sans-serif;
+    font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
     background:var(--ink-50); color:var(--ink-800);
     min-height:100vh; overflow-x:hidden; letter-spacing:-.01em;
   }
@@ -43,7 +43,7 @@
     width:34px; height:34px; border-radius:10px;
     background:linear-gradient(135deg, var(--brand-600), var(--brand-800));
     display:flex; align-items:center; justify-content:center;
-    box-shadow:0 4px 12px rgba(4,120,87,.25);
+    box-shadow:0 4px 12px rgba(46,74,28,.25);
   }
   .brand-mark svg { width:20px; height:20px; color:#fff; }
   .brand-text { display:flex; flex-direction:column; line-height:1.1; }
@@ -51,7 +51,7 @@
   .brand-sub { font-size:11px; font-weight:500; color:var(--ink-500); letter-spacing:.02em; text-transform:uppercase; }
   .status-pill {
     display:flex; align-items:center; gap:8px;
-    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500;
+    font-family:'Plus Jakarta Sans',monospace; font-size:11px; font-weight:500;
     color:var(--brand-700); background:var(--brand-50);
     padding:6px 12px; border-radius:999px; border:1px solid var(--brand-200);
   }
@@ -59,7 +59,7 @@
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
   .v2-tag {
-    display:inline-block; font-family:'JetBrains Mono',monospace;
+    display:inline-block; font-family:'Plus Jakarta Sans',monospace;
     font-size:10px; font-weight:600; letter-spacing:.1em;
     padding:3px 8px; background:var(--brand-700); color:#fff;
     border-radius:4px; margin-left:8px; vertical-align:middle;
@@ -71,7 +71,7 @@
     padding:48px 24px; text-align:center; position:relative;
   }
   .eyebrow {
-    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600;
+    font-family:'Plus Jakarta Sans',monospace; font-size:11px; font-weight:600;
     color:var(--brand-700); letter-spacing:.2em; text-transform:uppercase;
     margin-bottom:20px; padding:8px 16px; background:var(--brand-50);
     border:1px solid var(--brand-200); border-radius:999px;
@@ -127,6 +127,7 @@
   .card-form { --accent:var(--accident); --icon-bg:#FEF2F2; }
   .card-dash { --accent:#2563EB; --icon-bg:#EFF6FF; }
   .card-seg  { --accent:var(--brand-700); --icon-bg:var(--brand-50); }
+  .card-como { --accent:#6C7A67; --icon-bg:#F1F5F9; }
 
   .footer {
     padding:20px 32px; text-align:center; font-size:12px;
@@ -205,6 +206,19 @@
         <h2>Seguimiento</h2>
         <p>Acciones correctivas pendientes, vencidas y en término. Filtros por responsable, sector y estado.</p>
         <span class="card-cta">Ver pendientes
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </span>
+      </a>
+
+      <a href="como-funciona.html" class="card card-como">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>
+          </svg>
+        </div>
+        <h2>Cómo funciona</h2>
+        <p>El flujo completo del sistema en un diagrama, para revisar ante cualquier duda.</p>
+        <span class="card-cta">Ver el diagrama
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </span>
       </a>

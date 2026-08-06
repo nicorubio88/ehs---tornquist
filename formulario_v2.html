@@ -6,12 +6,12 @@
 <title>Registrar Evento — EHS Tornquist</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --brand-50:#ECFDF5; --brand-100:#D1FAE5; --brand-200:#A7F3D0;
-    --brand-400:#34D399; --brand-500:#10B981; --brand-600:#059669;
-    --brand-700:#047857; --brand-800:#065F46; --brand-900:#064E3B;
+    --brand-50:#EFF5EA; --brand-100:#E7F2DC; --brand-200:#D6EAC4;
+    --brand-400:#7BC142; --brand-500:#5E9A3B; --brand-600:#548235;
+    --brand-700:#3D5F26; --brand-800:#2E4A1C; --brand-900:#1F3313;
     --ink-50:#F8FAFC; --ink-100:#F1F5F9; --ink-200:#E2E8F0;
     --ink-400:#94A3B8; --ink-500:#64748B; --ink-700:#334155;
     --ink-800:#1E293B; --ink-900:#0F172A;
@@ -19,11 +19,11 @@
     --accident:#B91C1C; --environment:#15803D;
     --shadow-sm:0 1px 2px rgba(15,23,42,.06);
     --shadow-md:0 4px 12px rgba(15,23,42,.08);
-    --shadow-lg:0 20px 40px rgba(4,120,87,.12);
+    --shadow-lg:0 20px 40px rgba(46,74,28,.12);
   }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    font-family:'Inter Tight',system-ui,sans-serif;
+    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
     background:var(--ink-50); color:var(--ink-800);
     min-height:100vh; letter-spacing:-.01em; padding:0;
   }
@@ -47,7 +47,7 @@
   .progress-step.done { background:var(--brand-400); }
 
   .step-label {
-    font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600;
+    font-family:'Plus Jakarta Sans',monospace; font-size:11px; font-weight:600;
     color:var(--ink-500); text-transform:uppercase; letter-spacing:.1em;
     margin-bottom:8px;
   }
@@ -175,7 +175,7 @@
   .success-screen h2 { font-size:20px; margin-bottom:8px; }
   .success-screen p { color:var(--ink-500); margin-bottom:20px; }
   .success-id {
-    display:inline-block; font-family:'JetBrains Mono',monospace;
+    display:inline-block; font-family:'Plus Jakarta Sans',monospace;
     font-size:13px; padding:6px 12px; background:var(--ink-100);
     border-radius:6px; margin-bottom:20px;
   }
@@ -187,7 +187,7 @@
 
   /* Banner inspiracional no-punitivo */
   .culture-banner {
-    background:linear-gradient(135deg, var(--brand-50) 0%, #ECFDF5 100%);
+    background:linear-gradient(135deg, var(--brand-50) 0%, #EFF5EA 100%);
     border:1px solid var(--brand-200); border-radius:12px;
     padding:14px 18px; margin-bottom:16px;
     display:flex; align-items:center; gap:14px;
@@ -204,6 +204,7 @@
   }
   .culture-banner-text strong { color:var(--brand-700); font-weight:700; }
 </style>
+<script src="arbol.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -274,7 +275,9 @@ var state = {
     obs_genera_ot:"", obs_parada_equipo:"", obs_tipo_riesgo:"",
     conv_tema:"", conv_compromiso:"",
     conv_refuerzo_positivo:"", conv_propuesta_propia:"", conv_origen:"",
-    inc_equipo_afectado:"", inc_dano_estimado_ars:"", inc_accion_inmediata:"",
+    inc_equipo_afectado:"", inc_equipo_ruta:"",
+    inc_equipo_area:"", inc_equipo_sub:"", inc_equipo_esp:"",
+    inc_dano_estimado_ars:"", inc_accion_inmediata:"",
     inc_notif_responsable:"", inc_notif_a_quien:"",
     inc_estado_mental:"", inc_error_critico:"",
     acc_parte_cuerpo:"", acc_tipo_lesion:"", acc_mecanismo:"",
@@ -822,8 +825,8 @@ function renderConversacion(f) {
   html += '</div>';
 
   // Bloque calidad de la conversación BBS
-  html += '<div class="section" style="background:linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);border-color:#A7F3D0;">'
-    + '<div class="section-title" style="color:#065F46;">🌱 Calidad de la conversación</div>'
+  html += '<div class="section" style="background:linear-gradient(135deg, #EFF5EA 0%, #E7F2DC 100%);border-color:#D6EAC4;">'
+    + '<div class="section-title" style="color:#2E4A1C;">🌱 Calidad de la conversación</div>'
     + '<div class="field-hint" style="margin-bottom:12px;">Una conversación BBS de calidad empieza reconociendo lo positivo y deja que la persona descubra la mejora.</div>'
     + '<div class="field"><label>¿Empezaste reconociendo algo positivo?</label><div class="chips">';
   ["Sí","No"].forEach(function(o){
@@ -841,9 +844,62 @@ function renderConversacion(f) {
   return html;
 }
 
+
+/* ============================================================
+   ARBOL DE EQUIPOS  (mismo maestro que Tarjetas TPM)
+   Reemplaza el texto libre para que un incidente de EHS se pueda
+   cruzar con las tarjetas TPM del mismo equipo.
+   Guarda en inc_equipo_afectado el nombre del nivel mas especifico
+   elegido, y en inc_equipo_ruta la ruta completa Area > Subarea > Equipo.
+   ============================================================ */
+function renderArbolEquipo(f){
+  var areas = Object.keys(ARBOL_EQUIPO);
+  var html = '<div class="field"><label>Área del equipo afectado</label><select onchange="setArbolArea(this.value)">';
+  html += '<option value="">Elegir área...</option>';
+  areas.forEach(function(a){
+    html += '<option value="'+escapeHTML(a)+'"'+(f.inc_equipo_area===a?' selected':'')+'>'+escapeHTML(a)+'</option>';
+  });
+  html += '</select></div>';
+
+  if (f.inc_equipo_area && ARBOL_EQUIPO[f.inc_equipo_area]) {
+    var subs = Object.keys(ARBOL_EQUIPO[f.inc_equipo_area]);
+    html += '<div class="field"><label>Subárea / equipo</label><select onchange="setArbolSub(this.value)">';
+    html += '<option value="">Elegir subárea...</option>';
+    subs.forEach(function(sa){
+      html += '<option value="'+escapeHTML(sa)+'"'+(f.inc_equipo_sub===sa?' selected':'')+'>'+escapeHTML(sa)+'</option>';
+    });
+    html += '</select></div>';
+
+    if (f.inc_equipo_sub) {
+      var hijos = ARBOL_EQUIPO[f.inc_equipo_area][f.inc_equipo_sub] || [];
+      if (hijos.length) {
+        html += '<div class="field"><label>Equipo específico</label><select onchange="setArbolEq(this.value)">';
+        html += '<option value="">— (opcional) —</option>';
+        hijos.forEach(function(e){
+          html += '<option value="'+escapeHTML(e)+'"'+(f.inc_equipo_esp===e?' selected':'')+'>'+escapeHTML(e)+'</option>';
+        });
+        html += '</select></div>';
+      } else {
+        html += '<div class="field-hint">La subárea es el equipo (no tiene desglose).</div>';
+      }
+    }
+  }
+  return html;
+}
+
+function _sincronizarEquipo(){
+  var f = state.form;
+  f.inc_equipo_afectado = f.inc_equipo_esp || f.inc_equipo_sub || f.inc_equipo_area || "";
+  f.inc_equipo_ruta = [f.inc_equipo_area, f.inc_equipo_sub, f.inc_equipo_esp]
+    .filter(function(x){ return x; }).join(" > ");
+}
+function setArbolArea(v){ state.form.inc_equipo_area=v; state.form.inc_equipo_sub=""; state.form.inc_equipo_esp=""; _sincronizarEquipo(); render(); }
+function setArbolSub(v){ state.form.inc_equipo_sub=v; state.form.inc_equipo_esp=""; _sincronizarEquipo(); render(); }
+function setArbolEq(v){ state.form.inc_equipo_esp=v; _sincronizarEquipo(); render(); }
+
 function renderIncidente(f) {
   var html = '<div class="section"><div class="section-title">⚠️ Incidente</div>';
-  html += '<div class="field"><label>Equipo o instalación afectada</label><input type="text" value="'+escapeHTML(f.inc_equipo_afectado)+'" placeholder="Ej: Bomba P-101, Cinta 3" onchange="setField(\'inc_equipo_afectado\',this.value)"></div>';
+  html += renderArbolEquipo(f);
   html += '<div class="field"><label>Daño material estimado (ARS)</label><input type="number" value="'+f.inc_dano_estimado_ars+'" placeholder="0" onchange="setField(\'inc_dano_estimado_ars\',this.value)"></div>';
   html += '<div class="field"><label>Acción inmediata</label><textarea placeholder="¿Qué se hizo?" onchange="setField(\'inc_accion_inmediata\',this.value)">'+escapeHTML(f.inc_accion_inmediata)+'</textarea></div>';
   html += '<div class="field"><label>¿Se notificó al responsable del área?</label><div class="chips">';
@@ -1023,7 +1079,8 @@ function renderReview() {
   }
   if (f.tipo === "INCIDENTE") {
     html += '<div class="section">';
-    if (f.inc_equipo_afectado) html += reviewRow("Equipo", f.inc_equipo_afectado);
+    if (f.inc_equipo_ruta) html += reviewRow("Equipo", f.inc_equipo_ruta);
+    else if (f.inc_equipo_afectado) html += reviewRow("Equipo", f.inc_equipo_afectado);
     if (f.inc_dano_estimado_ars) html += reviewRow("Daño estimado", '$'+f.inc_dano_estimado_ars);
     if (f.inc_accion_inmediata) html += reviewRow("Acción inmediata", f.inc_accion_inmediata);
     if (f.inc_notif_responsable) html += reviewRow("Notif. responsable", f.inc_notif_responsable + (f.inc_notif_a_quien?' — '+f.inc_notif_a_quien:''));

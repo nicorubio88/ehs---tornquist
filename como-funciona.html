@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cómo funciona · Sistema EHS Tornquist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+
+  :root {
+    --brand-50:#EFF5EA; --brand-100:#E7F2DC; --brand-200:#D6EAC4;
+    --brand-400:#7BC142; --brand-500:#5E9A3B; --brand-600:#548235;
+    --brand-700:#3D5F26; --brand-800:#2E4A1C; --brand-900:#1F3313;
+    --ink-50:#F8FAFC; --ink-100:#F1F5F9; --ink-200:#E2E8F0;
+    --ink-400:#94A3B8; --ink-500:#64748B; --ink-700:#334155;
+    --ink-800:#1E293B; --ink-900:#0F172A;
+    --accident:#DC2626; --incident:#F59E0B; --environment:#548235;
+    --shadow-sm:0 1px 2px rgba(15,23,42,.06);
+    --shadow-md:0 4px 12px rgba(15,23,42,.08);
+    --shadow-lg:0 20px 40px rgba(46,74,28,.12);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; }
+  body {
+    font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;
+    background:var(--ink-50); color:var(--ink-800);
+    min-height:100vh; overflow-x:hidden; letter-spacing:-.01em;
+  }
+  .page {
+    min-height:100vh; display:flex; flex-direction:column;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, var(--brand-100) 0%, transparent 55%),
+      linear-gradient(180deg, #FFFFFF 0%, var(--ink-50) 100%);
+  }
+  .topbar {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:20px 32px; border-bottom:1px solid var(--ink-200);
+    background:rgba(255,255,255,.7); backdrop-filter:blur(12px);
+  }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand-mark {
+    width:34px; height:34px; border-radius:10px;
+    background:linear-gradient(135deg, var(--brand-600), var(--brand-800));
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 12px rgba(46,74,28,.25);
+  }
+  .brand-mark svg { width:20px; height:20px; color:#fff; }
+  .brand-text { display:flex; flex-direction:column; line-height:1.1; }
+  .brand-name { font-size:14px; font-weight:700; color:var(--ink-900); letter-spacing:-.01em; }
+  .brand-sub { font-size:11px; font-weight:500; color:var(--ink-500); letter-spacing:.02em; text-transform:uppercase; }
+  .status-pill {
+    display:flex; align-items:center; gap:8px;
+    font-family:'Plus Jakarta Sans',monospace; font-size:11px; font-weight:500;
+    color:var(--brand-700); background:var(--brand-50);
+    padding:6px 12px; border-radius:999px; border:1px solid var(--brand-200);
+  }
+  .status-dot { width:6px; height:6px; border-radius:50%; background:var(--brand-500); animation:pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .v2-tag {
+    display:inline-block; font-family:'Plus Jakarta Sans',monospace;
+    font-size:10px; font-weight:600; letter-spacing:.1em;
+    padding:3px 8px; background:var(--brand-700); color:#fff;
+    border-radius:4px; margin-left:8px; vertical-align:middle;
+  }
+
+  .hero {
+    flex:1; display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    padding:48px 24px; text-align:center; position:relative;
+  }
+  .eyebrow {
+    font-family:'Plus Jakarta Sans',monospace; font-size:11px; font-weight:600;
+    color:var(--brand-700); letter-spacing:.2em; text-transform:uppercase;
+    margin-bottom:20px; padding:8px 16px; background:var(--brand-50);
+    border:1px solid var(--brand-200); border-radius:999px;
+  }
+  h1 {
+    font-size:clamp(36px, 7vw, 64px); font-weight:800;
+    color:var(--ink-900); line-height:1.05; letter-spacing:-.035em;
+    margin-bottom:20px; max-width:720px;
+  }
+  h1 .accent {
+    background:linear-gradient(135deg, var(--brand-600), var(--brand-800));
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .lead {
+    font-size:17px; line-height:1.6; color:var(--ink-500);
+    max-width:560px; margin-bottom:48px; font-weight:400;
+  }
+
+  .cards {
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:16px; max-width:960px; width:100%;
+  }
+  .card {
+    background:#fff; border:1px solid var(--ink-200); border-radius:20px;
+    padding:28px 24px; text-decoration:none; color:var(--ink-900);
+    transition:all .25s ease-out; position:relative; overflow:hidden;
+    box-shadow:var(--shadow-sm);
+  }
+  .card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--accent); transform:scaleX(0); transform-origin:left;
+    transition:transform .35s ease-out;
+  }
+  .card:hover::before { transform:scaleX(1); }
+  .card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); border-color:transparent; }
+  .card-icon {
+    width:48px; height:48px; border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    margin-bottom:18px; background:var(--icon-bg);
+  }
+  .card-icon svg { width:24px; height:24px; color:var(--accent); }
+  .card h2 { font-size:19px; font-weight:700; letter-spacing:-.02em; margin-bottom:6px; }
+  .card p { font-size:14px; line-height:1.55; color:var(--ink-500); margin-bottom:20px; min-height:44px; }
+  .card-cta {
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:13px; font-weight:600; color:var(--accent);
+    transition:gap .2s ease-out;
+  }
+  .card:hover .card-cta { gap:10px; }
+  .card-cta svg { width:14px; height:14px; }
+
+  .card-form { --accent:var(--accident); --icon-bg:#FEF2F2; }
+  .card-dash { --accent:#2563EB; --icon-bg:#EFF6FF; }
+  .card-seg  { --accent:var(--brand-700); --icon-bg:var(--brand-50); }
+  .card-como { --accent:#6C7A67; --icon-bg:#F1F5F9; }
+
+  .footer {
+    padding:20px 32px; text-align:center; font-size:12px;
+    color:var(--ink-400); border-top:1px solid var(--ink-200);
+    background:rgba(255,255,255,.5);
+  }
+  .footer strong { color:var(--ink-700); font-weight:600; }
+
+  @media (max-width:640px) {
+    .topbar { padding:14px 18px; }
+    .brand-sub { display:none; }
+    .hero { padding:32px 18px; }
+    .cards { grid-template-columns:1fr; }
+  }
+
+  /* ---- pagina como funciona ---- */
+  .cf-wrap { max-width:960px; margin:0 auto; padding:34px 24px 60px; width:100%; }
+  .cf-title { font-size:28px; font-weight:800; color:var(--ink-900); letter-spacing:-.02em; margin-bottom:8px; }
+  .cf-sub { font-size:15px; color:var(--ink-500); line-height:1.6; margin-bottom:28px; max-width:640px; }
+  .cf-box { background:#fff; border:1px solid var(--ink-200); border-radius:20px; padding:24px 26px; margin-bottom:18px; box-shadow:var(--shadow-sm); }
+  .cf-box h2 { font-size:18px; font-weight:800; color:var(--ink-900); margin-bottom:6px; }
+  .cf-box .lead2 { font-size:13.5px; color:var(--ink-500); line-height:1.6; margin-bottom:16px; }
+  .pasos-rapidos { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  @media(max-width:760px){ .pasos-rapidos{ grid-template-columns:1fr 1fr; } }
+  .paso-mini { background:#fff; border:1px solid var(--ink-200); border-radius:14px; padding:15px 16px; }
+  .paso-mini .pn { width:24px;height:24px;border-radius:50%;background:var(--brand-50);color:var(--brand-700);
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-bottom:8px; }
+  .paso-mini .pt { font-size:12.8px;font-weight:800;margin-bottom:3px;color:var(--ink-900); }
+  .paso-mini .pd { font-size:11.5px;color:var(--ink-500);line-height:1.45; }
+  .tipos-tabla { width:100%; border-collapse:collapse; font-size:13.5px; }
+  .tipos-tabla th { background:var(--brand-700); color:#fff; text-align:left; padding:11px 12px;
+    font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+  .tipos-tabla th:first-child{border-top-left-radius:10px} .tipos-tabla th:last-child{border-top-right-radius:10px}
+  .tipos-tabla td { padding:11px 12px; border-bottom:1px solid var(--ink-200); line-height:1.5; color:var(--ink-800); }
+  .tipos-tabla tr:last-child td { border-bottom:none; }
+  .tpill { font-size:10.5px; font-weight:800; padding:4px 11px; border-radius:20px; color:#fff; white-space:nowrap; }
+  .diagrama-frame { background:#fff; border:1px solid var(--ink-200); border-radius:18px; padding:18px; overflow-x:auto; }
+  .diagrama-frame img { display:block; width:100%; max-width:860px; margin:0 auto; height:auto; }
+  .diagrama-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px; }
+  .btn-cf { display:inline-flex; align-items:center; gap:7px; background:#fff; border:1px solid var(--ink-200);
+    color:var(--ink-800); border-radius:11px; padding:9px 16px; font-size:12.5px; font-weight:700; text-decoration:none; }
+  .btn-cf:hover { border-color:var(--brand-600); color:var(--brand-700); }
+  .cf-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; font-size:13px; }
+  @media(max-width:700px){ .cf-grid2{ grid-template-columns:1fr; } }
+  .cf-grid2 b { display:block; font-size:13.5px; margin-bottom:3px; color:var(--ink-900); }
+  .cf-grid2 p { margin:0; color:var(--ink-500); line-height:1.55; }
+  .cf-back { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:700;
+    color:var(--brand-700); text-decoration:none; margin-bottom:18px; }
+
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">EHS Tornquist <span class="v2-tag">v2</span></span>
+        <span class="brand-sub">Papelera del Sur</span>
+      </div>
+    </div>
+    <div class="status-pill"><span class="status-dot"></span> Sistema activo</div>
+  </div>
+
+  <div class="cf-wrap">
+    <a class="cf-back" href="index.html">&larr; Volver al inicio</a>
+    <div class="cf-title">Cómo funciona el sistema</div>
+    <p class="cf-sub">La guía completa en un solo lugar, para revisar cuando tengas dudas.
+       De "vi algo" a "quedó registrado y con una acción que lo corrige".</p>
+
+    <div class="pasos-rapidos">
+      <div class="paso-mini"><div class="pn">1</div><div class="pt">Viste algo</div>
+        <div class="pd">Un acto riesgoso, una condición insegura, un casi-accidente, un derrame</div></div>
+      <div class="paso-mini"><div class="pn">2</div><div class="pt">Elegís el tipo</div>
+        <div class="pd">Observación, conversación, incidente, accidente o ambiente</div></div>
+      <div class="paso-mini"><div class="pn">3</div><div class="pt">Cargás los datos</div>
+        <div class="pd">Cuándo, dónde, quién, qué pasó, foto y prioridad</div></div>
+      <div class="paso-mini"><div class="pn">4</div><div class="pt">Acción y seguimiento</div>
+        <div class="pd">Se define qué se corrige, quién y para cuándo</div></div>
+    </div>
+
+    <div class="cf-box">
+      <h2>Lo primero que elegís: el tipo de evento</h2>
+      <p class="lead2">De esa elección dependen las preguntas que te va a hacer el formulario.
+         Si dudás entre dos, elegí el más grave: siempre es preferible.</p>
+      <table class="tipos-tabla">
+        <tr><th>Tipo</th><th>Cuándo lo usás</th><th>Subtipos</th></tr>
+        <tr>
+          <td><span class="tpill" style="background:#1E40AF">OBSERVACIÓN</span></td>
+          <td>Viste un acto o una condición insegura. Nadie se lastimó todavía.</td>
+          <td>Acto inseguro · Condición insegura</td>
+        </tr>
+        <tr>
+          <td><span class="tpill" style="background:#0F766E">CONVERSACIÓN</span></td>
+          <td>Hablaste con alguien sobre seguridad, para corregir o para reconocer.</td>
+          <td>Refuerzo positivo · Coaching correctivo · Charla</td>
+        </tr>
+        <tr>
+          <td><span class="tpill" style="background:#B45309">INCIDENTE</span></td>
+          <td>Casi pasa algo, o hubo daño material sin personas lesionadas.</td>
+          <td>Casi accidente · Daño material · Falla con riesgo</td>
+        </tr>
+        <tr>
+          <td><span class="tpill" style="background:#B91C1C">ACCIDENTE</span></td>
+          <td>Una persona se lastimó. Siempre se carga, por leve que parezca.</td>
+          <td>Leve sin baja · Leve con baja · Grave · Fatal</td>
+        </tr>
+        <tr>
+          <td><span class="tpill" style="background:#15803D">AMBIENTE</span></td>
+          <td>Impacto o riesgo ambiental: algo salió donde no debía.</td>
+          <td>Derrame · Fuga · Emisión · Residuo · Ruido</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="cf-box">
+      <h2>El diagrama completo</h2>
+      <p class="lead2">El mismo flujo, de punta a punta. Podés hacer zoom (Ctrl + rueda, o pellizcar
+         en el celular) o descargarlo para imprimir y pegar en el sector.</p>
+      <div class="diagrama-frame">
+        <img src="flujo.svg" alt="Diagrama de flujo del sistema EHS">
+      </div>
+      <div class="diagrama-actions">
+        <a class="btn-cf" href="flujo.svg" download="flujo_ehs.svg">&#11015; Descargar para imprimir</a>
+        <a class="btn-cf" href="flujo.svg" target="_blank">&#8599; Abrir en pestaña completa</a>
+      </div>
+    </div>
+
+    <div class="cf-box">
+      <h2>Cuatro cosas que conviene tener claras</h2>
+      <div class="cf-grid2">
+        <div><b>Reportar no es acusar</b>
+          <p>Una observación no busca culpables. Busca que la próxima vez nadie se lastime en ese mismo punto.</p></div>
+        <div><b>El equipo sale del árbol de la planta</b>
+          <p>Área → subárea → equipo, el mismo árbol que usan Tarjetas TPM y Causa Raíz. Así los tres sistemas hablan del mismo equipo.</p></div>
+        <div><b>Sin acción correctiva, el reporte queda a medias</b>
+          <p>Cargar el evento es la mitad. La otra mitad es definir qué se corrige, quién lo hace y para cuándo.</p></div>
+        <div><b>Si se repite, hay una causa de fondo</b>
+          <p>Si el mismo evento vuelve o la acción no alcanzó, corresponde abrir un análisis en el sistema de Causa Raíz.</p></div>
+      </div>
+    </div>
+
+    <div class="cards" style="max-width:100%">
+      <a href="formulario_v2.html" class="card card-form">
+        <h2>Registrar un evento</h2>
+        <p>Ya está claro. Vamos directo al formulario.</p>
+      </a>
+      <a href="seguimiento_v2.html" class="card card-seg">
+        <h2>Ver pendientes</h2>
+        <p>Acciones correctivas abiertas, vencidas y en término.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="footer">
+    <strong>Seguridad e Higiene Industrial</strong> — Planta Tornquist — Papelera del Sur · 2026
+  </div>
+</div>
+</body>
+</html>
