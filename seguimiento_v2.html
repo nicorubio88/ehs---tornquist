@@ -1128,7 +1128,7 @@ function renderAccionCard(a) {
     html += '<div>📅 '+formatDate(a.fecha_vencimiento)+'</div>';
   }
   if (ev.evento_id) {
-    html += '<div>🎯 <code style="font-family:'Plus Jakarta Sans',monospace;font-size:10px;">'+escapeHTML(ev.evento_id)+'</code>'
+    html += '<div>🎯 <code style="font-family:Plus Jakarta Sans,monospace;font-size:10px;">'+escapeHTML(ev.evento_id)+'</code>'
          + (ev.sector ? ' · '+escapeHTML(ev.sector) : '')+'</div>';
   }
   if (ev.reportado_por_nombre) {

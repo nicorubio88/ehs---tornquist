@@ -1879,7 +1879,7 @@ function renderParticipacion() {
       var totalCls = p.total === 0 ? "part-total zero" : "part-total";
 
       html += '<tr'+rowCls+'>';
-      html += '<td style="color:var(--t3);font-family:'Plus Jakarta Sans',monospace;font-size:11px;">'+(idx+1)+'</td>';
+      html += '<td style="color:var(--t3);font-family:Plus Jakarta Sans,monospace;font-size:11px;">'+(idx+1)+'</td>';
       html += '<td>'
         + '<div class="part-name">'+escapeHTML(p.nombre)+(p.esSupervisor?' <span style="font-size:9px;color:var(--brand-700);font-weight:600;">SUPERV.</span>':'')+'</div>'
         + (p.legajo?'<div class="part-legajo">#'+escapeHTML(p.legajo)+'</div>':'')
@@ -1963,7 +1963,7 @@ function renderSelectorPeriodo() {
   html += '<div>';
   html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand-700);">📅 Período de análisis</div>';
   html += '<div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:4px;">'+escapeHTML(rango.label)+'</div>';
-  html += '<div style="font-size:11px;color:var(--t2);margin-top:2px;font-family:'Plus Jakarta Sans',monospace;">'
+  html += '<div style="font-size:11px;color:var(--t2);margin-top:2px;font-family:Plus Jakarta Sans,monospace;">'
        +  formatDateBR(rango.desde) + ' → ' + formatDateBR(rango.hasta) + ' · ' + rango.dias + ' días</div>';
   html += '</div>';
 
@@ -2188,7 +2188,7 @@ function dibujarGraficoAccidentes() {
           // Dibujar números sobre cada barra
           var chart = this;
           var c = chart.ctx;
-          c.font = "bold 12px 'Plus Jakarta Sans', system-ui";
+          c.font = "bold 12px Plus Jakarta Sans, system-ui";
           c.fillStyle = "#7F1D1D";
           c.textAlign = "center";
           c.textBaseline = "bottom";
@@ -2438,7 +2438,7 @@ function render() {
       else if (e.estado === "Cerrado") estadoClass = "cerrado";
       else if (e.estado === "Sin acciones") estadoClass = "tratamiento";
       html += '<tr class="row-clickable" onclick="openModal(\''+escapeHTML(e.evento_id)+'\')">'
-        + '<td><code style="font-family:'Plus Jakarta Sans',monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code>'+(e.foto_url?' <span title="Tiene foto">📷</span>':'')+'</td>'
+        + '<td><code style="font-family:Plus Jakarta Sans,monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code>'+(e.foto_url?' <span title="Tiene foto">📷</span>':'')+'</td>'
         + '<td>'+formatDate(e.fecha_evento)+'</td>'
         + '<td><span class="badge '+meta.className+'">'+meta.icon+' '+meta.label+'</span></td>'
         + '<td>'+(e.sector||"—")+'</td>'
@@ -2824,7 +2824,7 @@ function abrirNuevaAccion(eventoId) {
   html += '<div class="modal-header"><h3>Nueva acción correctiva</h3>'
     + '<button class="modal-close" onclick="cerrarNuevaAccion()">×</button></div>';
   html += '<div class="modal-body">';
-  html += '<div style="margin-bottom:14px;font-size:12px;color:var(--t2);">Evento: <code style="font-family:'Plus Jakarta Sans',monospace;">'+eventoId+'</code> · Acción #'+nro+'</div>';
+  html += '<div style="margin-bottom:14px;font-size:12px;color:var(--t2);">Evento: <code style="font-family:Plus Jakarta Sans,monospace;">'+eventoId+'</code> · Acción #'+nro+'</div>';
 
   html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Descripción de la acción *</label>'
     + '<textarea id="nac_desc" placeholder="¿Qué hay que hacer?" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;min-height:70px;"></textarea></div>';
