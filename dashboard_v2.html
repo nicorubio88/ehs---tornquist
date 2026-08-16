@@ -3,2938 +3,360 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard EHS — Tornquist</title>
+<title>Dashboard EHS v3 — Mockup · Planta Tornquist</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+const PART = {"unicos_mes": [3, 18, 33, 42, 34, 19], "nuevos_mes": [3, 15, 18, 14, 3, 0], "top3_pct": 28, "p50": 9, "p80": 20, "pareto": [{"n": "Vallejos J.", "v": 78}, {"n": "Manfredi J.", "v": 47}, {"n": "Zanotto A.", "v": 39}, {"n": "Gamero L.", "v": 30}, {"n": "Uribe S.", "v": 28}, {"n": "Urriaga M.", "v": 22}, {"n": "Lopez D.", "v": 21}, {"n": "Frias R.", "v": 21}, {"n": "Sanchez M.", "v": 20}, {"n": "Bolletta F.", "v": 20}], "resto": 263, "ret_junjul": "30/42", "ret_julago": "18/34", "ret_julago_pct": 53, "reportadores_unicos_total": 53};
+// Pareto de concentración (Nivel 1)
+const pLabels = PART.pareto.map(p=>p.n).concat(['Otros 43','Nunca (103)']);
+const pVals = PART.pareto.map(p=>p.v).concat([PART.resto, 0]);
+new Chart(document.getElementById('chPareto'),{type:'bar',data:{labels:pLabels,datasets:[{data:pVals,backgroundColor:pLabels.map((_,i)=>i<3?'#B8402A':(i<10?'#C97A12':'#94A3B8')),borderRadius:3}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}},maintainAspectRatio:false}});
+// Cobertura por rol (Nivel 1)
+const ROLES=[['Gerentes',3,3],['Jefes',7,7],['Supervisores',23,37],['Operadores',10,109]];
+document.getElementById('cobRoles').innerHTML = ROLES.map(r=>{
+  const pct=Math.round(r[1]/r[2]*100);
+  const col=pct>=80?'#548235':(pct>=40?'#C97A12':'#B8402A');
+  return `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--ink-700)"><span>${r[0]}</span><span>${r[1]} de ${r[2]} · ${pct}%</span></div><div style="height:14px;background:var(--ink-100);border-radius:7px;margin-top:4px"><div style="height:14px;width:${Math.max(pct,3)}%;background:${col};border-radius:7px"></div></div></div>`;
+}).join('');
+// Curva de adopción (Nivel 2)
+new Chart(document.getElementById('chAdop'),{type:'line',data:{labels:MES_LBL,datasets:[
+ {label:'Únicos del mes',data:PART.unicos_mes,borderColor:'#334155',backgroundColor:'rgba(51,65,85,.08)',fill:true,tension:.3,pointRadius:4},
+ {label:'Nuevos del mes',data:PART.nuevos_mes,borderColor:'#B8402A',tension:.3,pointRadius:4}
+]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}},scales:{y:{beginAtZero:true}},maintainAspectRatio:false}});
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  :root {
-    --brand-50:#EFF5EA; --brand-100:#E7F2DC; --brand-200:#D6EAC4; --brand-600:#548235;
-    --brand-700:#3D5F26; --brand-800:#2E4A1C; --brand-900:#1F3313;
-    --bg:#F8FAFC; --bg2:#FFFFFF; --bg3:#F1F5F9;
-    --border:#E2E8F0; --border-strong:#CBD5E1;
-    --t1:#0F172A; --t2:#475569; --t3:#94A3B8;
-    --observation:#1E40AF; --conversation:#0F766E; --incident:#B45309;
-    --accident:#B91C1C; --environment:#15803D;
-  }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family:'Plus Jakarta Sans',system-ui,sans-serif;
-    background:var(--bg); color:var(--t1); min-height:100vh;
-    letter-spacing:-.01em;
-  }
-  .topbar {
-    display:flex; justify-content:space-between; align-items:center;
-    padding:14px 20px; border-bottom:1px solid var(--border);
-    background:#fff; position:sticky; top:0; z-index:10;
-  }
-  .topbar a { font-size:13px; color:var(--t2); text-decoration:none; }
-  .topbar a:hover { color:var(--t1); }
-  .topbar-title { font-size:14px; font-weight:600; }
-  .container { max-width:1200px; margin:0 auto; padding:20px 16px; }
-  h1 { font-size:24px; font-weight:700; margin-bottom:4px; letter-spacing:-.02em; }
-  .last-update { font-family:'Plus Jakarta Sans',monospace; font-size:11px; color:var(--t3); }
-
-  .kpis {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
-    gap:10px; margin:18px 0;
-  }
-  .kpi {
-    background:#fff; border:1px solid var(--border); border-radius:12px;
-    padding:14px; transition:transform .15s;
-  }
-  .kpi:hover { transform:translateY(-1px); }
-  .kpi-label {
-    font-size:11px; color:var(--t2); font-weight:600;
-    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
-    display:flex; align-items:center; gap:6px;
-  }
-  .kpi-value { font-size:28px; font-weight:700; color:var(--t1); }
-  .kpi-sub { font-size:11px; color:var(--t3); margin-top:2px; }
-  .kpi.observation { border-top:3px solid var(--observation); }
-  .kpi.conversation { border-top:3px solid var(--conversation); }
-  .kpi.incident { border-top:3px solid var(--incident); }
-  .kpi.accident { border-top:3px solid var(--accident); }
-  .kpi.environment { border-top:3px solid var(--environment); }
-
-  .grid {
-    display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;
-  }
-  @media (max-width:768px) { .grid { grid-template-columns:1fr; } }
-  .card {
-    background:#fff; border:1px solid var(--border); border-radius:12px;
-    padding:18px;
-  }
-  .card h2 {
-    font-size:15px; font-weight:700; margin-bottom:12px;
-    display:flex; justify-content:space-between; align-items:center;
-  }
-
-  /* Pirámide */
-  .pyramid { display:flex; flex-direction:column; gap:6px; }
-  .pyramid-row {
-    display:flex; align-items:center; gap:10px;
-  }
-  .pyramid-bar {
-    height:30px; border-radius:6px; padding:0 12px;
-    display:flex; align-items:center; color:#fff; font-weight:600; font-size:13px;
-    transition:width .3s;
-  }
-  .pyramid-label {
-    font-size:12px; font-weight:600; color:var(--t2); min-width:110px;
-  }
-  .pyramid-row.observation .pyramid-bar { background:var(--observation); }
-  .pyramid-row.conversation .pyramid-bar { background:var(--conversation); }
-  .pyramid-row.incident .pyramid-bar { background:var(--incident); }
-  .pyramid-row.accident .pyramid-bar { background:var(--accident); }
-  .pyramid-row.environment .pyramid-bar { background:var(--environment); }
-
-  /* Filtros */
-  .filters {
-    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;
-  }
-  .filter-group {
-    display:flex; align-items:center; gap:6px;
-    background:#fff; border:1px solid var(--border); border-radius:8px;
-    padding:6px 10px;
-  }
-  .filter-label { font-size:11px; color:var(--t2); font-weight:600; }
-  .filter-group select {
-    border:none; background:transparent; font:inherit; font-size:13px;
-    color:var(--t1); cursor:pointer; padding:2px 4px;
-  }
-  .filter-group select:focus { outline:none; }
-
-  /* Tabla */
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); }
-  th {
-    font-size:11px; font-weight:600; text-transform:uppercase;
-    letter-spacing:.04em; color:var(--t2); background:var(--bg3);
-  }
-  tr.row-clickable { cursor:pointer; transition:background .1s; }
-  tr.row-clickable:hover { background:var(--bg3); }
-  .badge {
-    display:inline-block; padding:2px 8px; border-radius:999px;
-    font-size:11px; font-weight:600; letter-spacing:.02em;
-  }
-  .badge.observation { background:#DBEAFE; color:var(--observation); }
-  .badge.conversation { background:#CCFBF1; color:var(--conversation); }
-  .badge.incident { background:#FEF3C7; color:var(--incident); }
-  .badge.accident { background:#FEE2E2; color:var(--accident); }
-  .badge.environment { background:#E7F2DC; color:var(--environment); }
-  .badge.estado.abierto { background:#FEE2E2; color:#991B1B; }
-  .badge.estado.tratamiento { background:#FEF3C7; color:#92400E; }
-  .badge.estado.cerrado { background:#E7F2DC; color:#2E4A1C; }
-
-  /* Modal */
-  .modal-overlay {
-    position:fixed; inset:0; background:rgba(15,23,42,.55);
-    backdrop-filter:blur(4px);
-    display:flex; align-items:center; justify-content:center;
-    z-index:9999; padding:16px;
-    animation:fadeIn .15s;
-  }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  .modal-box {
-    background:#fff; border-radius:16px; padding:0;
-    width:100%; max-width:560px; max-height:90vh; overflow-y:auto;
-    box-shadow:0 20px 50px rgba(15,23,42,.3);
-  }
-  .modal-header {
-    padding:18px 22px; border-bottom:1px solid var(--border);
-    display:flex; justify-content:space-between; align-items:center;
-    position:sticky; top:0; background:#fff; z-index:1;
-  }
-  .modal-header h3 { font-size:16px; font-weight:700; }
-  .modal-close {
-    background:transparent; border:none; font-size:22px; cursor:pointer;
-    color:var(--t3); width:30px; height:30px; border-radius:6px;
-  }
-  .modal-close:hover { background:var(--bg3); color:var(--t1); }
-  .modal-body { padding:18px 22px; }
-  .modal-field {
-    padding:8px 0; border-bottom:1px solid var(--bg3); font-size:13px;
-    display:flex; gap:12px;
-  }
-  .modal-field:last-child { border-bottom:none; }
-  .modal-field-label {
-    flex:0 0 38%; font-weight:600; color:var(--t2);
-    text-transform:uppercase; font-size:11px; letter-spacing:.04em;
-  }
-  .modal-field-value { flex:1; color:var(--t1); }
-  .modal-actions {
-    padding:14px 22px; border-top:1px solid var(--border);
-    background:var(--bg3); display:flex; gap:8px; justify-content:flex-end;
-  }
-  .btn {
-    padding:8px 14px; border-radius:8px; border:1px solid transparent;
-    font:inherit; font-size:13px; font-weight:600; cursor:pointer;
-  }
-  .btn-primary { background:var(--brand-600); color:#fff; }
-  .btn-primary:hover { background:var(--brand-700); }
-  .btn-secondary { background:#fff; color:var(--t2); border-color:var(--border); }
-  .btn-secondary:hover { border-color:var(--border-strong); }
-
-  .actions-list {
-    margin-top:10px;
-  }
-  .action-item {
-    background:var(--bg3); border-radius:8px; padding:10px 12px;
-    margin-bottom:6px; font-size:12px; display:flex; justify-content:space-between;
-    align-items:center; gap:8px;
-  }
-  .action-info { flex:1; min-width:0; }
-  .action-desc { font-weight:600; color:var(--t1); margin-bottom:2px; word-break:break-word; }
-  .action-meta { font-size:11px; color:var(--t2); }
-
-  .empty {
-    text-align:center; padding:40px 20px; color:var(--t3); font-size:13px;
-  }
-  .spinner {
-    width:36px; height:36px; border:3px solid var(--border);
-    border-top-color:var(--brand-600); border-radius:50%;
-    animation:spin .8s linear infinite; margin:40px auto;
-  }
-  @keyframes spin { to { transform:rotate(360deg); } }
-
-  /* Sección Leading KPIs (Cultura BBS) */
-  .culture-section {
-    background:linear-gradient(135deg, #EFF5EA 0%, #FFFFFF 100%);
-    border:1px solid var(--brand-200); border-radius:14px;
-    padding:18px; margin:18px 0;
-  }
-  .culture-section-title {
-    font-size:14px; font-weight:700; color:var(--brand-800);
-    text-transform:uppercase; letter-spacing:.06em;
-    display:flex; align-items:center; gap:8px;
-    margin-bottom:14px;
-  }
-  .culture-section-title::before {
-    content:""; display:inline-block; width:6px; height:18px;
-    background:var(--brand-600); border-radius:3px;
-  }
-  .culture-section-subtitle {
-    font-size:12px; color:var(--t2); margin-bottom:14px; line-height:1.4;
-  }
-  .leading-kpis {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
-    gap:10px;
-  }
-  .leading-kpi {
-    background:#fff; border:1px solid var(--border); border-radius:10px;
-    padding:14px; position:relative; overflow:hidden;
-  }
-  .leading-kpi::before {
-    content:""; position:absolute; left:0; top:0; bottom:0;
-    width:3px; background:var(--status, var(--brand-600));
-  }
-  .leading-kpi-label {
-    font-size:11px; color:var(--t2); font-weight:600;
-    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
-    line-height:1.3;
-  }
-  .leading-kpi-value {
-    font-size:24px; font-weight:700; color:var(--t1);
-    font-variant-numeric:tabular-nums;
-  }
-  .leading-kpi-target {
-    font-size:11px; color:var(--t3); margin-top:4px;
-    font-family:'Plus Jakarta Sans',monospace;
-  }
-  .leading-kpi.green { --status:#16A34A; }
-  .leading-kpi.amber { --status:#D97706; }
-  .leading-kpi.red { --status:#DC2626; }
-  .leading-kpi.gray { --status:#94A3B8; }
-  .leading-kpi-status {
-    display:inline-block; padding:2px 6px; border-radius:4px;
-    font-size:10px; font-weight:700; text-transform:uppercase;
-    letter-spacing:.04em; margin-top:6px;
-  }
-  .leading-kpi.green .leading-kpi-status { background:#E7F2DC; color:#2E4A1C; }
-  .leading-kpi.amber .leading-kpi-status { background:#FEF3C7; color:#92400E; }
-  .leading-kpi.red .leading-kpi-status { background:#FEE2E2; color:#991B1B; }
-  .leading-kpi.gray .leading-kpi-status { background:#F1F5F9; color:#64748B; }
-
-  /* Sección Participación del equipo */
-  .participacion-section {
-    background:linear-gradient(135deg, #EFF5EA 0%, #FFFFFF 100%);
-    border:1px solid var(--brand-200); border-radius:14px;
-    padding:18px; margin:18px 0;
-  }
-  .part-controls {
-    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
-    margin-bottom:14px; padding:10px 12px;
-    background:#FFFFFF; border:1px solid var(--border); border-radius:8px;
-  }
-  .part-control-group {
-    display:flex; align-items:center; gap:6px;
-  }
-  .part-control-label {
-    font-size:11px; color:var(--t2); font-weight:600;
-    text-transform:uppercase; letter-spacing:.04em;
-  }
-  .part-control-select {
-    background:#fff; border:1px solid var(--border); border-radius:6px;
-    padding:5px 10px; font-size:12px; color:var(--t1);
-    cursor:pointer; font-family:inherit;
-  }
-  .part-control-select:hover { border-color:var(--brand-600); }
-
-  .part-kpis {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
-    gap:10px; margin-bottom:14px;
-  }
-  .part-kpi {
-    background:#fff; border:1px solid var(--border); border-radius:10px;
-    padding:14px; position:relative; overflow:hidden;
-  }
-  .part-kpi::before {
-    content:""; position:absolute; left:0; top:0; bottom:0;
-    width:3px; background:var(--status, var(--brand-600));
-  }
-  .part-kpi-label {
-    font-size:11px; color:var(--t2); font-weight:600;
-    text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;
-  }
-  .part-kpi-value {
-    font-size:22px; font-weight:700; color:var(--t1);
-    font-variant-numeric:tabular-nums;
-  }
-  .part-kpi-sub {
-    font-size:11px; color:var(--t3); margin-top:4px;
-    font-family:'Plus Jakarta Sans',monospace;
-  }
-
-  .part-table-wrap {
-    background:#fff; border:1px solid var(--border); border-radius:10px;
-    overflow:hidden;
-  }
-  .part-table-header {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:12px 14px; border-bottom:1px solid var(--border);
-    background:var(--bg2);
-  }
-  .part-table-title {
-    font-size:13px; font-weight:600; color:var(--t1);
-  }
-  .part-filter-pills {
-    display:flex; gap:6px;
-  }
-  .part-filter-pill {
-    font-size:11px; padding:4px 10px; background:var(--bg3);
-    color:var(--t2); border-radius:6px; cursor:pointer;
-    font-weight:500; border:1px solid transparent;
-    transition:all .15s ease;
-  }
-  .part-filter-pill:hover { border-color:var(--border); }
-  .part-filter-pill.active { background:#E7F2DC; color:#2E4A1C; }
-  .part-filter-pill.active.danger { background:#FEE2E2; color:#991B1B; }
-
-  .part-table {
-    width:100%; border-collapse:collapse; font-size:12px;
-  }
-  .part-table thead th {
-    text-align:left; padding:10px 8px; font-weight:600;
-    font-size:11px; color:var(--t2); text-transform:uppercase;
-    letter-spacing:.04em; border-bottom:1px solid var(--border);
-    background:var(--bg2); white-space:nowrap;
-  }
-  .part-table thead th.center { text-align:center; }
-  .part-table thead th.sortable { cursor:pointer; user-select:none; }
-  .part-table thead th.sortable:hover { color:var(--brand-600); }
-  .part-table thead th.sortable.active { color:var(--brand-700); }
-  .part-table tbody td {
-    padding:9px 8px; border-bottom:1px solid var(--bg3);
-  }
-  .part-table tbody td.center { text-align:center; }
-  .part-table tbody tr.no-report { background:#FEF8F8; }
-  .part-table tbody tr:hover { background:var(--bg2); }
-  .part-name {
-    font-weight:500; color:var(--t1);
-  }
-  .part-legajo {
-    font-size:10px; color:var(--t3);
-    font-family:'Plus Jakarta Sans',monospace; margin-top:2px;
-  }
-  .part-total {
-    font-weight:700; font-size:14px; color:var(--t1);
-    font-variant-numeric:tabular-nums;
-  }
-  .part-total.zero { color:#991B1B; }
-  .part-cell-num { color:var(--t2); font-variant-numeric:tabular-nums; }
-  .part-cell-num.zero { color:var(--t3); }
-  .part-status-badge {
-    display:inline-block; font-size:10px; padding:3px 8px;
-    border-radius:4px; font-weight:600; white-space:nowrap;
-  }
-  .part-status-badge.cumplio { background:#E7F2DC; color:#2E4A1C; }
-  .part-status-badge.no-cumplio { background:#FEE2E2; color:#991B1B; }
-  .part-status-badge.parcial { background:#FEF3C7; color:#92400E; }
-
-  .part-empty {
-    padding:30px; text-align:center; color:var(--t3); font-size:13px;
-  }
-  .part-show-more {
-    text-align:center; padding:10px; cursor:pointer;
-    color:var(--brand-700); font-size:12px; font-weight:600;
-    background:var(--bg2); border-top:1px solid var(--border);
-    transition:background .15s ease;
-  }
-  .part-show-more:hover { background:var(--brand-50); }
-
-  /* Sección Mis Pendientes */
-  .mp-section {
-    background:linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 100%);
-    border:1px solid #FDBA74; border-radius:14px;
-    padding:18px; margin:18px 0;
-  }
-  .mp-header {
-    display:flex; align-items:center; justify-content:space-between;
-    gap:12px; flex-wrap:wrap; margin-bottom:14px;
-  }
-  .mp-title {
-    font-size:14px; font-weight:700; color:#9A3412;
-    text-transform:uppercase; letter-spacing:.06em;
-    display:flex; align-items:center; gap:8px;
-  }
-  .mp-title::before {
-    content:""; display:inline-block; width:6px; height:18px;
-    background:#EA580C; border-radius:3px;
-  }
-  .mp-identity {
-    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  }
-  .mp-identity-label {
-    font-size:11px; color:var(--t2); font-weight:600;
-  }
-  .mp-identity-input {
-    background:#fff; border:1px solid var(--border); border-radius:6px;
-    padding:6px 10px; font-size:12px; min-width:200px;
-    font-family:inherit;
-  }
-  .mp-identity-input:focus { border-color:#EA580C; outline:none; }
-  .mp-identity-clear {
-    font-size:11px; color:var(--t2); cursor:pointer;
-    padding:4px 8px; border:1px solid var(--border);
-    border-radius:6px; background:#fff;
-  }
-  .mp-identity-clear:hover { background:var(--bg2); color:#DC2626; }
-  .mp-empty-state {
-    padding:30px 20px; text-align:center; color:var(--t2); font-size:13px;
-    background:#fff; border:1px dashed var(--border); border-radius:10px;
-  }
-  .mp-empty-state strong { color:var(--t1); }
-  .mp-action-grid {
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-    gap:10px;
-  }
-  .mp-action-card {
-    background:#fff; border:1px solid var(--border); border-radius:10px;
-    padding:14px; position:relative; cursor:pointer;
-    transition:transform .15s ease, box-shadow .15s ease;
-  }
-  .mp-action-card:hover {
-    transform:translateY(-1px);
-    box-shadow:0 4px 12px rgba(15,23,42,.08);
-  }
-  .mp-action-card.vencida { border-left:4px solid #DC2626; }
-  .mp-action-card.urgente { border-left:4px solid #D97706; }
-  .mp-action-card.normal { border-left:4px solid #16A34A; }
-  .mp-action-desc {
-    font-size:13px; font-weight:500; color:var(--t1);
-    margin-bottom:8px; line-height:1.4;
-  }
-  .mp-action-meta {
-    display:flex; flex-wrap:wrap; gap:8px; font-size:11px;
-    color:var(--t2); margin-bottom:10px;
-  }
-  .mp-action-meta-item {
-    display:inline-flex; align-items:center; gap:4px;
-  }
-  .mp-action-meta-item code {
-    font-family:'Plus Jakarta Sans',monospace; font-size:10px;
-  }
-  .mp-action-due {
-    display:inline-block; font-size:11px; padding:3px 8px;
-    border-radius:4px; font-weight:600;
-  }
-  .mp-action-due.vencida { background:#FEE2E2; color:#991B1B; }
-  .mp-action-due.urgente { background:#FEF3C7; color:#92400E; }
-  .mp-action-due.normal { background:#E7F2DC; color:#2E4A1C; }
-  .mp-action-buttons {
-    display:flex; gap:6px; margin-top:10px;
-    padding-top:10px; border-top:1px solid var(--bg3);
-  }
-  .mp-action-btn {
-    flex:1; font-size:11px; padding:6px 10px; border-radius:6px;
-    border:1px solid var(--border); background:#fff; cursor:pointer;
-    color:var(--t1); font-weight:600;
-    transition:all .15s ease;
-  }
-  .mp-action-btn:hover { background:var(--brand-50); border-color:var(--brand-600); color:var(--brand-700); }
-  .mp-action-btn.primary { background:#5E9A3B; color:#fff; border-color:#5E9A3B; }
-  .mp-action-btn.primary:hover { background:#548235; border-color:#548235; }
+:root{
+  --brand-50:#EFF5EA;--brand-100:#E7F2DC;--brand-200:#D6EAC4;--brand-500:#5E9A3B;--brand-600:#548235;--brand-700:#3D5F26;--brand-800:#2E4A1C;
+  --ink-50:#F8FAFC;--ink-100:#F1F5F9;--ink-200:#E2E8F0;--ink-400:#94A3B8;--ink-500:#64748B;--ink-700:#334155;--ink-900:#0F172A;
+  --rojo:#B8402A;--rojo-bg:#FBEAE5;--rojo-bd:#EFC4B8;--ambar:#C97A12;--ambar-bg:#FDF3E3;--ambar-bd:#F3DCB4;--verde-bg:#E7F2DC;--verde-bd:#D6EAC4;
+  --shadow:0 1px 2px rgba(15,23,42,.05);--shadow-md:0 4px 14px rgba(15,23,42,.07);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--ink-50);color:var(--ink-900);letter-spacing:-.01em}
+.mock-banner{background:var(--ink-900);color:#fff;font-size:11px;padding:6px 24px;display:flex;justify-content:space-between;align-items:center}
+.mock-banner strong{color:#7BC142}
+.topbar{background:#fff;border-bottom:1px solid var(--ink-200);padding:0 24px;display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;padding:14px 0}
+.brand-mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--brand-600),var(--brand-800));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px}
+.brand-name{font-size:14px;font-weight:700;line-height:1.1}
+.brand-sub{font-size:10px;font-weight:600;color:var(--ink-500);text-transform:uppercase;letter-spacing:.06em}
+.tabs{display:flex;gap:4px;flex:1}
+.tab{border:none;background:transparent;cursor:pointer;font:inherit;padding:12px 18px 10px;border-bottom:3px solid transparent;text-align:left;transition:background .15s}
+.tab:hover{background:var(--ink-50)}
+.tab:focus-visible{outline:2px solid var(--brand-600);outline-offset:-2px}
+.tab .q{display:block;font-size:10px;font-weight:600;color:var(--ink-400);letter-spacing:.04em}
+.tab .n{display:block;font-size:14px;font-weight:700;color:var(--ink-700)}
+.tab.active{border-bottom-color:var(--brand-600)}
+.tab.active .n{color:var(--brand-800)}
+.tab.active .q{color:var(--brand-600)}
+.topctrl{display:flex;align-items:center;gap:10px;padding:10px 0}
+.periodo{font-size:12px;font-weight:600;color:var(--ink-700);background:var(--ink-100);border:1px solid var(--ink-200);border-radius:8px;padding:7px 12px}
+.btn-comite{font:inherit;font-size:12px;font-weight:700;color:#fff;background:var(--brand-700);border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn-comite:hover{background:var(--brand-800)}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 24px 60px}
+.vista{display:none}.vista.active{display:block}
+.sec-label{font-size:11px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 10px}
+.sec-label:first-child{margin-top:0}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:12px;box-shadow:var(--shadow);padding:16px 18px}
+.grid{display:grid;gap:12px}
+/* ---- NIVEL 1 ---- */
+.row-res{grid-template-columns:1.35fr 1fr 1fr}
+.hero-dias{display:flex;flex-direction:column;justify-content:center}
+.hero-dias .big{font-size:56px;font-weight:800;color:var(--brand-800);line-height:1}
+.hero-dias .lbl{font-size:13px;font-weight:600;color:var(--ink-700);margin-top:6px}
+.hero-dias .sub{font-size:11px;color:var(--ink-500);margin-top:2px}
+.kpi-pend{background:repeating-linear-gradient(-45deg,#fff,#fff 8px,var(--ink-50) 8px,var(--ink-50) 16px)}
+.kpi-pend .t{font-size:12px;font-weight:700;color:var(--ink-700)}
+.kpi-pend .v{font-size:30px;font-weight:800;color:var(--ink-400);margin:4px 0}
+.kpi-pend .need{font-size:11px;color:var(--ambar);font-weight:600;line-height:1.35}
+.row-cult{grid-template-columns:repeat(3,1fr);margin-top:12px}
+.kpi{position:relative}
+.kpi .t{font-size:12px;font-weight:700;color:var(--ink-700)}
+.kpi .v{font-size:30px;font-weight:800;margin:4px 0;color:var(--ink-900)}
+.kpi .meta{font-size:11px;color:var(--ink-500)}
+.pill{position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px}
+.pill.rojo{background:var(--rojo-bg);color:var(--rojo)}
+.pill.ambar{background:var(--ambar-bg);color:var(--ambar)}
+.pill.verde{background:var(--verde-bg);color:var(--brand-800)}
+/* semáforo — elemento firma */
+.semaforo{grid-template-columns:repeat(4,1fr);margin-top:12px}
+.sem{border-radius:12px;padding:16px 18px;border:1px solid;cursor:pointer;transition:transform .12s}
+.sem:hover{transform:translateY(-2px)}
+.sem.rojo{background:var(--rojo-bg);border-color:var(--rojo-bd)}
+.sem.verde{background:var(--verde-bg);border-color:var(--verde-bd)}
+.sem .v{font-size:40px;font-weight:800;line-height:1}
+.sem.rojo .v{color:var(--rojo)}.sem.verde .v{color:var(--brand-800)}
+.sem .t{font-size:12px;font-weight:700;margin-top:6px;color:var(--ink-900)}
+.sem .drill{font-size:10px;font-weight:600;color:var(--ink-500);margin-top:6px}
+.sem-title{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
+.sem-title .sec-label{margin:0}
+.sem-title .regla{font-size:11px;color:var(--rojo);font-weight:600}
+.row-trend{grid-template-columns:1.5fr 1fr;margin-top:12px}
+h3{font-size:13px;font-weight:700;color:var(--ink-900);margin-bottom:10px}
+.pyr-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.pyr-lbl{width:110px;font-size:11px;font-weight:600;color:var(--ink-700);text-align:right}
+.pyr-bar{height:20px;border-radius:4px;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding:0 7px;min-width:26px}
+/* ---- NIVEL 2 ---- */
+.heat table{border-collapse:collapse;width:100%;font-size:12px}
+.heat th{font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;text-align:center}
+.heat th:first-child{text-align:left}
+.heat td{padding:0;text-align:center}
+.heat td.sector{font-size:12px;font-weight:600;color:var(--ink-700);text-align:left;padding:4px 8px;white-space:nowrap}
+.cell{margin:2px;border-radius:5px;padding:8px 0;font-weight:700;font-size:12px}
+.toggle{display:inline-flex;border:1px solid var(--ink-200);border-radius:8px;overflow:hidden}
+.toggle button{border:none;font:inherit;font-size:12px;font-weight:600;padding:7px 14px;background:transparent;color:var(--ink-500);cursor:pointer}
+.toggle button.on{background:var(--brand-600);color:#fff}
+.row-turnos{grid-template-columns:1fr 1fr;margin-top:12px}
+.split{display:flex;gap:10px;margin-top:8px}
+.split>div{flex:1;border-radius:10px;padding:14px;text-align:center}
+.split .a{background:var(--ink-100)}
+.split .b{background:var(--rojo-bg)}
+.split .n{font-size:30px;font-weight:800}
+.split .a .n{color:var(--ink-700)}.split .b .n{color:var(--rojo)}
+.split .l{font-size:11px;font-weight:600;color:var(--ink-500);margin-top:3px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.04em;padding:8px;border-bottom:1px solid var(--ink-200)}
+.tbl td{padding:8px;border-bottom:1px solid var(--ink-100)}
+.tbl td.num{font-weight:700}
+.tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
+.tag.rojo{background:var(--rojo-bg);color:var(--rojo)}
+.tag.verde{background:var(--verde-bg);color:var(--brand-800)}
+.tag.ambar{background:var(--ambar-bg);color:var(--ambar)}
+/* ---- NIVEL 3 ---- */
+.identidad{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:14px}
+.identidad .chip{background:var(--brand-100);border:1px solid var(--brand-200);color:var(--brand-800);font-weight:700;border-radius:999px;padding:6px 14px;font-size:12px}
+.pend-item,.ver-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--ink-100);font-size:12.5px}
+.pend-item .d,.ver-item .d{flex:1;color:var(--ink-700)}
+.pend-item .who,.ver-item .who{font-size:11px;color:var(--ink-500);white-space:nowrap}
+.venc{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.venc.rojo{background:var(--rojo-bg);color:var(--rojo)}
+.venc.ambar{background:var(--ambar-bg);color:var(--ambar)}
+.venc.ok{background:var(--ink-100);color:var(--ink-500)}
+.btn-ver{font:inherit;font-size:11px;font-weight:700;border:1px solid var(--brand-200);background:var(--brand-50);color:var(--brand-800);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.nota-nueva{font-size:11px;color:var(--ink-500);background:var(--ambar-bg);border:1px solid var(--ambar-bd);border-radius:8px;padding:8px 12px;margin-bottom:12px}
+.row3{grid-template-columns:1fr 1fr}
+canvas{max-width:100%}
+@media(max-width:900px){.row-res,.row-cult,.semaforo,.row-trend,.row-turnos,.row3{grid-template-columns:1fr}.tabs{order:3;width:100%}}
+@media print{
+  .mock-banner,.topctrl,.tabs{display:none!important}
+  .vista{display:block!important;page-break-after:always}
+  body{background:#fff}
+  .card,.sem{box-shadow:none}
+  .vista::before{content:attr(data-print-title);display:block;font-size:16px;font-weight:800;margin:10px 0 14px;color:var(--brand-800)}
+}
 </style>
 </head>
 <body>
+<div class="mock-banner"><span><strong>MOCKUP NAVEGABLE · Dashboard EHS v3</strong> — Fase 1 de la propuesta, con datos reales al 14/08/2026</span><span>589 eventos · 500 acciones</span></div>
 <div class="topbar">
-  <a href="index.html">← Inicio</a>
-  <span class="topbar-title">Dashboard EHS</span>
-  <a href="formulario_v2.html">+ Nuevo</a>
+  <div class="brand"><div class="brand-mark">T</div><div><div class="brand-name">Sistema EHS</div><div class="brand-sub">Planta Tornquist</div></div></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" role="tab" onclick="verTab(this,'v1')"><span class="q">¿Estamos seguros?</span><span class="n">Gerencia</span></button>
+    <button class="tab" role="tab" onclick="verTab(this,'v2')"><span class="q">¿Dónde está el problema?</span><span class="n">Jefatura</span></button>
+    <button class="tab" role="tab" onclick="verTab(this,'v3')"><span class="q">¿Qué tengo que hacer hoy?</span><span class="n">Supervisión</span></button>
+  </nav>
+  <div class="topctrl">
+    <span class="periodo">Período: 24 mar – 14 ago 2026</span>
+    <button class="btn-comite" onclick="window.print()">Generar informe del período</button>
+  </div>
 </div>
 
-<div class="container" id="app">
-  <div class="spinner"></div>
+<div class="wrap">
+
+<!-- ═══════════ NIVEL 1 · GERENCIA ═══════════ -->
+<section id="v1" class="vista active" data-print-title="Informe EHS · Nivel Gerencia · corte 14/08/2026">
+  <div class="sec-label">Resultados</div>
+  <div class="grid row-res">
+    <div class="card hero-dias">
+      <div class="big" id="diasSin"></div>
+      <div class="lbl">días sin accidentes registrables (FA + LTA)</div>
+      <div class="sub" id="ultAcc"></div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        <span class="tag verde" title="First Aid / primeros auxilios">FA · 9</span>
+        <span class="tag verde" title="Lost Time Accident / con baja">LTA · 0 confirmados</span>
+        <span class="tag ambar">5 sin clasificar (v1)</span>
+        <span class="tag ambar" title="Near Miss / casi accidente">NM · 16</span>
+      </div>
+    </div>
+    <div class="card kpi-pend">
+      <div class="t">Índice de Frecuencia (IF)</div>
+      <div class="v">—</div>
+      <div class="need">Pendiente de dato: horas hombre trabajadas por mes (Regla 1). Se activa solo, sin desarrollo extra.</div>
+    </div>
+    <div class="card kpi-pend">
+      <div class="t">Índice de Gravedad (IG)</div>
+      <div class="v">—</div>
+      <div class="need">Pendiente de dato: horas hombre + días de baja reales por accidente (Reglas 1 y 2).</div>
+    </div>
+  </div>
+
+  <div class="sec-label">Cultura</div>
+  <div class="grid row-cult">
+    <div class="card kpi"><span class="pill rojo">Brecha</span><div class="t">Ratio observaciones / accidente</div><div class="v">31:1</div><div class="meta">436 obs / 14 accid · objetivo 100:1</div></div>
+    <div class="card kpi"><span class="pill rojo">Brecha</span><div class="t">Reporte de operarios</div><div class="v">2%</div><div class="meta">13 de 589 eventos · objetivo ≥50% · 10 de 109 operarios participaron</div></div>
+    <div class="card kpi"><span class="pill ambar">Etapa 2 de 4</span><div class="t">Curva de Bradley</div><div class="v">Dependiente</div><div class="meta">La seguridad la empuja la supervisión. Falta: ratio ≥50:1 y operarios ≥50%</div></div>
+  </div>
+
+
+  <div class="sec-label">¿De quién depende la cultura?</div>
+  <div class="grid row-cult">
+    <div class="card kpi"><span class="pill rojo">Dependencia alta</span><div class="t">Personas que generan el 50% del reporte</div><div class="v">9</div><div class="meta">Top 3 (Vallejos, Manfredi, Zanotto) generan el 28% · 20 personas generan el 80%</div></div>
+    <div class="card kpi"><span class="pill rojo">Base congelada</span><div class="t">Nuevos reportadores en agosto</div><div class="v">0</div><div class="meta">Julio: 3 · Junio: 14 · El sistema dejó de incorporar gente desde junio</div></div>
+    <div class="card kpi"><span class="pill ambar">En baja</span><div class="t">Base activa del mes</div><div class="v">19</div><div class="meta">personas reportaron en agosto · jul: 34 · jun: 42 · retención jul→ago: 53%</div></div>
+  </div>
+  <div class="grid row-trend">
+    <div class="card"><h3>Concentración del reporte · quién genera los 589 eventos</h3><div style="height:220px"><canvas id="chPareto"></canvas></div><div style="font-size:11px;color:var(--ink-500);margin-top:6px">10 personas concentran el 55% del sistema. Las otras 43 que alguna vez reportaron suman el 45% restante; 103 personas del maestro nunca reportaron.</div></div>
+    <div class="card"><h3>Cobertura por rol · ¿quién participa?</h3><div id="cobRoles"></div><div style="font-size:11px;color:var(--ink-500);margin-top:8px">El liderazgo participa al 100%. La cultura se corta en el nivel supervisor→operario: ahí está el trabajo de los próximos 90 días.</div></div>
+  </div>
+
+  <div class="sem-title"><div class="sec-label">Riesgos abiertos</div><span class="regla">· regla: no hay umbral tolerable — cualquier valor mayor a cero está en rojo</span></div>
+  <div class="grid semaforo">
+    <div class="sem rojo" title="Click: lista de casos"><div class="v">16</div><div class="t">Graves sin acción correctiva</div><div class="drill">3 accidentes con lesión · ver lista →</div></div>
+    <div class="sem rojo"><div class="v">23</div><div class="t">Prioridad Alta sin acción</div><div class="drill">1 de cada 4 eventos Alta · ver lista →</div></div>
+    <div class="sem rojo"><div class="v">39</div><div class="t">Backlog fuera de norma (&gt;14 días)</div><div class="drill">de 75 acciones abiertas · ver lista →</div></div>
+    <div class="sem rojo"><div class="v">4</div><div class="t">Llegadas a pluvial sin verificación</div><div class="drill">de 7 casos con llegada a pluvial · ver lista →</div></div>
+  </div>
+
+  <div class="grid row-trend">
+    <div class="card"><h3>Registrables y casi accidentes por mes · FA / LTA / NM</h3><div style="height:210px"><canvas id="chAcc"></canvas></div><div style="font-size:11px;color:var(--ink-500);margin-top:6px"><strong style="color:var(--rojo)">Ratio NM por accidente: 1,1</strong> — la referencia de pirámide es ~30. Los casi accidentes casi no se reportan: es el predictor más barato y hoy está mudo.</div></div>
+    <div class="card"><h3>Pirámide del período</h3><div id="pyr"></div><div style="font-size:11px;color:var(--ink-500);margin-top:8px">Taxonomía estándar: LTA (con baja) · FA (primeros auxilios) · NM (near miss). El formulario ya la captura en los subtipos; solo falta reclasificar los 5 migrados.</div></div>
+  </div>
+</section>
+
+<!-- ═══════════ NIVEL 2 · JEFATURA ═══════════ -->
+<section id="v2" class="vista" data-print-title="Informe EHS · Nivel Jefatura · corte 14/08/2026">
+  <div class="sec-label" style="display:flex;justify-content:space-between;align-items:center">
+    <span>Mapa de calor · sector × mes</span>
+    <span class="toggle"><button class="on" onclick="setHeat(this,'graves')">Graves (acc+inc)</button><button onclick="setHeat(this,'todos')">Todos los eventos</button></span>
+  </div>
+  <div class="card heat"><table id="heatTbl"></table>
+    <div style="font-size:11px;color:var(--ink-500);margin-top:10px">La columna "tasa por persona" se habilita al completar la dotación por sector (Regla 3 — hoja Maestro_Validacion ya entregada).</div>
+  </div>
+
+  <div class="grid row-turnos">
+    <div class="card"><h3>La ventana ciega: turnos</h3>
+      <div class="split"><div class="a"><div class="n">72%</div><div class="l">del reporte es del turno central</div></div><div class="b"><div class="n">86%</div><div class="l">de los accidentes son de turnos rotativos</div></div></div>
+      <div class="split"><div class="a"><div class="n">9 de 14</div><div class="l">accidentes entre 18:00 y 04:00</div></div><div class="b"><div class="n">−75%</div><div class="l">cae el reporte los fines de semana</div></div></div>
+    </div>
+    <div class="card"><h3>Integridad del ciclo de acciones</h3>
+      <table class="tbl">
+        <tr><th>Indicador</th><th>Hoy</th><th>Objetivo</th><th></th></tr>
+        <tr><td>Cierres validados por otra persona</td><td class="num">15%</td><td>100% en graves/Alta</td><td><span class="tag rojo">Brecha</span></td></tr>
+        <tr><td>Cierres con foto de evidencia</td><td class="num">0%</td><td>100%</td><td><span class="tag rojo">Brecha</span></td></tr>
+        <tr><td>Acciones con fecha de vencimiento</td><td class="num">84%</td><td>100% (campo obligatorio)</td><td><span class="tag ambar">79 sin fecha</span></td></tr>
+        <tr><td>Cierre dentro de 14 días</td><td class="num">72%</td><td>≥85%</td><td><span class="tag ambar">Cerca</span></td></tr>
+        <tr><td>Concentración en una persona</td><td class="num">32%</td><td>&lt;20%</td><td><span class="tag rojo">Cuello de botella</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+
+  <div class="sec-label" style="margin-top:22px">Adopción · ¿la base crece o se congeló?</div>
+  <div class="grid row-turnos">
+    <div class="card"><h3>Reportadores únicos y nuevos por mes</h3><div style="height:200px"><canvas id="chAdop"></canvas></div><div style="font-size:11px;color:var(--ink-500);margin-top:6px">La línea de nuevos en cero es la señal de alarma: sin incorporación, la base activa solo puede achicarse.</div></div>
+    <div class="card"><h3>Lectura y palanca</h3>
+      <table class="tbl">
+        <tr><th>Señal</th><th>Valor</th><th></th></tr>
+        <tr><td>Nuevos reportadores (ago)</td><td class="num">0</td><td><span class="tag rojo">Congelado</span></td></tr>
+        <tr><td>Retención mes a mes (jul→ago)</td><td class="num">53%</td><td><span class="tag ambar">Se pierde la mitad</span></td></tr>
+        <tr><td>Operarios que alguna vez reportaron</td><td class="num">10 de 109</td><td><span class="tag rojo">9%</span></td></tr>
+        <tr><td>Personas del maestro sin ningún reporte</td><td class="num">103</td><td><span class="tag rojo">66%</span></td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Meta sugerida para el trimestre: ≥5 reportadores nuevos por mes y retención ≥70%, medido acá todos los meses.</div>
+    </div>
+  </div>
+  <div class="grid row-turnos">
+    <div class="card"><h3>Ambiente · derrames por mes</h3><div style="height:190px"><canvas id="chDerr"></canvas></div></div>
+    <div class="card"><h3>Ambiente · llegadas a pluvial / cuerpo de agua</h3>
+      <div class="split"><div class="b"><div class="n">7</div><div class="l">casos en el período</div></div><div class="b"><div class="n">4</div><div class="l">sin verificación de contención</div></div><div class="a"><div class="n">32</div><div class="l">impactos a suelo</div></div></div>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:10px">Cada llegada a pluvial es una línea propia del comité hasta verificar la contención.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ NIVEL 3 · SUPERVISIÓN ═══════════ -->
+<section id="v3" class="vista" data-print-title="Informe EHS · Nivel Supervisión · corte 14/08/2026">
+  <div class="identidad"><span style="font-size:12px;color:var(--ink-500)">Soy:</span><span class="chip">ZANOTTO AGUSTIN · #104377</span><span style="font-size:11px;color:var(--ink-500)">(cambiar)</span></div>
+  <div class="grid row3">
+    <div class="card"><h3>Mis pendientes</h3><div id="pendList"></div></div>
+    <div class="card"><h3>Cola de verificación <span class="tag ambar" style="margin-left:6px">NUEVO</span></h3>
+      <div class="nota-nueva">Acciones de eventos graves o prioridad Alta que su responsable marcó como cerradas. Pasan a "Cerrada" cuando otra persona las valida con foto de evidencia.</div>
+      <div id="verList"></div>
+    </div>
+  </div>
+  <div class="grid row3" style="margin-top:12px">
+    <div class="card"><h3>Participación de mi equipo</h3>
+      <table class="tbl"><tr><th>Universo</th><th>Cumplieron objetivo</th><th></th></tr>
+      <tr><td>Operarios (semana, ≥1 reporte)</td><td class="num">4 de 109</td><td><span class="tag rojo">4%</span></td></tr>
+      <tr><td>Supervisión + jefatura</td><td class="num">19 de 47</td><td><span class="tag ambar">40%</span></td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Tabla completa por persona: ya existe en el dashboard actual, se conserva en esta pestaña.</div>
+    </div>
+    <div class="card"><h3>Eventos de mi sector (Pulper)</h3>
+      <table class="tbl"><tr><th>Este mes</th><th>Acumulado</th><th>Graves sin acción</th></tr>
+      <tr><td class="num">6 eventos</td><td class="num">73 eventos</td><td><span class="tag rojo">2 pendientes</span></td></tr></table>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Tabla de eventos completa con filtros y modales: se conserva de la versión actual, pre-filtrada por el sector de la identidad.</div>
+    </div>
+  </div>
+</section>
 </div>
 
 <script>
-// =============================================
-var APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwMoQM2DkE0FNwWKQwfJNluPqc0pg2TKv6MQs0tYUFpRSb3fk8E6vxtePJ0SKs0mkY/exec";
-// =============================================
-
-var TIPO_META = {
-  "OBSERVACION":  { icon:"👁", label:"Observación", className:"observation" },
-  "CONVERSACION": { icon:"💬", label:"Conversación", className:"conversation" },
-  "INCIDENTE":    { icon:"⚠️", label:"Incidente", className:"incident" },
-  "ACCIDENTE":    { icon:"🔴", label:"Accidente", className:"accident" },
-  "AMBIENTE":     { icon:"🌿", label:"Ambiente", className:"environment" }
-};
-
-var EVENTOS = [];
-var ACCIONES = [];
-var MAESTROS = { personal:[], sectores:[], responsables:[] };
-var PERSONAL_BY_LEGAJO = {};
-var PERSONAL_BY_NOMBRE = {};
-
-var FILTERS = { tipo:"Todos", sector:"Todos", prioridad:"Todos", estado:"Todos" };
-
-// Estado de la sección Participación del equipo (BBS DSS+)
-// Periodo, universo, orden y filtro de cumplimiento son seleccionables
-var PARTICIPACION = {
-  periodo: "semana",       // "semana" | "mes" | "trimestre" | "custom"
-  desde: "",               // YYYY-MM-DD si periodo === "custom"
-  hasta: "",               // YYYY-MM-DD si periodo === "custom"
-  universo: "todos",       // "operarios" | "supervision" | "todos"
-  orden: "no_cumplio",     // "no_cumplio" | "total_desc" | "total_asc" | "alfabetico"
-  filtroCumplimiento: "todos", // "todos" | "cumplio" | "no_cumplio"
-  expandido: false         // si false, muestra solo top 15 + botón "ver más"
-};
-
-// Objetivo de reportes según período. Base: 1 / persona / semana.
-var OBJETIVOS = {
-  semana: 1,
-  mes: 4,        // ~4 semanas
-  trimestre: 12  // ~12 semanas
-};
-var MODAL_EVENT = null;
-
-// ─────────────────────────────────────────────────────
-// PERÍODO GLOBAL — afecta a KPIs Cultura BBS, Target y Bradley
-// ─────────────────────────────────────────────────────
-// preset: "semana" | "mes" | "mesEspecifico" | "custom"
-// Si preset === "mesEspecifico", se usa mesYYYYMM (ej. "2026-04")
-// Si preset === "custom", se usan desde/hasta (YYYY-MM-DD)
-var PERIODO_GLOBAL = { preset: "mes", desde: "", hasta: "", mesYYYYMM: "" };
-
-try {
-  var savedPer = localStorage.getItem("ehs_periodo_global");
-  if (savedPer) {
-    var pp = JSON.parse(savedPer);
-    var presetGuardado = pp.preset || "mes";
-    // Migración: si el preset guardado era "30d" (ya removido), pasar a "mes"
-    if (presetGuardado === "30d") presetGuardado = "mes";
-    PERIODO_GLOBAL.preset = presetGuardado;
-    PERIODO_GLOBAL.desde = pp.desde || "";
-    PERIODO_GLOBAL.hasta = pp.hasta || "";
-    PERIODO_GLOBAL.mesYYYYMM = pp.mesYYYYMM || "";
-  }
-} catch(e) { /* ignore */ }
-
-function guardarPeriodo() {
-  try { localStorage.setItem("ehs_periodo_global", JSON.stringify(PERIODO_GLOBAL)); } catch(e) {}
+const DATA = {"dias_sin_acc": 25, "ult_acc": "2026-07-21", "acc_por_mes": [1, 2, 2, 4, 5, 0], "ev_por_mes": [3, 39, 128, 206, 153, 60], "meses": ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"], "heat_graves": {"Mesas-Prensas": [0, 0, 0, 5, 3, 0], "Pulper": [0, 0, 1, 4, 4, 1], "Estucado": [0, 0, 0, 4, 0, 0], "Planta de Pasta": [0, 1, 1, 2, 0, 0], "Alistado": [0, 0, 1, 2, 0, 0], "Secado": [0, 0, 0, 1, 3, 0], "Efluente Primario - Hidropolis": [0, 0, 0, 1, 1, 0], "Cellier": [1, 0, 0, 0, 0, 0], "Taller Mecánico": [0, 0, 0, 1, 0, 0], "Caldera": [0, 0, 0, 0, 0, 0]}, "heat_todos": {"Mesas-Prensas": [0, 4, 19, 37, 23, 9], "Pulper": [0, 1, 18, 27, 20, 7], "Estucado": [0, 3, 7, 27, 19, 16], "Planta de Pasta": [0, 6, 12, 16, 10, 7], "Alistado": [0, 0, 12, 23, 11, 1], "Secado": [0, 2, 6, 6, 18, 1], "Efluente Primario - Hidropolis": [0, 3, 5, 5, 9, 1], "Cellier": [1, 1, 10, 5, 2, 3], "Taller Mecánico": [0, 7, 1, 8, 6, 0], "Caldera": [0, 1, 7, 5, 8, 1]}, "pluvial_total": 7, "pluvial_sin_verif": 4, "pendientes": [{"d": "Seleccionar, ordenar y limpiar todo el sector para disminuir los accidentes.", "r": "LABAT NORBERTO ANDRES", "v": -43, "e": "En proceso"}, {"d": "Colocación de dispositivo de seguridad que permite enclavamiento de la bajada pu", "r": "ZANOTTO AGUSTIN", "v": -40, "e": "Abierta"}, {"d": "Se saco la barra con el puente y lingas", "r": "ZANOTTO AGUSTIN", "v": -23, "e": "En proceso"}, {"d": "Esas 2 carretillas se usan en ese sector??\nDe ser asi y ese es el sector se tien", "r": "VALLEJOS JOSE LUIS", "v": -23, "e": "En proceso"}, {"d": "reparar", "r": "HEIM DAMIAN", "v": -17, "e": "En proceso"}, {"d": "Colocar luminaria bajo del puente de grua", "r": "URRIAGA MARTIN", "v": -5, "e": "Abierta"}], "cola_verif": [{"d": "Empezar a dosificar antiespumante", "r": "ISSALY IGNACIO", "t": "OBSERVACION"}, {"d": "Se pide al rpoveedor que analice otro lugar por donde pasa el caño de escape, en", "r": "ZANOTTO AGUSTIN", "t": "INCIDENTE"}, {"d": "Caolocar contenedores vacios ", "r": "VALLEJOS JOSE LUIS", "t": "AMBIENTE"}, {"d": "Soldar baranda de seguridad", "r": "VALLEJOS JOSE LUIS", "t": "OBSERVACION"}, {"d": "reparar la pared con durlock nuevo.", "r": "VALLEJOS JOSE LUIS", "t": "INCIDENTE"}], "derrames_mes": [0, 0, 3, 15, 17, 1]};
+function verTab(btn, id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.vista').forEach(v=>v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
 }
-
-function setPeriodoPreset(preset) {
-  PERIODO_GLOBAL.preset = preset;
-  if (preset !== "custom") {
-    PERIODO_GLOBAL.desde = "";
-    PERIODO_GLOBAL.hasta = "";
-  }
-  if (preset !== "mesEspecifico") {
-    PERIODO_GLOBAL.mesYYYYMM = "";
-  }
-  guardarPeriodo();
-  render();
-}
-
-function setPeriodoCustom(desde, hasta) {
-  PERIODO_GLOBAL.preset = "custom";
-  if (desde !== undefined) PERIODO_GLOBAL.desde = desde;
-  if (hasta !== undefined) PERIODO_GLOBAL.hasta = hasta;
-  guardarPeriodo();
-  render();
-}
-
-function setPeriodoMesEspecifico(mesYYYYMM) {
-  PERIODO_GLOBAL.preset = "mesEspecifico";
-  PERIODO_GLOBAL.mesYYYYMM = mesYYYYMM;
-  guardarPeriodo();
-  render();
-}
-
-// Calcula el rango {desde, hasta} en string YYYY-MM-DD según preset
-function getRangoPeriodo() {
-  var hoy = new Date();
-  hoy.setHours(0,0,0,0);
-  function fmtFecha(d) {
-    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-  }
-  var nombresMes = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  var hastaStr = fmtFecha(hoy);
-  var desdeStr = "";
-  var label = "";
-
-  if (PERIODO_GLOBAL.preset === "semana") {
-    // Lunes de esta semana
-    var d = new Date(hoy);
-    var dow = d.getDay();
-    var diff = (dow === 0 ? 6 : dow - 1);
-    d.setDate(d.getDate() - diff);
-    desdeStr = fmtFecha(d);
-    label = "Esta semana";
-  } else if (PERIODO_GLOBAL.preset === "mes") {
-    // Mes actual completo (día 1 hasta hoy)
-    var dm = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    desdeStr = fmtFecha(dm);
-    label = nombresMes[hoy.getMonth()] + " " + hoy.getFullYear();
-  } else if (PERIODO_GLOBAL.preset === "mesEspecifico") {
-    // Mes histórico elegido por el usuario
-    var mesSel = PERIODO_GLOBAL.mesYYYYMM || (hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0"));
-    var partes = mesSel.split("-");
-    var año = parseInt(partes[0], 10);
-    var mes = parseInt(partes[1], 10) - 1;
-    var inicioMes = new Date(año, mes, 1);
-    var finMes = new Date(año, mes + 1, 0);
-    desdeStr = fmtFecha(inicioMes);
-    hastaStr = fmtFecha(finMes);
-    label = nombresMes[mes] + " " + año;
-  } else if (PERIODO_GLOBAL.preset === "custom") {
-    desdeStr = PERIODO_GLOBAL.desde || fmtFecha(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
-    hastaStr = PERIODO_GLOBAL.hasta || fmtFecha(hoy);
-    label = "Del " + formatDateBR(desdeStr) + " al " + formatDateBR(hastaStr);
-  } else {
-    // Fallback de seguridad
-    var dm2 = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    desdeStr = fmtFecha(dm2);
-    label = nombresMes[hoy.getMonth()] + " " + hoy.getFullYear();
-  }
-
-  // Cantidad de días del rango (inclusive)
-  var dDesde = new Date(desdeStr + "T00:00:00");
-  var dHasta = new Date(hastaStr + "T00:00:00");
-  var dias = Math.floor((dHasta - dDesde) / (1000*60*60*24)) + 1;
-
-  return { desde: desdeStr, hasta: hastaStr, label: label, dias: dias };
-}
-
-function formatDateBR(s) {
-  if (!s) return "";
-  var parts = String(s).substring(0,10).split("-");
-  if (parts.length !== 3) return s;
-  return parts[2] + "/" + parts[1] + "/" + parts[0];
-}
-
-// Estado de "Mis Pendientes" — la persona elige su identidad una sola vez,
-// queda guardada en localStorage del navegador para próximas visitas.
-var MIS_PENDIENTES = {
-  identidad_legajo: "",
-  identidad_nombre: ""
-};
-
-// Cargar identidad guardada al iniciar
-try {
-  var savedId = localStorage.getItem("ehs_identidad_v2");
-  if (savedId) {
-    var parsed = JSON.parse(savedId);
-    MIS_PENDIENTES.identidad_legajo = parsed.legajo || "";
-    MIS_PENDIENTES.identidad_nombre = parsed.nombre || "";
-  }
-} catch(e) { /* ignore */ }
-
-function guardarIdentidad(legajo, nombre) {
-  MIS_PENDIENTES.identidad_legajo = String(legajo || "");
-  MIS_PENDIENTES.identidad_nombre = String(nombre || "");
-  try {
-    localStorage.setItem("ehs_identidad_v2", JSON.stringify({
-      legajo: MIS_PENDIENTES.identidad_legajo,
-      nombre: MIS_PENDIENTES.identidad_nombre
-    }));
-  } catch(e) { /* localStorage puede estar deshabilitado */ }
-  render();
-}
-
-function limpiarIdentidad() {
-  MIS_PENDIENTES.identidad_legajo = "";
-  MIS_PENDIENTES.identidad_nombre = "";
-  try { localStorage.removeItem("ehs_identidad_v2"); } catch(e) {}
-  render();
-}
-
-// Escapa HTML para prevenir XSS al inyectar texto del usuario en innerHTML
-function escapeHTML(s) {
-  if (s === null || s === undefined) return "";
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-// Normaliza nombres para deduplicación: mayúsculas, sin acentos, palabras ordenadas
-// alfabéticamente para tolerar APELLIDO NOMBRE vs NOMBRE APELLIDO.
-// "José Luis Vallejos", "VALLEJOS JOSE LUIS" → ambos "JOSE LUIS VALLEJOS"
-function normalizarNombrePersona(nombre) {
-  if (!nombre) return "";
-  var limpio = String(nombre)
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase()
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!limpio) return "";
-  var palabras = limpio.split(" ").filter(function(p){ return p.length > 0; });
-  palabras.sort();
-  return palabras.join(" ");
-}
-
-function loadData() {
-  fetch(APPS_SCRIPT_URL + "?tipo=all")
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      EVENTOS = data.eventos || [];
-      ACCIONES = data.acciones || [];
-      MAESTROS = data.maestros || MAESTROS;
-      (MAESTROS.personal||[]).forEach(function(p){
-        if(p.legajo) PERSONAL_BY_LEGAJO[String(p.legajo)] = p.nombre;
-        if(p.nombre) PERSONAL_BY_NOMBRE[String(p.nombre).toUpperCase()] = p.legajo;
-      });
-      render();
-    })
-    .catch(function(err){
-      document.getElementById("app").innerHTML =
-        '<div class="empty">Error al cargar datos: '+err.message+
-        '<br><br><button class="btn btn-primary" onclick="loadData()">Reintentar</button></div>';
-    });
-}
-
-function applyFilters(eventos) {
-  return eventos.filter(function(e){
-    if (FILTERS.tipo !== "Todos" && e.tipo !== FILTERS.tipo) return false;
-    if (FILTERS.sector !== "Todos" && e.sector !== FILTERS.sector) return false;
-    if (FILTERS.prioridad !== "Todos" && e.prioridad !== FILTERS.prioridad) return false;
-    if (FILTERS.estado !== "Todos" && e.estado !== FILTERS.estado) return false;
-    return true;
+// Nivel 1
+document.getElementById('diasSin').textContent = DATA.dias_sin_acc;
+document.getElementById('ultAcc').textContent = 'Último: '+DATA.ult_acc+' (Secado, FA). El contador de días sin LTA se activa al clasificar los 5 accidentes migrados de la v1.';
+const MES_LBL = ['Mar','Abr','May','Jun','Jul','Ago*'];
+const LTA = {"fa_mes": [0, 0, 0, 4, 5, 0], "sc_mes": [1, 2, 2, 0, 0, 0], "nm_mes": [0, 0, 0, 11, 5, 0], "fa": 9, "sc": 5, "nm": 16, "otros_inc": 20};
+new Chart(document.getElementById('chAcc'),{type:'bar',data:{labels:MES_LBL,datasets:[{label:'FA (primeros auxilios)',data:LTA.fa_mes,backgroundColor:'#C97A12',stack:'a',borderRadius:3},{label:'Sin clasificar (v1)',data:LTA.sc_mes,backgroundColor:'#94A3B8',stack:'a',borderRadius:3},{label:'LTA (con baja)',data:[0,0,0,0,0,0],backgroundColor:'#B8402A',stack:'a',borderRadius:3},{label:'NM (casi accidentes)',data:LTA.nm_mes,type:'line',borderColor:'#334155',borderDash:[5,4],tension:.3,pointRadius:4}]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:10}}}},scales:{y:{beginAtZero:true,ticks:{stepSize:2}},x:{stacked:true}},maintainAspectRatio:false}});
+const PYR=[['Observaciones',436,'#334155'],['Ambiente',67,'#548235'],['Conversaciones',36,'#94A3B8'],['Inc. materiales',20,'#94A3B8'],['NM · casi accid.',16,'#C97A12'],['FA · prim. auxilios',9,'#D85A30'],['LTA · con baja',0,'#B8402A']];
+document.getElementById('pyr').innerHTML = PYR.map(p=>`<div class="pyr-row"><div class="pyr-lbl">${p[0]}</div><div class="pyr-bar" style="width:${Math.max(7,p[1]/436*100)}%;background:${p[2]};${p[1]===0?'opacity:.45':''}">${p[1]===0?'0*':p[1]}</div></div>`).join('') + '<div style="font-size:10px;color:var(--ink-500);margin-top:4px">* 0 confirmados · 5 accidentes de la v1 pendientes de clasificar con/sin baja</div>';
+// Nivel 2 heatmap
+function heatColor(v,max){ if(v===0) return '#F1F5F9'; const t=v/max; if(t<0.34) return '#FDE9C8'; if(t<0.67) return '#F5B461'; return '#D85A30'; }
+function renderHeat(modo){
+  const src = modo==='graves' ? DATA.heat_graves : DATA.heat_todos;
+  const max = Math.max(...Object.values(src).flat(),1);
+  let h='<tr><th>Sector</th>'+MES_LBL.map(m=>'<th>'+m+'</th>').join('')+'</tr>';
+  Object.keys(src).forEach(s=>{
+    h+='<tr><td class="sector">'+s+'</td>'+src[s].map(v=>'<td><div class="cell" style="background:'+heatColor(v,max)+';color:'+(v/max>0.66?'#fff':'#334155')+'">'+(v||'·')+'</div></td>').join('')+'</tr>';
   });
+  document.getElementById('heatTbl').innerHTML=h;
 }
-
-function setFilter(key, value) {
-  FILTERS[key] = value;
-  render();
-}
-
-// =============================================
-// LEADING KPIs (BBS / DSS+ Bradley Curve)
-// =============================================
-// Detecta si un legajo es supervisor (figura en tabla Responsables)
-// Normaliza un nombre para comparar: mayúsculas, sin tildes, ordenado alfabéticamente
-// Así "Nicolás Rubio" y "RUBIO NICOLAS DAVID" pueden matchear por tokens compartidos
-function normalizarNombre(nombre) {
-  if (!nombre) return "";
-  return String(nombre)
-    .toUpperCase()
-    .replace(/[ÁÀÄÂ]/g, "A").replace(/[ÉÈËÊ]/g, "E").replace(/[ÍÌÏÎ]/g, "I")
-    .replace(/[ÓÒÖÔ]/g, "O").replace(/[ÚÙÜÛ]/g, "U").replace(/Ñ/g, "N")
-    .replace(/[^A-Z\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// Devuelve los tokens (palabras) de un nombre como Set, para comparar por intersección
-function tokensNombre(nombre) {
-  var norm = normalizarNombre(nombre);
-  if (!norm) return [];
-  return norm.split(" ").filter(function(t){ return t.length >= 3; }); // ignorar iniciales sueltas
-}
-
-// Dos nombres "matchean" si comparten al menos 2 tokens significativos (apellido + nombre)
-// o si uno tiene pocos tokens (ej "A. Zanotto") y comparten el apellido
-function nombresCoincidenFlexible(n1, n2) {
-  var t1 = tokensNombre(n1);
-  var t2 = tokensNombre(n2);
-  if (t1.length === 0 || t2.length === 0) return false;
-  var comunes = t1.filter(function(t){ return t2.indexOf(t) !== -1; });
-
-  // 2+ tokens en común = misma persona (ej: RUBIO + NICOLAS)
-  if (comunes.length >= 2) return true;
-
-  // Si alguno de los nombres tiene 1 solo token significativo (ej "A. Zanotto" → ["ZANOTTO"]),
-  // permitimos match con 1 token compartido (el apellido)
-  if ((t1.length === 1 || t2.length === 1) && comunes.length >= 1) return true;
-
-  return false;
-}
-
-function esSupervisor(legajo, nombre) {
-  if (!legajo && !nombre) return false;
-
-  // 1. Buscar en tabla RESPONSABLES por legajo exacto
-  var enResponsables = (MAESTROS.responsables||[]).some(function(r){
-    if (legajo && r.legajo && String(r.legajo) === String(legajo)) return true;
-    // 2. Match por nombre flexible (tolera distinto orden/formato)
-    if (nombre && r.nombre && nombresCoincidenFlexible(r.nombre, nombre)) return true;
-    return false;
-  });
-  if (enResponsables) return true;
-
-  // 3. Buscar en PERSONAL por legajo y revisar si su rol NO es operario
-  if (legajo) {
-    var persona = (MAESTROS.personal||[]).filter(function(p){
-      return String(p.legajo) === String(legajo);
-    })[0];
-    if (persona && persona.rol) {
-      var rol = String(persona.rol).toLowerCase().trim();
-      if (rol && rol !== "operario" && rol !== "") return true;
-    }
-  }
-
-  // 4. Buscar en PERSONAL por nombre flexible y revisar rol
-  if (nombre) {
-    var personaPorNombre = (MAESTROS.personal||[]).filter(function(p){
-      return p.nombre && nombresCoincidenFlexible(p.nombre, nombre);
-    })[0];
-    if (personaPorNombre && personaPorNombre.rol) {
-      var rol2 = String(personaPorNombre.rol).toLowerCase().trim();
-      if (rol2 && rol2 !== "operario" && rol2 !== "") return true;
-    }
-  }
-
-  return false;
-}
-
-function inLast30Days(fechaStr) {
-  if (!fechaStr) return false;
-  // Comparación como strings YYYY-MM-DD para evitar problemas de timezone
-  // (ARG es UTC-3; new Date('2026-04-26') interpreta UTC, daría off-by-one al filo del día)
-  var fechaEvento = String(fechaStr).substring(0,10);
-  var hoy = new Date();
-  var hace30 = new Date(hoy.getTime() - 30*24*60*60*1000);
-  // Construimos string YYYY-MM-DD usando getFullYear/Month/Date locales
-  var hoyStr = hoy.getFullYear() + "-" + String(hoy.getMonth()+1).padStart(2,"0") + "-" + String(hoy.getDate()).padStart(2,"0");
-  var hace30Str = hace30.getFullYear() + "-" + String(hace30.getMonth()+1).padStart(2,"0") + "-" + String(hace30.getDate()).padStart(2,"0");
-  return fechaEvento >= hace30Str && fechaEvento <= hoyStr;
-}
-
-// Verifica si una fecha está en el rango global actual
-function inPeriodoGlobal(fechaStr) {
-  if (!fechaStr) return false;
-  var rango = getRangoPeriodo();
-  var f = String(fechaStr).substring(0,10);
-  return f >= rango.desde && f <= rango.hasta;
-}
-
-function calculateLeadingKPIs() {
-  // Universo: rango global (configurable). Antes era fijo "últimos 30 días".
-  var rango = getRangoPeriodo();
-  var enRango = EVENTOS.filter(function(e){
-    var f = String(e.fecha_evento||"").substring(0,10);
-    return f >= rango.desde && f <= rango.hasta;
-  });
-  var observacionesMes = enRango.filter(function(e){ return e.tipo === "OBSERVACION"; });
-  var accidentesMes = enRango.filter(function(e){ return e.tipo === "ACCIDENTE"; });
-
-  // KPI 1 — % cargado por operarios (no por jefes/supervisores)
-  // Si no hay reportes, es 0. Si todos son de supervisores, también es 0 (correcto).
-  var totalReportes = enRango.length;
-  var deOperarios = enRango.filter(function(e){
-    return !esSupervisor(e.reportado_por_legajo, e.reportado_por_nombre);
-  }).length;
-  var pctOperarios = totalReportes > 0 ? Math.round((deOperarios / totalReportes) * 100) : 0;
-
-  // KPI 2 — Ratio cultura: observaciones / accidentes
-  var ratioCultura = accidentesMes.length > 0
-    ? Math.round((observacionesMes.length / accidentesMes.length) * 10) / 10
-    : (observacionesMes.length > 0 ? "∞" : 0);
-
-  // KPI 3 — Observaciones por trabajador (denominador = personal del convenio)
-  var totalPersonal = (MAESTROS.personal||[]).length;
-  var obsPorTrabajador = totalPersonal > 0
-    ? Math.round((observacionesMes.length / totalPersonal) * 100) / 100
-    : 0;
-
-  // KPI 4 — % acciones cerradas en término
-  var accionesCerradas = ACCIONES.filter(function(a){ return a.estado === "Cerrada"; });
-  var enTermino = accionesCerradas.filter(function(a){
-    if (!a.fecha_vencimiento || !a.fecha_cierre) return false;
-    return String(a.fecha_cierre).substring(0,10) <= String(a.fecha_vencimiento).substring(0,10);
-  }).length;
-  var pctEnTermino = accionesCerradas.length > 0
-    ? Math.round((enTermino / accionesCerradas.length) * 100)
-    : null;
-
-  // KPI 5 — Tiempo promedio observación → cierre
-  // Buscamos acciones cerradas que provengan de observaciones, calculamos días
-  // Usamos Date solo para diferencia, parseando con T00:00:00 explícito para fijar timezone local
-  var tiempos = [];
-  ACCIONES.forEach(function(a){
-    if (a.estado !== "Cerrada" || !a.fecha_creacion || !a.fecha_cierre) return;
-    var ev = EVENTOS.filter(function(e){return String(e.evento_id) === String(a.evento_id);})[0];
-    if (!ev || ev.tipo !== "OBSERVACION") return;
-    // Parsear con T00:00:00 fuerza interpretación como hora local, no UTC
-    var creacionStr = String(a.fecha_creacion).substring(0,10);
-    var cierreStr = String(a.fecha_cierre).substring(0,10);
-    var creacion = new Date(creacionStr + "T00:00:00");
-    var cierre = new Date(cierreStr + "T00:00:00");
-    var dias = Math.floor((cierre - creacion) / (1000*60*60*24));
-    if (dias >= 0) tiempos.push(dias);
-  });
-  var tiempoPromedio = tiempos.length > 0
-    ? Math.round(tiempos.reduce(function(a,b){return a+b;}, 0) / tiempos.length)
-    : null;
-
-  // Contar conversaciones del mes para Bradley
-  var conversacionesMes = enRango.filter(function(e){ return e.tipo === "CONVERSACION"; }).length;
-
-  return {
-    pctOperarios: { value: pctOperarios, target: 50, unit: "%", detalle: deOperarios + " de " + totalReportes + " reportes" },
-    ratioCultura: { value: ratioCultura, target: 100, unit: ":1", detalle: observacionesMes.length + " obs / " + accidentesMes.length + " accid" },
-    obsPorTrabajador: { value: obsPorTrabajador, target: 1, unit: "" },
-    pctEnTermino: { value: pctEnTermino, target: 80, unit: "%" },
-    tiempoPromedio: { value: tiempoPromedio, target: 14, unit: " días", invert: true }, // menos es mejor
-    conversacionesMes: conversacionesMes
-  };
-}
-
-function kpiStatus(value, target, invert) {
-  if (value === null || value === undefined) return "gray";
-  if (value === "∞") return "green";
-  var v = Number(value);
-  if (isNaN(v)) return "gray";
-  if (invert) {
-    // Tiempo: menor es mejor
-    if (v <= target) return "green";
-    if (v <= target * 1.5) return "amber";
-    return "red";
-  }
-  if (v >= target) return "green";
-  if (v >= target * 0.6) return "amber";
-  return "red";
-}
-
-function kpiStatusLabel(status) {
-  if (status === "green") return "✓ En target";
-  if (status === "amber") return "Cerca";
-  if (status === "red") return "Brecha";
-  return "Sin datos";
-}
-
-// =============================================
-// MIS PENDIENTES — Sección de acciones del usuario actual
-// =============================================
-function diasAlVenc(fechaVenc) {
-  if (!fechaVenc) return null;
-  var vencStr = String(fechaVenc).substring(0,10);
-  var venc = new Date(vencStr + "T00:00:00");
-  var hoy = new Date();
-  hoy.setHours(0,0,0,0);
-  return Math.floor((venc - hoy) / (1000*60*60*24));
-}
-
-function obtenerMisAcciones() {
-  // Match flexible: por legajo Y por nombre (case-insensitive)
-  var legajoYo = String(MIS_PENDIENTES.identidad_legajo || "").trim();
-  var nombreYo = String(MIS_PENDIENTES.identidad_nombre || "").trim().toUpperCase();
-  if (!legajoYo && !nombreYo) return [];
-
-  return (ACCIONES || []).filter(function(a){
-    if (a.estado === "Cerrada") return false;
-    var legAcc = String(a.responsable_legajo || "").trim();
-    var nomAcc = String(a.responsable_nombre || "").trim().toUpperCase();
-    // Match por legajo exacto
-    if (legajoYo && legAcc && legajoYo === legAcc) return true;
-    // Match por nombre (case insensitive)
-    if (nombreYo && nomAcc && nombreYo === nomAcc) return true;
-    return false;
-  });
-}
-
-function renderMisPendientes() {
-  var html = '<div class="mp-section">';
-  html += '<div class="mp-header">';
-  html += '<div class="mp-title">📌 Mis pendientes</div>';
-
-  if (MIS_PENDIENTES.identidad_nombre) {
-    html += '<div class="mp-identity">';
-    html += '<span class="mp-identity-label">Soy:</span>';
-    html += '<strong style="font-size:13px;">'+escapeHTML(MIS_PENDIENTES.identidad_nombre)+'</strong>';
-    if (MIS_PENDIENTES.identidad_legajo) {
-      html += '<code style="font-size:11px;color:var(--t2);">#'+escapeHTML(MIS_PENDIENTES.identidad_legajo)+'</code>';
-    }
-    html += '<button class="mp-identity-clear" onclick="limpiarIdentidad()">Cambiar</button>';
-    html += '</div>';
-  }
-
-  html += '</div>'; // header
-
-  // Si no eligió identidad, mostrar selector
-  if (!MIS_PENDIENTES.identidad_nombre) {
-    html += '<div class="mp-empty-state">';
-    html += '<strong>¿Quién sos?</strong><br><br>';
-    html += 'Elegite de la lista para ver las acciones correctivas que tenés asignadas. Tu elección se guarda en este navegador.<br><br>';
-    html += '<div style="display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;max-width:500px;margin:0 auto;">';
-    html += '<input type="text" id="mp_search" class="mp-identity-input" placeholder="Buscar nombre o legajo..." oninput="filtrarIdentidad(this.value)" autocomplete="off">';
-    html += '<select id="mp_select" class="mp-identity-input" size="6" onchange="elegirIdentidad()" style="min-width:280px;">';
-    // Combinar Responsables + Personal
-    var personas = [];
-    (MAESTROS.responsables||[]).forEach(function(r){
-      personas.push({legajo: r.legajo||"", nombre: r.nombre||"", esResp: true, rol: r.rol||""});
-    });
-    (MAESTROS.personal||[]).forEach(function(p){
-      // Evitar duplicados (responsables que también están en personal)
-      var legStr = String(p.legajo||"");
-      var nomStr = String(p.nombre||"").toUpperCase();
-      var dup = personas.some(function(x){
-        return (legStr && String(x.legajo)===legStr) ||
-               (nomStr && String(x.nombre).toUpperCase()===nomStr);
-      });
-      if (!dup) personas.push({legajo: legStr, nombre: p.nombre||"", esResp: false});
-    });
-    personas.forEach(function(p){
-      var label = (p.esResp?"★ ":"") + p.nombre + (p.legajo?" (#"+p.legajo+")":"") + (p.rol?" · "+p.rol:"");
-      html += '<option value="'+escapeHTML(p.nombre)+'" data-legajo="'+escapeHTML(p.legajo)+'" data-nombre="'+escapeHTML(p.nombre)+'">'+escapeHTML(label)+'</option>';
-    });
-    html += '</select>';
-    html += '</div></div>';
-    html += '</div>'; // section
-    return html;
-  }
-
-  // Tiene identidad — mostrar acciones
-  var misAcc = obtenerMisAcciones();
-
-  if (misAcc.length === 0) {
-    html += '<div class="mp-empty-state">';
-    html += '✅ <strong>No tenés acciones pendientes</strong><br><br>';
-    html += 'Cuando alguien te asigne una acción correctiva, aparecerá acá.';
-    html += '</div>';
-  } else {
-    // Ordenar por urgencia (vencidas primero, después por fecha)
-    misAcc.sort(function(a,b){
-      var dA = diasAlVenc(a.fecha_vencimiento);
-      var dB = diasAlVenc(b.fecha_vencimiento);
-      if (dA === null) return 1;
-      if (dB === null) return -1;
-      return dA - dB;
-    });
-
-    html += '<div style="font-size:12px;color:var(--t2);margin-bottom:10px;">'+misAcc.length+' acción'+(misAcc.length>1?'es':'')+' asignada'+(misAcc.length>1?'s':'')+' a vos.</div>';
-    html += '<div class="mp-action-grid">';
-
-    misAcc.forEach(function(a){
-      var ev = (EVENTOS||[]).filter(function(e){return String(e.evento_id)===String(a.evento_id);})[0] || {};
-      var dias = diasAlVenc(a.fecha_vencimiento);
-      var clase = "normal", badgeCls = "normal", textoVenc = "";
-      if (dias !== null) {
-        if (dias < 0) { clase = "vencida"; badgeCls = "vencida"; textoVenc = "Venció hace "+Math.abs(dias)+" día"+(Math.abs(dias)>1?'s':''); }
-        else if (dias === 0) { clase = "urgente"; badgeCls = "urgente"; textoVenc = "Vence hoy"; }
-        else if (dias <= 3) { clase = "urgente"; badgeCls = "urgente"; textoVenc = "Vence en "+dias+" día"+(dias>1?'s':''); }
-        else { clase = "normal"; badgeCls = "normal"; textoVenc = "Vence en "+dias+" días"; }
-      } else {
-        textoVenc = "Sin vencimiento";
-      }
-
-      html += '<div class="mp-action-card '+clase+'">';
-      html += '<div class="mp-action-desc">'+escapeHTML(a.descripcion||"(sin descripción)")+'</div>';
-      html += '<div class="mp-action-meta">';
-      html += '<span class="mp-action-meta-item">🎯 <code>'+escapeHTML(a.evento_id||"")+'</code></span>';
-      if (ev.sector) html += '<span class="mp-action-meta-item">📍 '+escapeHTML(ev.sector)+'</span>';
-      if (ev.tipo) html += '<span class="mp-action-meta-item">'+(TIPO_META[ev.tipo]?TIPO_META[ev.tipo].icon:'')+' '+(TIPO_META[ev.tipo]?TIPO_META[ev.tipo].label:'')+'</span>';
-      html += '</div>';
-      html += '<span class="mp-action-due '+badgeCls+'">'+textoVenc+'</span>';
-      html += '<div class="mp-action-buttons">';
-      html += '<button class="mp-action-btn primary" onclick="cerrarMiAccion(\''+escapeHTML(a.accion_id||"")+'\')">✓ Cerrar</button>';
-      html += '<button class="mp-action-btn" onclick="openModal(\''+escapeHTML(a.evento_id||"")+'\')">Ver evento</button>';
-      html += '</div>';
-      html += '</div>';
-    });
-
-    html += '</div>';
-  }
-
-  html += '</div>'; // section
-  return html;
-}
-
-function filtrarIdentidad(query) {
-  var sel = document.getElementById("mp_select");
-  if (!sel) return;
-  var q = String(query || "").toLowerCase().trim();
-  for (var i = 0; i < sel.options.length; i++) {
-    var opt = sel.options[i];
-    var nombre = (opt.getAttribute("data-nombre") || opt.text).toLowerCase();
-    var legajo = (opt.getAttribute("data-legajo") || "").toLowerCase();
-    var match = !q || nombre.indexOf(q) !== -1 || legajo.indexOf(q) !== -1;
-    opt.style.display = match ? "" : "none";
-  }
-}
-
-function elegirIdentidad() {
-  var sel = document.getElementById("mp_select");
-  if (!sel) return;
-  var opt = sel.options[sel.selectedIndex];
-  if (!opt) return;
-  var legajo = opt.getAttribute("data-legajo") || "";
-  var nombre = opt.getAttribute("data-nombre") || opt.text;
-  guardarIdentidad(legajo, nombre);
-}
-
-function cerrarMiAccion(accionId) {
-  if (!accionId) return;
-  if (!confirm("¿Confirmar cierre de esta acción?")) return;
-
-  var params = new URLSearchParams();
-  params.append("action", "actualizar_accion");
-  params.append("accion_id", accionId);
-  params.append("estado", "Cerrada");
-  params.append("fecha_cierre", new Date().toISOString().substring(0,10));
-  params.append("cerrada_por_nombre", MIS_PENDIENTES.identidad_nombre);
-  params.append("cerrada_por_legajo", MIS_PENDIENTES.identidad_legajo);
-
-  // Optimistic
-  var acc = (ACCIONES||[]).filter(function(a){return String(a.accion_id)===String(accionId);})[0];
-  if (acc) {
-    acc.estado = "Cerrada";
-    acc.fecha_cierre = new Date().toISOString().substring(0,10);
-    acc.cerrada_por_nombre = MIS_PENDIENTES.identidad_nombre;
-  }
-  render();
-
-  fetch(APPS_SCRIPT_URL, { method: "POST", body: params })
-    .then(function(r){ return r.json(); })
-    .then(function(){ loadData(); })
-    .catch(function(err){ console.error(err); alert("Error al cerrar la acción"); });
-}
-
-function renderLeadingKPIs() {
-  var k = calculateLeadingKPIs();
-  var rango = getRangoPeriodo();
-
-  var html = '<div class="culture-section">';
-  html += '<div class="culture-section-title">Indicadores de cultura BBS</div>';
-  html += '<div class="culture-section-subtitle"><strong>'+escapeHTML(rango.label)+'</strong> · '+rango.dias+' días · '
-       + 'del '+formatDateBR(rango.desde)+' al '+formatDateBR(rango.hasta)
-       + ' — Cuanto más arriba estos números, más cerca de "Interdependiente".</div>';
-  html += '<div class="leading-kpis">';
-
-  // KPI 1
-  var s1 = kpiStatus(k.pctOperarios.value, k.pctOperarios.target);
-  html += '<div class="leading-kpi '+s1+'">'
-    + '<div class="leading-kpi-label">Reportes de operarios</div>'
-    + '<div class="leading-kpi-value">'+k.pctOperarios.value+'%</div>'
-    + '<div class="leading-kpi-target">target ≥ '+k.pctOperarios.target+'% · '+k.pctOperarios.detalle+'</div>'
-    + '<span class="leading-kpi-status">'+kpiStatusLabel(s1)+'</span>'
-    + '</div>';
-
-  // KPI 2
-  var s2 = kpiStatus(k.ratioCultura.value, k.ratioCultura.target);
-  var ratioDisplay = (k.ratioCultura.value === "∞") ? "∞" : (k.ratioCultura.value + ":1");
-  html += '<div class="leading-kpi '+s2+'">'
-    + '<div class="leading-kpi-label">Ratio cultura (obs / accid)</div>'
-    + '<div class="leading-kpi-value">'+ratioDisplay+'</div>'
-    + '<div class="leading-kpi-target">target ≥ '+k.ratioCultura.target+':1 · '+k.ratioCultura.detalle+'</div>'
-    + '<span class="leading-kpi-status">'+kpiStatusLabel(s2)+'</span>'
-    + '</div>';
-
-  // KPI 3
-  var s3 = kpiStatus(k.obsPorTrabajador.value, k.obsPorTrabajador.target);
-  html += '<div class="leading-kpi '+s3+'">'
-    + '<div class="leading-kpi-label">Observ. por trabajador / mes</div>'
-    + '<div class="leading-kpi-value">'+k.obsPorTrabajador.value+'</div>'
-    + '<div class="leading-kpi-target">target ≥ '+k.obsPorTrabajador.target+'</div>'
-    + '<span class="leading-kpi-status">'+kpiStatusLabel(s3)+'</span>'
-    + '</div>';
-
-  // KPI 4
-  var s4 = kpiStatus(k.pctEnTermino.value, k.pctEnTermino.target);
-  var v4 = k.pctEnTermino.value === null ? "—" : k.pctEnTermino.value+"%";
-  html += '<div class="leading-kpi '+s4+'">'
-    + '<div class="leading-kpi-label">Acciones cerradas en término</div>'
-    + '<div class="leading-kpi-value">'+v4+'</div>'
-    + '<div class="leading-kpi-target">target ≥ '+k.pctEnTermino.target+'%</div>'
-    + '<span class="leading-kpi-status">'+kpiStatusLabel(s4)+'</span>'
-    + '</div>';
-
-  // KPI 5
-  var s5 = kpiStatus(k.tiempoPromedio.value, k.tiempoPromedio.target, true);
-  var v5 = k.tiempoPromedio.value === null ? "—" : k.tiempoPromedio.value+" días";
-  html += '<div class="leading-kpi '+s5+'">'
-    + '<div class="leading-kpi-label">Tiempo obs → cierre</div>'
-    + '<div class="leading-kpi-value">'+v5+'</div>'
-    + '<div class="leading-kpi-target">target ≤ '+k.tiempoPromedio.target+' días</div>'
-    + '<span class="leading-kpi-status">'+kpiStatusLabel(s5)+'</span>'
-    + '</div>';
-
-  html += '</div></div>';
-  return html;
-}
-
-// =============================================
-// CURVA DE BRADLEY — etapa cultural de la planta
-// =============================================
-// Las 4 etapas son: Reactiva → Dependiente → Independiente → Interdependiente
-// Cálculo basado en los KPIs existentes (ratio cultura, % operarios, pirámide)
-function calcularEtapaBradley() {
-  var k = calculateLeadingKPIs();
-  var ratio = k.ratioCultura.value;
-  var pctOp = k.pctOperarios.value;
-
-  // Cantidad de observaciones EN EL RANGO GLOBAL (no hardcoded 30 días)
-  var rango = getRangoPeriodo();
-  var obsMes = (EVENTOS||[]).filter(function(e){
-    var f = String(e.fecha_evento||"").substring(0,10);
-    return e.tipo === "OBSERVACION" && f >= rango.desde && f <= rango.hasta;
-  }).length;
-
-  // Ratio obs/accidente como número
-  var ratioNum = (ratio === "∞") ? 9999 : Number(ratio) || 0;
-
-  var hayConversaciones = (k.conversacionesMes && k.conversacionesMes > 0);
-  var etapa = 1;
-  var razon = "";
-
-  // Lógica del modelo Bradley:
-  // 1. Reactiva: prácticamente sin observaciones (cultura post-accidente)
-  // 2. Dependiente: hay observaciones pero la participación de operarios es baja
-  //                 (la seguridad la empuja la jefatura)
-  // 3. Independiente: ratio sólido (≥50) Y operarios participan (≥50%)
-  // 4. Interdependiente: lo anterior + ratio muy alto (≥100, ≥70% op) + conversaciones activas
-
-  if (obsMes < 3) {
-    etapa = 1;
-    razon = "Casi sin observaciones reportadas. La cultura aún reacciona post-accidente.";
-  } else if (ratioNum >= 100 && pctOp >= 70 && hayConversaciones) {
-    etapa = 4;
-    razon = "Ratio alto, operarios reportando activamente y hay conversaciones de seguridad.";
-  } else if (ratioNum >= 50 && pctOp >= 50) {
-    etapa = 3;
-    razon = "Buen flujo de observaciones, operarios participan activamente.";
-  } else {
-    etapa = 2;
-    razon = "Hay reportes pero principalmente impulsados por supervisión.";
-  }
-
-  // Criterios numéricos por etapa (para el panel expandible)
-  var criterios = {
-    1: ["Sin observaciones suficientes (<3 reportes en el período)"],
-    2: ["Al menos 3 observaciones cargadas en el período"],
-    3: ["Ratio obs/accid ≥ 50:1", "% reportes de operarios ≥ 50%"],
-    4: ["Ratio obs/accid ≥ 100:1", "% reportes de operarios ≥ 70%", "Conversaciones de seguridad activas"]
-  };
-
-  // Cálculo de "lo que falta" para llegar a la etapa siguiente
-  var faltaMsg = "";
-  if (etapa === 1) {
-    var faltaObs = Math.max(0, 3 - obsMes);
-    faltaMsg = "Para pasar a etapa 2: cargá " + faltaObs + " observación" + (faltaObs===1?"":"es") + " más.";
-  } else if (etapa === 2) {
-    var partes = [];
-    if (ratioNum < 50) partes.push("subir el ratio obs/accid a 50:1 (hoy " + ratio + ")");
-    if (pctOp < 50) partes.push("aumentar reportes de operarios al 50% (hoy " + pctOp + "%)");
-    faltaMsg = "Para pasar a etapa 3: " + partes.join(" y ") + ".";
-  } else if (etapa === 3) {
-    var partes2 = [];
-    if (ratioNum < 100) partes2.push("ratio ≥ 100:1 (hoy " + ratio + ")");
-    if (pctOp < 70) partes2.push("operarios ≥ 70% (hoy " + pctOp + "%)");
-    if (!hayConversaciones) partes2.push("cargar al menos 1 conversación de seguridad");
-    faltaMsg = "Para pasar a etapa 4: " + partes2.join(", ") + ".";
-  } else {
-    faltaMsg = "🏆 Estás en la etapa máxima. Sostenelo en el tiempo.";
-  }
-
-  return {
-    etapa: etapa, razon: razon,
-    ratioObservado: ratio, pctOperariosObs: pctOp, observacionesMes: obsMes,
-    conversacionesMes: k.conversacionesMes || 0,
-    criterios: criterios, faltaMsg: faltaMsg
-  };
-}
-
-function renderCurvaBradley() {
-  var b = calcularEtapaBradley();
-  var etapas = [
-    { num:1, label:"Reactiva",       desc:"Se reacciona post-accidente", color:"#DC2626" },
-    { num:2, label:"Dependiente",    desc:"Supervisor empuja seguridad", color:"#F59E0B" },
-    { num:3, label:"Independiente",  desc:"Cada uno se cuida solo",      color:"#3B82F6" },
-    { num:4, label:"Interdependiente",desc:"El equipo se cuida entre sí",color:"#548235" }
-  ];
-
-  var html = '<div class="card" style="margin-top:16px;">';
-  html += '<h2 style="margin-bottom:4px;">Curva de Bradley · etapa cultural</h2>';
-  html += '<p style="font-size:13px;color:var(--t2);margin:0 0 16px;">Dónde estamos ubicados en la madurez de cultura de seguridad. Hacé click en cada etapa para ver qué requiere alcanzarla.</p>';
-
-  // Barra con las 4 etapas (ahora clickeables para expandir criterios)
-  html += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
-  etapas.forEach(function(e){
-    var activa = (e.num === b.etapa);
-    var bg = activa ? e.color : "#F3F4F6";
-    var fg = activa ? "#FFFFFF" : "var(--t2)";
-    var border = activa ? ("2px solid " + e.color) : "2px solid transparent";
-    var pesoNum = activa ? "800" : "600";
-    html += '<div onclick="toggleBradleyEtapa('+e.num+')" '
-         +  'style="flex:1;padding:14px 10px;background:'+bg+';color:'+fg+';border-radius:8px;border:'+border+';text-align:center;cursor:pointer;transition:all .2s;" '
-         +  'title="Click para ver los criterios de esta etapa">';
-    html += '<div style="font-size:24px;font-weight:'+pesoNum+';line-height:1;">'+e.num+'</div>';
-    html += '<div style="font-size:12px;font-weight:700;margin-top:4px;">'+e.label+'</div>';
-    html += '<div style="font-size:10px;opacity:.85;margin-top:2px;line-height:1.3;">'+e.desc+'</div>';
-    if (activa) html += '<div style="font-size:10px;margin-top:6px;font-weight:700;letter-spacing:.05em;">◄ ESTAMOS ACÁ</div>';
-    html += '</div>';
-  });
-  html += '</div>';
-
-  // Barra de gradiente con marcador
-  var pos = ((b.etapa - 1) / 3) * 100;
-  html += '<div style="position:relative;height:12px;background:linear-gradient(to right, #FEE2E2, #FEF3C7, #DBEAFE, #E7F2DC);border-radius:6px;margin-bottom:14px;">';
-  html += '<div style="position:absolute;top:-4px;left:calc('+pos+'% - 8px);width:16px;height:20px;background:#111827;border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,.2);"></div>';
-  html += '</div>';
-
-  // Mensaje "te falta X" — central y prominente
-  var faltaColor = (b.etapa === 4) ? "#2E4A1C" : "#92400E";
-  var faltaBg = (b.etapa === 4) ? "#E7F2DC" : "#FEF3C7";
-  var faltaBorder = (b.etapa === 4) ? "#5E9A3B" : "#F59E0B";
-  html += '<div style="margin-bottom:14px;padding:12px 16px;background:'+faltaBg+';border-left:4px solid '+faltaBorder+';border-radius:6px;">';
-  html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:'+faltaColor+';margin-bottom:4px;">Próximo paso</div>';
-  html += '<div style="font-size:13px;color:'+faltaColor+';line-height:1.5;">'+escapeHTML(b.faltaMsg)+'</div>';
-  html += '</div>';
-
-  // Panel de criterios expandible (controlado por estado BRADLEY_EXPANDIDA)
-  var etapaExpandida = (typeof BRADLEY_EXPANDIDA !== "undefined" && BRADLEY_EXPANDIDA) ? BRADLEY_EXPANDIDA : b.etapa;
-  var critsEtapa = b.criterios[etapaExpandida] || [];
-  var etapaInfo = etapas[etapaExpandida - 1];
-  html += '<div id="bradleyCriterios" style="margin-bottom:14px;padding:14px 16px;background:#F9FAFB;border:1px solid var(--border);border-radius:8px;">';
-  html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin-bottom:8px;">'
-       +  'Criterios para etapa ' + etapaInfo.num + ' — ' + etapaInfo.label + '</div>';
-  html += '<ul style="margin:0;padding-left:20px;font-size:13px;color:var(--t1);line-height:1.7;">';
-  critsEtapa.forEach(function(c){
-    html += '<li>'+escapeHTML(c)+'</li>';
-  });
-  html += '</ul>';
-  html += '</div>';
-
-  // Métricas actuales de soporte
-  html += '<div style="display:flex;flex-wrap:wrap;gap:18px;padding:12px 14px;background:#F9FAFB;border-radius:8px;font-size:13px;">';
-  html += '<div><strong>Ratio obs/accid:</strong> <span style="color:var(--brand-700);font-weight:700;">'+(b.ratioObservado===Infinity||b.ratioObservado==="∞"?"∞":b.ratioObservado+":1")+'</span></div>';
-  html += '<div><strong>% reportes operarios:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.pctOperariosObs+'%</span></div>';
-  html += '<div><strong>Observaciones en período:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.observacionesMes+'</span></div>';
-  html += '<div><strong>Conversaciones:</strong> <span style="color:var(--brand-700);font-weight:700;">'+b.conversacionesMes+'</span></div>';
-  html += '</div>';
-
-  html += '</div>';
-  return html;
-}
-
-// Estado para etapa expandida en el panel de criterios
-var BRADLEY_EXPANDIDA = null;
-function toggleBradleyEtapa(num) {
-  BRADLEY_EXPANDIDA = (BRADLEY_EXPANDIDA === num) ? null : num;
-  render();
-}
-
-// =============================================
-// TARGET DE EVENTOS POR PERSONA
-// =============================================
-// Modo fijo: 4 eventos/persona/mes (alineado con ratio 100:1 estándar)
-// Modo dinámico: calculado desde dotación + accidentes históricos
-function calcularTargetEventos() {
-  var totalPersonal = (MAESTROS.personal || []).length || 1;
-
-  // Modo fijo
-  var targetFijo = 4;
-
-  // Modo dinámico: para mantener ratio 100:1, si esperamos N accidentes/año, necesitamos 100N obs/año
-  // = 100N/12 obs/mes, distribuido entre la dotación → 100N/12/personas obs/persona/mes
-  // Estimamos N accidentes esperados con base histórica (últimos 12 meses)
-  var hace1Año = new Date();
-  hace1Año.setFullYear(hace1Año.getFullYear() - 1);
-  var hace1AñoStr = hace1Año.toISOString().slice(0,10);
-  var accidUlt12m = (EVENTOS||[]).filter(function(e){
-    var f = String(e.fecha_evento||"").substring(0,10);
-    return e.tipo === "ACCIDENTE" && f >= hace1AñoStr;
-  }).length;
-
-  // Si no hubo accidentes en 12m, usamos 1 como conservador para no dejar target en 0
-  var accidEsperados = Math.max(1, accidUlt12m);
-  var targetDinamico = Math.ceil((accidEsperados * 100) / 12 / totalPersonal);
-
-  // El dinámico nunca puede ser menor al fijo (4 es el piso recomendado)
-  if (targetDinamico < targetFijo) targetDinamico = targetFijo;
-
-  // Cumplimiento: cuántas personas alcanzaron el target EN EL RANGO GLOBAL
-  // (antes era hardcoded "este mes")
-  var rango = getRangoPeriodo();
-  var conteoPorPersona = {};
-  (EVENTOS||[]).forEach(function(e){
-    var f = String(e.fecha_evento||"").substring(0,10);
-    if (f < rango.desde || f > rango.hasta) return;
-    var key = String(e.reportado_por_legajo||"") || String(e.reportado_por_nombre||"").toUpperCase();
-    if (!key) return;
-    conteoPorPersona[key] = (conteoPorPersona[key]||0) + 1;
-  });
-
-  return {
-    targetFijo: targetFijo,
-    targetDinamico: targetDinamico,
-    accidUlt12m: accidUlt12m,
-    totalPersonal: totalPersonal,
-    conteoPorPersona: conteoPorPersona,
-    rangoLabel: rango.label
-  };
-}
-
-// Estado UI del target (persistido en localStorage)
-function getModoTarget() {
-  try { return localStorage.getItem("ehs_modo_target") || "fijo"; } catch(e) { return "fijo"; }
-}
-function setModoTarget(modo) {
-  try { localStorage.setItem("ehs_modo_target", modo); } catch(e) {}
-  render();
-}
-
-function renderTargetEventos() {
-  var t = calcularTargetEventos();
-  var modo = getModoTarget();
-  var targetUsado = (modo === "dinamico") ? t.targetDinamico : t.targetFijo;
-
-  // Cuántas personas alcanzaron el target este mes
-  var alcanzaron = 0;
-  var totalPersonas = t.totalPersonal;
-  Object.keys(t.conteoPorPersona).forEach(function(k){
-    if (t.conteoPorPersona[k] >= targetUsado) alcanzaron++;
-  });
-  var pctCumplimiento = totalPersonas > 0 ? Math.round((alcanzaron / totalPersonas) * 100) : 0;
-
-  var html = '<div class="card" style="margin-top:16px;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">';
-  html += '<h2 style="margin:0;">Objetivo de eventos por persona <span style="font-weight:400;font-size:13px;color:var(--t2);">· para mantener ratio 100:1 obs/accidente</span></h2>';
-  // Toggle modo
-  html += '<div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;">'
-    + '<button onclick="setModoTarget(\'fijo\')" style="border:none;background:'+(modo==="fijo"?"var(--brand-600)":"transparent")+';color:'+(modo==="fijo"?"#fff":"var(--t2)")+';padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Fijo</button>'
-    + '<button onclick="setModoTarget(\'dinamico\')" style="border:none;background:'+(modo==="dinamico"?"var(--brand-600)":"transparent")+';color:'+(modo==="dinamico"?"#fff":"var(--t2)")+';padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Dinámico</button>'
-    + '</div>';
-  html += '</div>';
-
-  // Subtítulo con período evaluado
-  html += '<div style="font-size:12px;color:var(--t2);margin-top:4px;">Período evaluado: <strong>'+escapeHTML(t.rangoLabel)+'</strong> (cambialo desde el selector de período arriba)</div>';
-
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:14px;">';
-
-  // Target actual
-  html += '<div style="padding:14px;background:#F0F9FF;border:1px solid #BAE6FD;border-radius:10px;">'
-    + '<div style="font-size:10px;color:#075985;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Target del período</div>'
-    + '<div style="font-size:32px;font-weight:800;color:#075985;line-height:1;margin-top:6px;">'+targetUsado+'</div>'
-    + '<div style="font-size:11px;color:#0369A1;margin-top:4px;">eventos por persona</div>'
-    + '</div>';
-
-  // Cumplimiento
-  var colorCump = pctCumplimiento >= 80 ? "#2E4A1C" : (pctCumplimiento >= 40 ? "#92400E" : "#991B1B");
-  var bgCump   = pctCumplimiento >= 80 ? "#E7F2DC" : (pctCumplimiento >= 40 ? "#FEF3C7" : "#FEE2E2");
-  var bdCump   = pctCumplimiento >= 80 ? "#D6EAC4" : (pctCumplimiento >= 40 ? "#FDE68A" : "#FCA5A5");
-  html += '<div style="padding:14px;background:'+bgCump+';border:1px solid '+bdCump+';border-radius:10px;">'
-    + '<div style="font-size:10px;color:'+colorCump+';font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Cumplimiento</div>'
-    + '<div style="font-size:32px;font-weight:800;color:'+colorCump+';line-height:1;margin-top:6px;">'+pctCumplimiento+'%</div>'
-    + '<div style="font-size:11px;color:'+colorCump+';margin-top:4px;">'+alcanzaron+' de '+totalPersonas+' personas</div>'
-    + '</div>';
-
-  // Datos del cálculo dinámico
-  html += '<div style="padding:14px;background:#F9FAFB;border:1px solid var(--border);border-radius:10px;">'
-    + '<div style="font-size:10px;color:var(--t2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Base del cálculo</div>'
-    + '<div style="font-size:13px;color:var(--t1);margin-top:6px;line-height:1.5;">'
-    + '<div><strong>'+t.totalPersonal+'</strong> personas en planta</div>'
-    + '<div><strong>'+t.accidUlt12m+'</strong> accidentes últimos 12 meses</div>'
-    + '</div>'
-    + '</div>';
-
-  html += '</div>';
-
-  // Nota explicativa según modo
-  html += '<div style="margin-top:12px;padding:10px 14px;background:#FFFBEB;border:1px dashed #FDE68A;border-radius:8px;font-size:12px;color:#78350F;line-height:1.5;">';
-  if (modo === "fijo") {
-    html += '<strong>Modo fijo:</strong> 4 eventos/persona/mes. Es el piso recomendado para iniciar una cultura BBS. ';
-    html += 'Si la planta tiene una tasa de accidentes habitual, conviene pasar a "Dinámico" para ajustar al ratio 100:1.';
-  } else {
-    html += '<strong>Modo dinámico:</strong> calculado como <code>(accidentes × 100) / 12 meses / dotación</code>. ';
-    html += 'Con '+t.accidUlt12m+' accidentes y '+t.totalPersonal+' personas, el target es '+t.targetDinamico+' eventos/persona/mes para sostener un ratio cultural saludable.';
-  }
-  html += '</div>';
-
-  html += '</div>';
-  return html;
-}
-
-// =============================================
-// PARTICIPACIÓN DEL EQUIPO (BBS / DSS+)
-// =============================================
-// Setters
-function setParticipacionPeriodo(v) {
-  PARTICIPACION.periodo = v;
-  // Si no es custom, limpiar fechas
-  if (v !== "custom") {
-    PARTICIPACION.desde = "";
-    PARTICIPACION.hasta = "";
-  }
-  render();
-}
-function setParticipacionUniverso(v) { PARTICIPACION.universo = v; render(); }
-function setParticipacionOrden(v) { PARTICIPACION.orden = v; render(); }
-function setParticipacionFiltroCumplimiento(v) { PARTICIPACION.filtroCumplimiento = v; render(); }
-function toggleParticipacionExpandido() { PARTICIPACION.expandido = !PARTICIPACION.expandido; render(); }
-function setParticipacionFecha(campo, valor) {
-  PARTICIPACION.periodo = "custom";
-  PARTICIPACION[campo] = valor;
-  render();
-}
-
-// Devuelve {desde, hasta, label, dias} según el período de Participación
-function getRangoParticipacion() {
-  var hoy = new Date();
-  hoy.setHours(0,0,0,0);
-  function fmt(d) { return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
-  var hastaStr = fmt(hoy);
-  var desdeStr = "";
-  var label = "";
-
-  if (PARTICIPACION.periodo === "custom") {
-    desdeStr = PARTICIPACION.desde || fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
-    hastaStr = PARTICIPACION.hasta || fmt(hoy);
-    label = "Personalizado: " + formatDateBR(desdeStr) + " → " + formatDateBR(hastaStr);
-  } else {
-    var dias = PARTICIPACION.periodo === "semana" ? 7
-             : PARTICIPACION.periodo === "mes" ? 30 : 90;
-    var hace = new Date(hoy.getTime() - dias*24*60*60*1000);
-    desdeStr = fmt(hace);
-    label = "Últimos " + dias + " días";
-  }
-  var dDesde = new Date(desdeStr + "T00:00:00");
-  var dHasta = new Date(hastaStr + "T00:00:00");
-  var diasRango = Math.floor((dHasta - dDesde) / (1000*60*60*24)) + 1;
-  return { desde: desdeStr, hasta: hastaStr, label: label, dias: diasRango };
-}
-
-// Filtra eventos según el período seleccionado
-function eventoEnPeriodoParticipacion(fechaStr) {
-  if (!fechaStr) return false;
-  var rango = getRangoParticipacion();
-  var fechaEvento = String(fechaStr).substring(0,10);
-  return fechaEvento >= rango.desde && fechaEvento <= rango.hasta;
-}
-
-// Construye el universo de personas según selección
-// "operarios" → solo personal del convenio
-// "supervision" → solo responsables (jefatura/gerencia/supervisión)
-// "todos" → operarios + supervisión (toda la planta)
-function getUniversoPersonas() {
-  var personas = [];
-
-  // Agregar operarios (MAESTROS.personal) salvo si universo === "supervision"
-  if (PARTICIPACION.universo !== "supervision") {
-    (MAESTROS.personal || []).forEach(function(p){
-      personas.push({
-        legajo: String(p.legajo || ""),
-        nombre: String(p.nombre || ""),
-        esSupervisor: false
-      });
-    });
-  }
-
-  // Agregar supervisión (MAESTROS.responsables) si universo === "supervision" o "todos"
-  if (PARTICIPACION.universo === "supervision" || PARTICIPACION.universo === "todos") {
-    (MAESTROS.responsables || []).forEach(function(r){
-      var legajoRespStr = String(r.legajo || "");
-      var nombreRespStr = String(r.nombre || "");
-      // Evitar duplicados (responsable que ya está en convenio por legajo o nombre)
-      var existe = personas.some(function(p){
-        return (legajoRespStr && p.legajo === legajoRespStr)
-            || (nombreRespStr && p.nombre.toUpperCase() === nombreRespStr.toUpperCase());
-      });
-      if (!existe && (legajoRespStr || nombreRespStr)) {
-        personas.push({
-          legajo: legajoRespStr,
-          nombre: nombreRespStr,
-          esSupervisor: true
-        });
-      }
-    });
-  }
-
-  return personas;
-}
-
-// Calcula las stats de cada persona en el período seleccionado
-function calcularParticipacionPersonas() {
-  var personas = getUniversoPersonas();
-  var eventosPeriodo = EVENTOS.filter(function(e){
-    return eventoEnPeriodoParticipacion(e.fecha_evento);
-  });
-
-  // Mapa por legajo y por nombre normalizado para el match flexible
-  var statsByPerson = {};
-  personas.forEach(function(p){
-    var key = p.legajo || ("nombre:" + normalizarNombrePersona(p.nombre));
-    statsByPerson[key] = {
-      legajo: p.legajo,
-      nombre: p.nombre,
-      esSupervisor: p.esSupervisor,
-      total: 0,
-      OBSERVACION: 0,
-      CONVERSACION: 0,
-      INCIDENTE: 0,
-      ACCIDENTE: 0,
-      AMBIENTE: 0
-    };
-  });
-
-  // Asignar cada evento a la persona que lo reportó
-  eventosPeriodo.forEach(function(e){
-    var legajoEv = String(e.reportado_por_legajo || "").trim();
-    var nombreEv = String(e.reportado_por_nombre || "").trim();
-    var nombreNormEv = normalizarNombrePersona(nombreEv);
-    var found = null;
-    // Match por legajo primero (exacto)
-    if (legajoEv && statsByPerson[legajoEv]) {
-      found = statsByPerson[legajoEv];
-    } else if (nombreEv) {
-      // Match por nombre normalizado (sin acentos, mayúsculas)
-      var nombreKey = "nombre:" + nombreNormEv;
-      if (statsByPerson[nombreKey]) {
-        found = statsByPerson[nombreKey];
-      } else {
-        // Buscar dentro de keys por legajo cuyo nombre coincida normalizado
-        for (var k in statsByPerson) {
-          if (normalizarNombrePersona(statsByPerson[k].nombre) === nombreNormEv) {
-            found = statsByPerson[k];
-            break;
-          }
-        }
-      }
-    }
-    if (found) {
-      found.total++;
-      var t = e.tipo;
-      if (found[t] !== undefined) found[t]++;
-    }
-  });
-
-  // Convertir a array
-  var arr = [];
-  for (var k in statsByPerson) arr.push(statsByPerson[k]);
-
-  // Calcular cumplimiento contra el target del recuadro (fijo o dinámico según toggle).
-  // Antes usaba OBJETIVOS[periodo] (1/4/12) — ahora se sincroniza con el target del Mes.
-  var t = calcularTargetEventos();
-  var modo = getModoTarget();
-  var objetivo = (modo === "dinamico") ? t.targetDinamico : t.targetFijo;
-  arr.forEach(function(p){
-    p.objetivo = objetivo;
-    p.cumplio = p.total >= objetivo;
-  });
-
-  return arr;
-}
-
-function ordenarParticipacion(arr) {
-  var copia = arr.slice();
-  switch (PARTICIPACION.orden) {
-    case "no_cumplio":
-      // No cumplió primero (total ASC), pero los que están en 0 al fondo si querés...
-      // En realidad: 0 reportes primero (más urgente), después por total ASC
-      copia.sort(function(a,b){
-        if (a.total !== b.total) return a.total - b.total;
-        return a.nombre.localeCompare(b.nombre);
-      });
-      break;
-    case "total_desc":
-      copia.sort(function(a,b){
-        if (b.total !== a.total) return b.total - a.total;
-        return a.nombre.localeCompare(b.nombre);
-      });
-      break;
-    case "total_asc":
-      copia.sort(function(a,b){
-        if (a.total !== b.total) return a.total - b.total;
-        return a.nombre.localeCompare(b.nombre);
-      });
-      break;
-    case "alfabetico":
-      copia.sort(function(a,b){ return a.nombre.localeCompare(b.nombre); });
-      break;
-  }
-  return copia;
-}
-
-function calcularKPIsParticipacion(personas) {
-  var total = personas.length;
-  var cumplieron = personas.filter(function(p){ return p.cumplio; }).length;
-  var conAlMenosUno = personas.filter(function(p){ return p.total > 0; }).length;
-  var sinReportar = personas.filter(function(p){ return p.total === 0; }).length;
-
-  // Top reportador
-  var top = personas.slice().sort(function(a,b){ return b.total - a.total; })[0];
-
-  return {
-    total: total,
-    cumplieron: cumplieron,
-    pctCumplimiento: total > 0 ? Math.round((cumplieron / total) * 100) : 0,
-    conAlMenosUno: conAlMenosUno,
-    sinReportar: sinReportar,
-    top: top
-  };
-}
-
-function renderParticipacion() {
-  var personas = calcularParticipacionPersonas();
-  var personasOrdenadas = ordenarParticipacion(personas);
-  var kpis = calcularKPIsParticipacion(personas);
-
-  // Aplicar filtro de cumplimiento
-  var personasFiltradas = personasOrdenadas;
-  if (PARTICIPACION.filtroCumplimiento === "cumplio") {
-    personasFiltradas = personasOrdenadas.filter(function(p){ return p.cumplio; });
-  } else if (PARTICIPACION.filtroCumplimiento === "no_cumplio") {
-    personasFiltradas = personasOrdenadas.filter(function(p){ return !p.cumplio; });
-  }
-
-  // Limitar a 15 si no está expandido
-  var personasMostrar = PARTICIPACION.expandido ? personasFiltradas : personasFiltradas.slice(0, 5);
-
-  // Etiquetas legibles según período
-  var rangoPart = getRangoParticipacion();
-  var labelPeriodo = rangoPart.label;
-  var objetivo = OBJETIVOS[PARTICIPACION.periodo] || 1; // Para custom usa el de semana por defecto
-
-  // Etiqueta del universo
-  var labelUniverso = PARTICIPACION.universo === "operarios" ? "Operarios"
-                    : PARTICIPACION.universo === "supervision" ? "Supervisión, jefatura y gerencia"
-                    : "Toda la planta";
-
-  var html = '<div class="participacion-section">';
-  html += '<div class="culture-section-title">Participación del equipo</div>';
-  html += '<div class="culture-section-subtitle">'+escapeHTML(labelPeriodo)+' · '+escapeHTML(labelUniverso)+' · Objetivo: ≥ '+objetivo+' reporte'+(objetivo>1?'s':'')+' por persona. Esta tabla empuja a que <strong>todos participen</strong>, no solo los referentes.</div>';
-
-  // Controles
-  html += '<div class="part-controls">';
-
-  html += '<div class="part-control-group">';
-  html += '<span class="part-control-label">Período:</span>';
-  html += '<select class="part-control-select" onchange="setParticipacionPeriodo(this.value)">';
-  [["semana","Semana"],["mes","Mes"],["trimestre","Trimestre"],["custom","Personalizado"]].forEach(function(o){
-    var sel = PARTICIPACION.periodo===o[0]?' selected':'';
-    html += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
-  });
-  html += '</select>';
-  html += '</div>';
-
-  // Inputs custom (solo si periodo === "custom")
-  if (PARTICIPACION.periodo === "custom") {
-    html += '<div class="part-control-group">';
-    html += '<span class="part-control-label">Desde:</span>';
-    html += '<input type="date" class="part-control-select" value="'+rangoPart.desde+'" onchange="setParticipacionFecha(\'desde\', this.value)" style="min-width:140px;padding:6px 8px;" />';
-    html += '</div>';
-
-    html += '<div class="part-control-group">';
-    html += '<span class="part-control-label">Hasta:</span>';
-    html += '<input type="date" class="part-control-select" value="'+rangoPart.hasta+'" onchange="setParticipacionFecha(\'hasta\', this.value)" style="min-width:140px;padding:6px 8px;" />';
-    html += '</div>';
-  }
-
-  html += '<div class="part-control-group">';
-  html += '<span class="part-control-label">Universo:</span>';
-  html += '<select class="part-control-select" onchange="setParticipacionUniverso(this.value)">';
-  [
-    ["operarios","Operarios"],
-    ["supervision","Supervisión + jefatura + gerencia"],
-    ["todos","Toda la planta"]
-  ].forEach(function(o){
-    var sel = PARTICIPACION.universo===o[0]?' selected':'';
-    html += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
-  });
-  html += '</select>';
-  html += '</div>';
-
-  html += '<div class="part-control-group">';
-  html += '<span class="part-control-label">Ordenar:</span>';
-  html += '<select class="part-control-select" onchange="setParticipacionOrden(this.value)">';
-  [
-    ["no_cumplio","No cumplió primero"],
-    ["total_desc","Más reportes primero"],
-    ["total_asc","Menos reportes primero"],
-    ["alfabetico","Alfabético"]
-  ].forEach(function(o){
-    var sel = PARTICIPACION.orden===o[0]?' selected':'';
-    html += '<option value="'+o[0]+'"'+sel+'>'+o[1]+'</option>';
-  });
-  html += '</select>';
-  html += '</div>';
-
-  html += '</div>';
-
-  // KPIs cabecera
-  html += '<div class="part-kpis">';
-
-  // Cumplimiento
-  var statusCumpl = kpis.pctCumplimiento >= 80 ? "#16A34A"
-                  : kpis.pctCumplimiento >= 40 ? "#D97706" : "#DC2626";
-  html += '<div class="part-kpi" style="--status:'+statusCumpl+';">'
-    + '<div class="part-kpi-label">Cumplimiento</div>'
-    + '<div class="part-kpi-value">'+kpis.pctCumplimiento+'%</div>'
-    + '<div class="part-kpi-sub">'+kpis.cumplieron+' de '+kpis.total+' personas</div>'
-    + '</div>';
-
-  // Aún no reportaron
-  var statusNoRep = kpis.sinReportar === 0 ? "#16A34A"
-                  : kpis.sinReportar < kpis.total * 0.3 ? "#D97706" : "#DC2626";
-  html += '<div class="part-kpi" style="--status:'+statusNoRep+';">'
-    + '<div class="part-kpi-label">Aún no reportaron</div>'
-    + '<div class="part-kpi-value">'+kpis.sinReportar+'</div>'
-    + '<div class="part-kpi-sub">personas pendientes</div>'
-    + '</div>';
-
-  // Top reportador
-  if (kpis.top && kpis.top.total > 0) {
-    html += '<div class="part-kpi" style="--status:#16A34A;">'
-      + '<div class="part-kpi-label">Top reportador</div>'
-      + '<div class="part-kpi-value" style="font-size:15px;">'+escapeHTML(kpis.top.nombre)+'</div>'
-      + '<div class="part-kpi-sub">'+kpis.top.total+' reportes'+(kpis.top.legajo?' · #'+escapeHTML(kpis.top.legajo):'')+'</div>'
-      + '</div>';
-  } else {
-    html += '<div class="part-kpi" style="--status:#94A3B8;">'
-      + '<div class="part-kpi-label">Top reportador</div>'
-      + '<div class="part-kpi-value" style="font-size:15px;color:var(--t3);">—</div>'
-      + '<div class="part-kpi-sub">sin reportes en el período</div>'
-      + '</div>';
-  }
-
-  // Objetivo
-  html += '<div class="part-kpi" style="--status:#475569;">'
-    + '<div class="part-kpi-label">Objetivo</div>'
-    + '<div class="part-kpi-value">≥ '+objetivo+'</div>'
-    + '<div class="part-kpi-sub">reporte'+(objetivo>1?'s':'')+' por persona</div>'
-    + '</div>';
-
-  html += '</div>';
-
-  // Calcular target usado para mostrar en el header (mismo cálculo que en cumplio)
-  var _t = calcularTargetEventos();
-  var _modo = getModoTarget();
-  var _target = (_modo === "dinamico") ? _t.targetDinamico : _t.targetFijo;
-  var _modoLabel = (_modo === "dinamico") ? "dinámico" : "fijo";
-
-  // Tabla con header (filtros pills + título)
-  html += '<div class="part-table-wrap">';
-  html += '<div class="part-table-header">';
-  html += '<div class="part-table-title">Ranking de participación · '+personasFiltradas.length+' personas '
-       + '<span style="font-weight:400;font-size:12px;color:var(--t2);">· target '+_target+' eventos ('+_modoLabel+')</span></div>';
-  html += '<div class="part-filter-pills">';
-  var pills = [
-    ["todos","Todos",false],
-    ["cumplio","Cumplió",false],
-    ["no_cumplio","No cumplió",true]
-  ];
-  pills.forEach(function(p){
-    var active = PARTICIPACION.filtroCumplimiento === p[0];
-    var cls = "part-filter-pill" + (active?" active":"") + (active && p[2]?" danger":"");
-    html += '<span class="'+cls+'" onclick="setParticipacionFiltroCumplimiento(\''+p[0]+'\')">'+p[1]+'</span>';
-  });
-  html += '</div>';
-  html += '</div>';
-
-  if (personasFiltradas.length === 0) {
-    html += '<div class="part-empty">No hay personas que coincidan con el filtro.</div>';
-  } else {
-    html += '<table class="part-table"><thead><tr>'
-      + '<th>#</th>'
-      + '<th>Persona</th>'
-      + '<th class="center">Total</th>'
-      + '<th class="center">👁 Obs</th>'
-      + '<th class="center">💬 Conv</th>'
-      + '<th class="center">⚠ Inc</th>'
-      + '<th class="center">🔴 Acc</th>'
-      + '<th class="center">🌿 Amb</th>'
-      + '<th class="center">Estado</th>'
-      + '</tr></thead><tbody>';
-
-    personasMostrar.forEach(function(p, idx){
-      var rowCls = p.total === 0 ? ' class="no-report"' : '';
-      var statusCls = p.cumplio ? "cumplio" : (p.total === 0 ? "no-cumplio" : "parcial");
-      var statusTxt = p.cumplio ? "✓ Cumplió" : (p.total === 0 ? "— No reportó" : "Parcial");
-      var totalCls = p.total === 0 ? "part-total zero" : "part-total";
-
-      html += '<tr'+rowCls+'>';
-      html += '<td style="color:var(--t3);font-family:Plus Jakarta Sans,monospace;font-size:11px;">'+(idx+1)+'</td>';
-      html += '<td>'
-        + '<div class="part-name">'+escapeHTML(p.nombre)+(p.esSupervisor?' <span style="font-size:9px;color:var(--brand-700);font-weight:600;">SUPERV.</span>':'')+'</div>'
-        + (p.legajo?'<div class="part-legajo">#'+escapeHTML(p.legajo)+'</div>':'')
-        + '</td>';
-      html += '<td class="center"><span class="'+totalCls+'">'+p.total+'</span></td>';
-      html += renderParticipacionCell(p.OBSERVACION);
-      html += renderParticipacionCell(p.CONVERSACION);
-      html += renderParticipacionCell(p.INCIDENTE);
-      html += renderParticipacionCell(p.ACCIDENTE);
-      html += renderParticipacionCell(p.AMBIENTE);
-      html += '<td class="center"><span class="part-status-badge '+statusCls+'">'+statusTxt+'</span></td>';
-      html += '</tr>';
-    });
-
-    html += '</tbody></table>';
-
-    // Botón ver más / ver menos
-    if (personasFiltradas.length > 5) {
-      var lblBtn = PARTICIPACION.expandido
-        ? "▲ Mostrar solo 5"
-        : "▼ Ver las " + personasFiltradas.length + " personas";
-      html += '<div class="part-show-more" onclick="toggleParticipacionExpandido()">'+lblBtn+'</div>';
-    }
-  }
-
-  html += '</div>'; // part-table-wrap
-  html += '</div>'; // participacion-section
-  return html;
-}
-
-function renderParticipacionCell(num) {
-  var cls = num === 0 ? "part-cell-num zero" : "part-cell-num";
-  var val = num === 0 ? "—" : num;
-  return '<td class="center"><span class="'+cls+'">'+val+'</span></td>';
-}
-
-// =============================================
-// SELECTOR DE PERÍODO GLOBAL
-// =============================================
-// Afecta a: KPIs Cultura BBS, Curva de Bradley, Target eventos por persona
-
-// Devuelve la lista de meses con eventos cargados (más reciente primero)
-function obtenerMesesConDatos() {
-  var mesesSet = {};
-  (EVENTOS||[]).forEach(function(e){
-    var f = String(e.fecha_evento||"").substring(0,7); // YYYY-MM
-    if (f && f.length === 7) mesesSet[f] = true;
-  });
-  // También agregar los últimos 12 meses por si no hay datos en alguno (para que pueda elegir igual)
-  var hoy = new Date();
-  for (var i = 0; i < 12; i++) {
-    var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
-    var key = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
-    mesesSet[key] = true;
-  }
-  var nombresMes = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-  return Object.keys(mesesSet).sort().reverse().map(function(k){
-    var p = k.split("-");
-    return { key: k, label: nombresMes[parseInt(p[1],10)-1] + " " + p[0] };
-  });
-}
-
-function renderSelectorPeriodo() {
-  var p = PERIODO_GLOBAL.preset;
-  var rango = getRangoPeriodo();
-
-  function pill(value, label) {
-    var active = (p === value);
-    var bg = active ? "var(--brand-600)" : "transparent";
-    var fg = active ? "#fff" : "var(--t1)";
-    var border = active ? "var(--brand-600)" : "var(--border-strong)";
-    return '<button onclick="setPeriodoPreset(\''+value+'\')" '
-      + 'style="border:1px solid '+border+';background:'+bg+';color:'+fg+';padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;border-radius:7px;">'
-      + label + '</button>';
-  }
-
-  var html = '<div class="card" style="margin-bottom:16px;background:linear-gradient(135deg, #F0F9FF 0%, #FFFFFF 100%);border-left:4px solid var(--brand-600);">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">';
-
-  // Label izquierda
-  html += '<div>';
-  html += '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--brand-700);">📅 Período de análisis</div>';
-  html += '<div style="font-size:16px;font-weight:700;color:var(--t1);margin-top:4px;">'+escapeHTML(rango.label)+'</div>';
-  html += '<div style="font-size:11px;color:var(--t2);margin-top:2px;font-family:Plus Jakarta Sans,monospace;">'
-       +  formatDateBR(rango.desde) + ' → ' + formatDateBR(rango.hasta) + ' · ' + rango.dias + ' días</div>';
-  html += '</div>';
-
-  // Pills + dropdown derecha
-  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
-  html += pill("semana", "Esta semana");
-  html += pill("mes", "Este mes");
-
-  // Dropdown "Mes específico" — siempre visible, listando los meses con datos
-  var mesesDisponibles = obtenerMesesConDatos();
-  var mesSelActivo = (p === "mesEspecifico");
-  var bgMS = mesSelActivo ? "var(--brand-600)" : "transparent";
-  var fgMS = mesSelActivo ? "#fff" : "var(--t1)";
-  var bdMS = mesSelActivo ? "var(--brand-600)" : "var(--border-strong)";
-  var valorActual = (mesSelActivo && PERIODO_GLOBAL.mesYYYYMM) ? PERIODO_GLOBAL.mesYYYYMM : "";
-  html += '<select onchange="if(this.value){setPeriodoMesEspecifico(this.value);}else{setPeriodoPreset(\'mes\');}" '
-       +  'style="border:1px solid '+bdMS+';background:'+bgMS+';color:'+fgMS+';padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;border-radius:7px;font-family:inherit;">';
-  html += '<option value="" '+(!mesSelActivo?"selected":"")+'>📆 Elegir mes...</option>';
-  mesesDisponibles.forEach(function(m){
-    var sel = (valorActual === m.key) ? " selected" : "";
-    html += '<option value="'+m.key+'"'+sel+'>'+escapeHTML(m.label)+'</option>';
-  });
-  html += '</select>';
-
-  html += pill("custom", "Personalizado");
-  html += '</div>';
-
-  html += '</div>';
-
-  // Inputs custom (solo se muestran si preset === custom)
-  if (p === "custom") {
-    html += '<div style="display:flex;gap:14px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);">';
-    html += '<div style="display:flex;align-items:center;gap:8px;">'
-         +  '<label style="font-size:12px;font-weight:600;color:var(--t2);">Desde:</label>'
-         +  '<input type="date" value="'+rango.desde+'" onchange="setPeriodoCustom(this.value, undefined)" '
-         +  'style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;" />'
-         +  '</div>';
-    html += '<div style="display:flex;align-items:center;gap:8px;">'
-         +  '<label style="font-size:12px;font-weight:600;color:var(--t2);">Hasta:</label>'
-         +  '<input type="date" value="'+rango.hasta+'" onchange="setPeriodoCustom(undefined, this.value)" '
-         +  'style="border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:13px;" />'
-         +  '</div>';
-    html += '</div>';
-  }
-
-  html += '<div style="font-size:11px;color:var(--t3);margin-top:10px;font-style:italic;">'
-       +  'Este selector afecta a Indicadores de Cultura, Curva de Bradley y Target de eventos por persona.</div>';
-  html += '</div>';
-
-  return html;
-}
-
-// =============================================
-// GRÁFICO DE ACCIDENTES
-// =============================================
-// Barras: accidentes/mes (últimos 12 meses) + Línea: ratio obs/accid acumulado
-function calcularDataAccidentes(nMeses) {
-  nMeses = nMeses || 12;
-  var meses = [];
-  var hoy = new Date();
-  hoy.setDate(1); hoy.setHours(0,0,0,0);
-
-  // Generar lista de N meses hacia atrás
-  for (var i = nMeses - 1; i >= 0; i--) {
-    var d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
-    var mesStr = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0");
-    var nombresMes = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    meses.push({
-      key: mesStr,
-      label: nombresMes[d.getMonth()] + " " + String(d.getFullYear()).slice(2),
-      accidentes: 0,
-      observaciones: 0
-    });
-  }
-
-  // Contar accidentes y observaciones por mes
-  var idx = {};
-  meses.forEach(function(m, i){ idx[m.key] = i; });
-  (EVENTOS||[]).forEach(function(e){
-    var f = String(e.fecha_evento||"").substring(0,7); // YYYY-MM
-    if (idx[f] === undefined) return;
-    if (e.tipo === "ACCIDENTE") meses[idx[f]].accidentes++;
-    if (e.tipo === "OBSERVACION") meses[idx[f]].observaciones++;
-  });
-
-  // Calcular ratio MENSUAL (de cada mes) y ratio ACUMULADO (12m running)
-  var obsAcum = 0, accAcum = 0;
-  meses.forEach(function(m){
-    // Ratio mensual: obs del mes / accid del mes (null si sin accidentes)
-    m.ratioMensual = m.accidentes > 0 ? Math.round(m.observaciones / m.accidentes * 10) / 10 : null;
-    // Ratio acumulado
-    obsAcum += m.observaciones;
-    accAcum += m.accidentes;
-    m.ratioAcumulado = accAcum > 0 ? Math.round(obsAcum / accAcum * 10) / 10 : (obsAcum > 0 ? null : 0);
-  });
-
-  return { meses: meses };
-}
-
-var _chartAccidentes = null;
-var _vistaAccidentes = "ambos"; // "ambos" | "mensual" | "acumulado"
-
-function cambiarVistaAccidentes(vista) {
-  _vistaAccidentes = vista;
-  // Actualizar visibilidad de leyendas
-  ["legMensual","legAcum","legBoth"].forEach(function(id){
-    var el = document.getElementById(id);
-    if (!el) return;
-    el.style.display = "none";
-  });
-  var idLeg = vista === "ambos" ? "legBoth" : (vista === "mensual" ? "legMensual" : "legAcum");
-  var elActiva = document.getElementById(idLeg);
-  if (elActiva) elActiva.style.display = "flex";
-  // Actualizar botones
-  ["btnAccMensual","btnAccAcum","btnAccAmbos"].forEach(function(id){
-    var b = document.getElementById(id);
-    if (b) {
-      b.style.background = "transparent";
-      b.style.color = "var(--t2)";
-    }
-  });
-  var btnId = "btnAcc" + (vista === "ambos" ? "Ambos" : (vista === "mensual" ? "Mensual" : "Acum"));
-  var btn = document.getElementById(btnId);
-  if (btn) {
-    btn.style.background = "var(--brand-600)";
-    btn.style.color = "#fff";
-  }
-  dibujarGraficoAccidentes();
-}
-
-function dibujarGraficoAccidentes() {
-  if (typeof Chart === "undefined") return;
-  var canvas = document.getElementById("accidentesChart");
-  if (!canvas || typeof canvas.getContext !== "function") return;
-
-  var data = calcularDataAccidentes(12);
-  var labels = data.meses.map(function(m){return m.label;});
-  var accidentes = data.meses.map(function(m){return m.accidentes;});
-  var ratiosMensual = data.meses.map(function(m){return m.ratioMensual;});
-  var ratiosAcum = data.meses.map(function(m){return m.ratioAcumulado;});
-
-  if (_chartAccidentes) { _chartAccidentes.destroy(); _chartAccidentes = null; }
-
-  // Determinar qué datasets mostrar según la vista
-  var showMensual = (_vistaAccidentes === "ambos" || _vistaAccidentes === "mensual");
-  var showAcum = (_vistaAccidentes === "ambos" || _vistaAccidentes === "acumulado");
-
-  var datasets = [
-    {
-      type: "bar",
-      label: "Accidentes",
-      data: accidentes,
-      backgroundColor: "#DC2626",
-      borderColor: "#7F1D1D",
-      borderWidth: 1,
-      yAxisID: "y",
-      order: 3,
-      // Etiqueta sobre la barra mostrando el valor
-      datalabels: { display: true }
-    }
-  ];
-
-  if (showMensual) {
-    datasets.push({
-      type: "line",
-      label: "Ratio mensual",
-      data: ratiosMensual,
-      borderColor: "#0EA5E9",
-      backgroundColor: "rgba(14,165,233,0.1)",
-      borderWidth: 2,
-      borderDash: [5, 5],
-      pointBackgroundColor: "#0EA5E9",
-      pointRadius: 4,
-      tension: 0.2,
-      fill: false,
-      yAxisID: "y1",
-      order: 2,
-      spanGaps: true
-    });
-  }
-
-  if (showAcum) {
-    datasets.push({
-      type: "line",
-      label: "Ratio acumulado",
-      data: ratiosAcum,
-      borderColor: "#548235",
-      backgroundColor: "rgba(5,150,105,0.1)",
-      borderWidth: 3,
-      pointBackgroundColor: "#548235",
-      pointRadius: 4,
-      tension: 0.3,
-      fill: false,
-      yAxisID: "y1",
-      order: 1,
-      spanGaps: true
-    });
-  }
-
-  var ctx = canvas.getContext("2d");
-  _chartAccidentes = new Chart(ctx, {
-    type: "bar",
-    data: { labels: labels, datasets: datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      interaction: { mode: "index", intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function(ctx) {
-              if (ctx.dataset.type === "bar") return "Accidentes: " + ctx.parsed.y;
-              if (ctx.parsed.y === null) return ctx.dataset.label + ": sin accidentes en el mes";
-              return ctx.dataset.label + ": " + ctx.parsed.y + ":1";
-            }
-          }
-        }
-      },
-      animation: {
-        onComplete: function(){
-          // Dibujar números sobre cada barra
-          var chart = this;
-          var c = chart.ctx;
-          c.font = "bold 12px Plus Jakarta Sans, system-ui";
-          c.fillStyle = "#7F1D1D";
-          c.textAlign = "center";
-          c.textBaseline = "bottom";
-          chart.data.datasets.forEach(function(dataset, di) {
-            if (dataset.type !== "bar") return;
-            var meta = chart.getDatasetMeta(di);
-            meta.data.forEach(function(bar, idx) {
-              var val = dataset.data[idx];
-              if (val > 0) {
-                c.fillText(val, bar.x, bar.y - 4);
-              }
-            });
-          });
-        }
-      },
-      scales: {
-        y: {
-          type: "linear", position: "left", beginAtZero: true,
-          title: { display: true, text: "Accidentes / mes", color: "#7F1D1D", font:{size:11,weight:"600"} },
-          ticks: { stepSize: 1, color: "#7F1D1D" },
-          grid: { color: "rgba(220,38,38,0.08)" }
-        },
-        y1: {
-          type: "linear", position: "right", beginAtZero: true,
-          title: { display: true, text: "Ratio obs/accid", color: "#2E4A1C", font:{size:11,weight:"600"} },
-          ticks: { color: "#2E4A1C" },
-          grid: { drawOnChartArea: false }
-        },
-        x: {
-          ticks: { color: "var(--t2)", font:{size:11} },
-          grid: { display: false }
-        }
-      }
-    }
-  });
-}
-
-function renderGraficoAccidentes() {
-  // Calcular números resumen para mostrar arriba del gráfico
-  var data = calcularDataAccidentes(12);
-  var totalAccid = data.meses.reduce(function(a,m){return a + m.accidentes;}, 0);
-  var totalObs = data.meses.reduce(function(a,m){return a + m.observaciones;}, 0);
-  var ratioGlobal = totalAccid > 0 ? Math.round(totalObs / totalAccid * 10) / 10 : (totalObs > 0 ? "∞" : 0);
-  // Días desde el último accidente
-  var ultimoAccid = null;
-  (EVENTOS||[]).forEach(function(e){
-    if (e.tipo !== "ACCIDENTE") return;
-    var f = String(e.fecha_evento||"").substring(0,10);
-    if (!ultimoAccid || f > ultimoAccid) ultimoAccid = f;
-  });
-  var diasSinAccid = null;
-  if (ultimoAccid) {
-    var hoy = new Date(); hoy.setHours(0,0,0,0);
-    var fu = new Date(ultimoAccid + "T00:00:00");
-    diasSinAccid = Math.floor((hoy - fu) / (1000*60*60*24));
-  }
-
-  var html = '<div class="card" style="margin-top:16px;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px;">';
-  html += '<h2 style="margin:0;">📊 Accidentes y madurez de cultura · últimos 12 meses</h2>';
-  // Toggle de vista
-  html += '<div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;">'
-    + '<button id="btnAccMensual" onclick="cambiarVistaAccidentes(\'mensual\')" '
-    +   'style="border:none;background:'+(_vistaAccidentes==="mensual"?"var(--brand-600)":"transparent")+';'
-    +   'color:'+(_vistaAccidentes==="mensual"?"#fff":"var(--t2)")+';padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Mensual</button>'
-    + '<button id="btnAccAcum" onclick="cambiarVistaAccidentes(\'acumulado\')" '
-    +   'style="border:none;background:'+(_vistaAccidentes==="acumulado"?"var(--brand-600)":"transparent")+';'
-    +   'color:'+(_vistaAccidentes==="acumulado"?"#fff":"var(--t2)")+';padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Acumulado</button>'
-    + '<button id="btnAccAmbos" onclick="cambiarVistaAccidentes(\'ambos\')" '
-    +   'style="border:none;background:'+(_vistaAccidentes==="ambos"?"var(--brand-600)":"transparent")+';'
-    +   'color:'+(_vistaAccidentes==="ambos"?"#fff":"var(--t2)")+';padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;">Ambos</button>'
-    + '</div>';
-  html += '</div>';
-  html += '<p style="font-size:13px;color:var(--t2);margin:0 0 16px;">'
-       +  'Las barras muestran accidentes por mes (con cantidad exacta sobre cada una). '
-       +  'La línea de ratio mensual mide el desempeño aislado de cada mes; la línea acumulada muestra la tendencia consolidada.</p>';
-
-  // 3 mini-KPIs resumen
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">';
-
-  // Total accidentes 12m
-  var colorA = totalAccid === 0 ? "#2E4A1C" : (totalAccid <= 3 ? "#92400E" : "#991B1B");
-  var bgA = totalAccid === 0 ? "#E7F2DC" : (totalAccid <= 3 ? "#FEF3C7" : "#FEE2E2");
-  html += '<div style="padding:12px;background:'+bgA+';border-radius:8px;">'
-       +  '<div style="font-size:10px;font-weight:700;color:'+colorA+';text-transform:uppercase;letter-spacing:.05em;">Accidentes 12 meses</div>'
-       +  '<div style="font-size:28px;font-weight:800;color:'+colorA+';margin-top:4px;line-height:1;">'+totalAccid+'</div>'
-       +  '</div>';
-
-  // Ratio global 12m
-  var ratioDisp = ratioGlobal === "∞" ? "∞" : (ratioGlobal + ":1");
-  var ratioColor = (ratioGlobal === "∞" || (typeof ratioGlobal === "number" && ratioGlobal >= 100)) ? "#2E4A1C" :
-                   (typeof ratioGlobal === "number" && ratioGlobal >= 50) ? "#1E40AF" : "#92400E";
-  var ratioBg = ratioColor === "#2E4A1C" ? "#E7F2DC" : (ratioColor === "#1E40AF" ? "#DBEAFE" : "#FEF3C7");
-  html += '<div style="padding:12px;background:'+ratioBg+';border-radius:8px;">'
-       +  '<div style="font-size:10px;font-weight:700;color:'+ratioColor+';text-transform:uppercase;letter-spacing:.05em;">Ratio obs/accid 12m</div>'
-       +  '<div style="font-size:28px;font-weight:800;color:'+ratioColor+';margin-top:4px;line-height:1;">'+ratioDisp+'</div>'
-       +  '<div style="font-size:10px;color:'+ratioColor+';margin-top:2px;">meta ≥ 100:1</div>'
-       +  '</div>';
-
-  // Días sin accidentes
-  if (diasSinAccid !== null) {
-    var colorD = diasSinAccid >= 90 ? "#2E4A1C" : (diasSinAccid >= 30 ? "#92400E" : "#991B1B");
-    var bgD = diasSinAccid >= 90 ? "#E7F2DC" : (diasSinAccid >= 30 ? "#FEF3C7" : "#FEE2E2");
-    html += '<div style="padding:12px;background:'+bgD+';border-radius:8px;">'
-         +  '<div style="font-size:10px;font-weight:700;color:'+colorD+';text-transform:uppercase;letter-spacing:.05em;">Días sin accidentes</div>'
-         +  '<div style="font-size:28px;font-weight:800;color:'+colorD+';margin-top:4px;line-height:1;">'+diasSinAccid+'</div>'
-         +  '</div>';
-  } else {
-    html += '<div style="padding:12px;background:#E7F2DC;border-radius:8px;">'
-         +  '<div style="font-size:10px;font-weight:700;color:#2E4A1C;text-transform:uppercase;letter-spacing:.05em;">Días sin accidentes</div>'
-         +  '<div style="font-size:28px;font-weight:800;color:#2E4A1C;margin-top:4px;line-height:1;">∞</div>'
-         +  '<div style="font-size:10px;color:#2E4A1C;margin-top:2px;">sin registros</div>'
-         +  '</div>';
-  }
-
-  html += '</div>';
-
-  // Gráfico
-  html += '<div style="position:relative;width:100%;height:320px;"><canvas id="accidentesChart"></canvas></div>';
-
-  // Leyendas (una por vista, controladas por _vistaAccidentes)
-  var displayBoth = _vistaAccidentes === "ambos" ? "flex" : "none";
-  var displayMensual = _vistaAccidentes === "mensual" ? "flex" : "none";
-  var displayAcum = _vistaAccidentes === "acumulado" ? "flex" : "none";
-
-  html += '<div id="legBoth" style="display:'+displayBoth+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes (escala izquierda)</span>'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:0;border-top:2px dashed #0EA5E9;"></span>Ratio mensual (obs / accid del mismo mes)</span>'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#548235;border-radius:2px;"></span>Ratio acumulado (tendencia 12m)</span>'
-       +  '</div>';
-
-  html += '<div id="legMensual" style="display:'+displayMensual+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes</span>'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:0;border-top:2px dashed #0EA5E9;"></span>Ratio del mes (obs ÷ accid del mismo mes)</span>'
-       +  '</div>';
-
-  html += '<div id="legAcum" style="display:'+displayAcum+';flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:14px;height:11px;background:#DC2626;border-radius:2px;"></span>Accidentes del mes</span>'
-       +  '<span style="display:flex;align-items:center;gap:6px;"><span style="width:18px;height:3px;background:#548235;border-radius:2px;"></span>Ratio acumulado (suma todo el período)</span>'
-       +  '</div>';
-
-  html += '</div>';
-  return html;
-}
-
-
-function render() {
-  var filtered = applyFilters(EVENTOS);
-  var html = '';
-
-  // Header
-  html += '<h1>Dashboard EHS</h1>';
-  html += '<div class="last-update">Última actualización: '+new Date().toLocaleString("es-AR")+' · '+EVENTOS.length+' eventos · '+ACCIONES.length+' acciones</div>';
-
-  // Mis pendientes (identidad)
-  html += renderMisPendientes();
-
-  // ═══ SECCIÓN CULTURA — KPIs CRÍTICOS ARRIBA ═══
-  // 1. Selector global de período (afecta a Cultura BBS, Bradley, Target)
-  html += renderSelectorPeriodo();
-
-  // 2. Indicadores de Cultura BBS (5 KPIs leading)
-  html += renderLeadingKPIs();
-
-  // 3. Curva de Bradley con criterios expandibles y "te falta X"
-  html += renderCurvaBradley();
-
-  // 4. Target de eventos por persona (fijo/dinámico)
-  html += renderTargetEventos();
-
-  // 5. Gráfico de accidentes (la métrica de impacto)
-  html += renderGraficoAccidentes();
-
-  // ═══ SECCIÓN PARTICIPACIÓN ═══
-  html += renderParticipacion();
-
-  // ═══ SECCIÓN PIRÁMIDE + ACCIONES (afectada por filtros) ═══
-  // KPIs por tipo
-  var counts = { OBSERVACION:0, CONVERSACION:0, INCIDENTE:0, ACCIDENTE:0, AMBIENTE:0 };
-  filtered.forEach(function(e){ if(counts[e.tipo]!==undefined) counts[e.tipo]++; });
-
-  html += '<div class="kpis">';
-  Object.keys(TIPO_META).forEach(function(t){
-    var meta = TIPO_META[t];
-    html += '<div class="kpi '+meta.className+'">'
-      + '<div class="kpi-label">'+meta.icon+' '+meta.label+'</div>'
-      + '<div class="kpi-value">'+counts[t]+'</div>'
-      + '</div>';
-  });
-  html += '</div>';
-
-  // Pirámide y acciones pendientes
-  html += '<div class="grid">';
-  html += '<div class="card"><h2>Pirámide de seguridad</h2>'+renderPyramid(counts)+'</div>';
-  html += '<div class="card"><h2>Acciones correctivas <span style="font-weight:400;font-size:13px;color:var(--t2);">('+ACCIONES.length+' totales)</span></h2>'+renderActionsSummary()+'</div>';
-  html += '</div>';
-
-  // Gráfico de evolución
-  html += '<div class="card" style="margin-top:16px;">';
-  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">';
-  html += '<h2 style="margin:0;">Evolución <span id="evoSubtitulo" style="font-weight:400;font-size:13px;color:var(--t2);">· mensual, últimos 6 meses</span></h2>';
-  // Toggle
-  html += '<div style="display:inline-flex;border:1px solid var(--border-strong);border-radius:8px;overflow:hidden;">'
-    + '<button id="btnEvoMensual" onclick="cambiarVistaEvolucion(\'mensual\')" style="border:none;background:var(--brand-600);color:#fff;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Mensual</button>'
-    + '<button id="btnEvoAcum" onclick="cambiarVistaEvolucion(\'acumulado\')" style="border:none;background:transparent;color:var(--t2);padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;">Acumulado</button>'
-    + '</div>';
-  html += '</div>';
-  html += '<p id="evoDescripcion" style="font-size:13px;color:var(--t2);margin:8px 0 16px;">Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.</p>';
-  html += '<div style="position:relative;width:100%;height:320px;"><canvas id="evolucionChart"></canvas></div>';
-  // Leyenda mensual
-  html += '<div id="evoLeyendaMensual" style="display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#185FA5;"></span>Eventos generados</span>'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:#548235;"></span>Acciones cerradas</span>'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#D85A30;"></span>Backlog abierto (acumulado)</span>'
-    + '</div>';
-  // Leyenda acumulada (oculta por defecto)
-  html += '<div id="evoLeyendaAcum" style="display:none;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12px;color:var(--t2);justify-content:center;">'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#185FA5;"></span>Eventos generados (acum.)</span>'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:14px;height:3px;background:#548235;"></span>Acciones cerradas (acum.)</span>'
-    + '<span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:2px;background:rgba(216,90,48,0.25);"></span>Brecha = backlog</span>'
-    + '</div>';
-  html += '</div>';
-
-  // Filtros
-  html += '<div class="filters">';
-  html += filterSelect("tipo","Tipo",["Todos"].concat(Object.keys(TIPO_META)));
-  html += filterSelect("sector","Sector",["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;})));
-  html += filterSelect("prioridad","Prioridad",["Todos","Alta","Media","Baja"]);
-  html += filterSelect("estado","Estado",["Todos","Abierto","En tratamiento","Cerrado","Sin acciones"]);
-  html += '</div>';
-
-  // Tabla de eventos
-  html += '<div class="card" style="padding:0;overflow-x:auto;">';
-  html += '<table><thead><tr>'
-    + '<th>ID</th><th>Fecha</th><th>Tipo</th><th>Sector</th>'
-    + '<th>Prioridad</th><th>Persona</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
-  if (filtered.length === 0) {
-    html += '<tr><td colspan="8" class="empty">No hay eventos con estos filtros.</td></tr>';
-  } else {
-    // Ordenar por fecha descendente
-    filtered.slice().sort(function(a,b){
-      return String(b.timestamp_carga||"").localeCompare(String(a.timestamp_carga||""));
-    }).forEach(function(e){
-      var meta = TIPO_META[e.tipo] || {label:e.tipo, className:"", icon:"📋"};
-      var estadoClass = "tratamiento";
-      if (e.estado === "Abierto") estadoClass = "abierto";
-      else if (e.estado === "Cerrado") estadoClass = "cerrado";
-      else if (e.estado === "Sin acciones") estadoClass = "tratamiento";
-      html += '<tr class="row-clickable" onclick="openModal(\''+escapeHTML(e.evento_id)+'\')">'
-        + '<td><code style="font-family:Plus Jakarta Sans,monospace;font-size:11px;color:var(--t2);">'+escapeHTML(e.evento_id)+'</code>'+(e.foto_url?' <span title="Tiene foto">📷</span>':'')+'</td>'
-        + '<td>'+formatDate(e.fecha_evento)+'</td>'
-        + '<td><span class="badge '+meta.className+'">'+meta.icon+' '+meta.label+'</span></td>'
-        + '<td>'+(e.sector||"—")+'</td>'
-        + '<td>'+(e.prioridad||"—")+'</td>'
-        + '<td>'+(e.persona_nombre||"—")+'</td>'
-        + '<td><span class="badge estado '+estadoClass+'">'+(e.estado||"Sin acciones")+'</span></td>'
-        + '<td>'+(e.cant_acciones_cerradas||0)+'/'+(e.cant_acciones||0)+'</td>'
-        + '</tr>';
-    });
-  }
-  html += '</tbody></table></div>';
-
-  // Footer cultural no-punitivo
-  html += '<div style="margin-top:20px;padding:14px 18px;background:linear-gradient(135deg, #EFF5EA 0%, #FFFFFF 100%);border:1px solid var(--brand-200);border-radius:12px;font-size:12px;color:var(--brand-800);text-align:center;">'
-    + '<strong>Cada observación que se carga acá cuida a un compañero.</strong> Este sistema es para aprender y mejorar, no para sancionar.'
-    + '</div>';
-
-  document.getElementById("app").innerHTML = html;
-
-  // Dibujar gráficos (después de que los canvas existan en el DOM)
-  dibujarEvolucionMensual();
-  dibujarGraficoAccidentes();
-}
-
-// Estado de la vista del gráfico: "mensual" o "acumulado"
-var _vistaEvolucion = "mensual";
-var _chartEvolucion = null;
-
-function dibujarEvolucionMensual() {
-  var canvas = document.getElementById("evolucionChart");
-  if (!canvas || typeof canvas.getContext !== "function" || typeof Chart === "undefined") return;
-
-  var datos = calcularEvolucionMensual(6);
-
-  // Destruir gráfico anterior si existe (evita duplicados al re-renderizar)
-  if (_chartEvolucion) { _chartEvolucion.destroy(); _chartEvolucion = null; }
-
-  var config;
-  if (_vistaEvolucion === "acumulado") {
-    // Vista acumulada: dos líneas que crecen; la brecha entre ellas = backlog
-    config = {
-      type: "line",
-      data: {
-        labels: datos.labels,
-        datasets: [
-          { label:"Generados acum.", data:datos.generadosAcum, borderColor:"#185FA5", backgroundColor:"rgba(216,90,48,0.16)", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#185FA5", fill:"+1" },
-          { label:"Cerradas acum.", data:datos.cerradasAcum, borderColor:"#548235", backgroundColor:"transparent", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#548235", fill:false }
-        ]
-      },
-      options: {
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
-        scales:{
-          x:{ ticks:{autoSkip:false}, grid:{display:false} },
-          y:{ beginAtZero:true, title:{display:true,text:"Total acumulado"}, grid:{color:"rgba(128,128,128,0.1)"} }
-        }
-      }
-    };
-  } else {
-    // Vista mensual: barras de generados/cerradas + línea de backlog
-    config = {
-      data: {
-        labels: datos.labels,
-        datasets: [
-          { type:"bar", label:"Generados", data:datos.generados, backgroundColor:"#185FA5", borderRadius:4, order:2 },
-          { type:"bar", label:"Cerradas", data:datos.cerradas, backgroundColor:"#548235", borderRadius:4, order:2 },
-          { type:"line", label:"Backlog", data:datos.backlog, borderColor:"#D85A30", backgroundColor:"#D85A30", borderWidth:3, tension:0.3, pointRadius:4, pointBackgroundColor:"#D85A30", order:1, yAxisID:"y1" }
-        ]
-      },
-      options: {
-        responsive:true, maintainAspectRatio:false,
-        plugins:{ legend:{display:false}, tooltip:{ mode:"index", intersect:false } },
-        scales:{
-          x:{ ticks:{autoSkip:false}, grid:{display:false} },
-          y:{ beginAtZero:true, title:{display:true,text:"Por mes"}, grid:{color:"rgba(128,128,128,0.1)"} },
-          y1:{ beginAtZero:true, position:"right", title:{display:true,text:"Backlog acumulado"}, grid:{display:false} }
-        }
-      }
-    };
-  }
-
-  _chartEvolucion = new Chart(canvas, config);
-}
-
-// Cambia entre vista mensual y acumulada
-function cambiarVistaEvolucion(vista) {
-  _vistaEvolucion = vista;
-
-  // Actualizar botones
-  var btnM = document.getElementById("btnEvoMensual");
-  var btnA = document.getElementById("btnEvoAcum");
-  if (btnM && btnA) {
-    var activo = "var(--brand-600)", inactivo = "transparent";
-    var colorAct = "#fff", colorInact = "var(--t2)";
-    btnM.style.background = (vista==="mensual") ? activo : inactivo;
-    btnM.style.color = (vista==="mensual") ? colorAct : colorInact;
-    btnA.style.background = (vista==="acumulado") ? activo : inactivo;
-    btnA.style.color = (vista==="acumulado") ? colorAct : colorInact;
-  }
-
-  // Actualizar subtítulo y descripción
-  var sub = document.getElementById("evoSubtitulo");
-  var desc = document.getElementById("evoDescripcion");
-  if (sub) sub.textContent = (vista==="acumulado") ? "· acumulado histórico" : "· mensual, últimos 6 meses";
-  if (desc) desc.textContent = (vista==="acumulado")
-    ? "Total de eventos generados y acciones cerradas que se acumulan mes a mes. La brecha entre las líneas es el backlog."
-    : "Velocidad de generación vs cierre, y backlog de acciones abiertas acumulado.";
-
-  // Mostrar la leyenda correspondiente
-  var legM = document.getElementById("evoLeyendaMensual");
-  var legA = document.getElementById("evoLeyendaAcum");
-  if (legM) legM.style.display = (vista==="mensual") ? "flex" : "none";
-  if (legA) legA.style.display = (vista==="acumulado") ? "flex" : "none";
-
-  dibujarEvolucionMensual();
-}
-
-// Devuelve {labels, generados, cerradas, backlog} de los últimos N meses
-function calcularEvolucionMensual(nMeses) {
-  var hoy = new Date();
-  var meses = [];
-  // Construir array de los últimos N meses (clave YYYY-MM)
-  for (var i = nMeses-1; i >= 0; i--) {
-    var d = new Date(hoy.getFullYear(), hoy.getMonth()-i, 1);
-    meses.push({
-      clave: d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0"),
-      label: ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][d.getMonth()] + " " + String(d.getFullYear()).slice(2)
-    });
-  }
-  var clavesValidas = {};
-  meses.forEach(function(m){ clavesValidas[m.clave] = true; });
-
-  // Eventos generados por mes (por fecha_evento)
-  var generadosPorMes = {};
-  (EVENTOS||[]).forEach(function(e){
-    var clave = mesDeFecha(e.fecha_evento);
-    if (clave && clavesValidas[clave]) generadosPorMes[clave] = (generadosPorMes[clave]||0) + 1;
-  });
-
-  // Acciones cerradas por mes (por fecha_cierre)
-  var cerradasPorMes = {};
-  (ACCIONES||[]).forEach(function(a){
-    if (String(a.estado||"") === "Cerrada") {
-      var clave = mesDeFecha(a.fecha_cierre);
-      if (clave && clavesValidas[clave]) cerradasPorMes[clave] = (cerradasPorMes[clave]||0) + 1;
-    }
-  });
-
-  // Backlog acumulado: acciones abiertas al final de cada mes
-  // = creadas hasta fin de mes - cerradas hasta fin de mes
-  var labels=[], generados=[], cerradas=[], backlog=[];
-  var generadosAcum=[], cerradasAcum=[];
-  meses.forEach(function(m){
-    labels.push(m.label);
-    generados.push(generadosPorMes[m.clave] || 0);
-    cerradas.push(cerradasPorMes[m.clave] || 0);
-
-    var finMes = m.clave + "-31"; // comparación string YYYY-MM-DD funciona
-
-    // Acumulado de EVENTOS generados hasta fin de este mes
-    var evGenHasta = 0;
-    (EVENTOS||[]).forEach(function(e){
-      var fe = normalizarFechaStr(e.fecha_evento);
-      if (fe && fe <= finMes) evGenHasta++;
-    });
-    generadosAcum.push(evGenHasta);
-
-    // Acumulado de ACCIONES creadas y cerradas hasta fin de este mes
-    var creadasHasta = 0, cerradasHasta = 0;
-    (ACCIONES||[]).forEach(function(a){
-      var fc = normalizarFechaStr(a.fecha_creacion);
-      if (fc && fc <= finMes) creadasHasta++;
-      if (String(a.estado||"") === "Cerrada") {
-        var fcierre = normalizarFechaStr(a.fecha_cierre);
-        if (fcierre && fcierre <= finMes) cerradasHasta++;
-      }
-    });
-    cerradasAcum.push(cerradasHasta);
-    backlog.push(Math.max(0, creadasHasta - cerradasHasta));
-  });
-
-  return {
-    labels:labels,
-    generados:generados, cerradas:cerradas, backlog:backlog,
-    generadosAcum:generadosAcum, cerradasAcum:cerradasAcum
-  };
-}
-
-// Extrae "YYYY-MM" de una fecha (Date o string)
-function mesDeFecha(f) {
-  var s = normalizarFechaStr(f);
-  return s ? s.substring(0,7) : null;
-}
-
-// Normaliza una fecha a string "YYYY-MM-DD"
-function normalizarFechaStr(f) {
-  if (!f) return null;
-  if (f instanceof Date) {
-    return f.getFullYear() + "-" + String(f.getMonth()+1).padStart(2,"0") + "-" + String(f.getDate()).padStart(2,"0");
-  }
-  var s = String(f).trim();
-  // Puede venir como "2026-05-19" o "2026-05-19 00:00:00" o ISO
-  var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return m[1]+"-"+m[2]+"-"+m[3];
-  // Intentar parsear como Date
-  var d = new Date(s);
-  if (!isNaN(d.getTime())) return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-  return null;
-}
-
-function renderPyramid(counts) {
-  var max = Math.max(counts.OBSERVACION, counts.CONVERSACION, counts.INCIDENTE, counts.ACCIDENTE, counts.AMBIENTE, 1);
-  var html = '<div class="pyramid">';
-  ["OBSERVACION","CONVERSACION","INCIDENTE","ACCIDENTE","AMBIENTE"].forEach(function(t){
-    var meta = TIPO_META[t];
-    var pct = (counts[t] / max) * 100;
-    if (pct < 8 && counts[t] > 0) pct = 8; // mínimo visible
-    html += '<div class="pyramid-row '+meta.className+'">'
-      + '<div class="pyramid-label">'+meta.icon+' '+meta.label+'</div>'
-      + '<div class="pyramid-bar" style="width:'+pct+'%;">'+counts[t]+'</div>'
-      + '</div>';
-  });
-  html += '</div>';
-  html += '<div style="margin-top:10px;font-size:11px;color:var(--t3);line-height:1.4;">Más observaciones que accidentes = cultura proactiva. Si la pirámide está invertida, hay que reportar más antes de que pase.</div>';
-  return html;
-}
-
-function renderActionsSummary() {
-  var abiertas = ACCIONES.filter(function(a){return a.estado==="Abierta"}).length;
-  var enProceso = ACCIONES.filter(function(a){return a.estado==="En proceso"}).length;
-  var cerradas = ACCIONES.filter(function(a){return a.estado==="Cerrada"}).length;
-  var vencidas = 0;
-  // Hoy en formato YYYY-MM-DD usando timezone LOCAL (no UTC)
-  var d = new Date();
-  var hoy = d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
-  ACCIONES.forEach(function(a){
-    if (a.estado !== "Cerrada" && a.fecha_vencimiento && String(a.fecha_vencimiento).substring(0,10) < hoy) vencidas++;
-  });
-  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">';
-  html += '<div style="padding:10px;background:#FEE2E2;border-radius:8px;"><div style="font-size:11px;color:#991B1B;font-weight:600;text-transform:uppercase;">Abiertas</div><div style="font-size:22px;font-weight:700;color:#991B1B;">'+abiertas+'</div></div>';
-  html += '<div style="padding:10px;background:#FEF3C7;border-radius:8px;"><div style="font-size:11px;color:#92400E;font-weight:600;text-transform:uppercase;">En proceso</div><div style="font-size:22px;font-weight:700;color:#92400E;">'+enProceso+'</div></div>';
-  html += '<div style="padding:10px;background:#E7F2DC;border-radius:8px;"><div style="font-size:11px;color:#2E4A1C;font-weight:600;text-transform:uppercase;">Cerradas</div><div style="font-size:22px;font-weight:700;color:#2E4A1C;">'+cerradas+'</div></div>';
-  html += '<div style="padding:10px;background:'+(vencidas>0?'#FEE2E2':'#F1F5F9')+';border-radius:8px;"><div style="font-size:11px;color:'+(vencidas>0?'#991B1B':'var(--t2)')+';font-weight:600;text-transform:uppercase;">Vencidas</div><div style="font-size:22px;font-weight:700;color:'+(vencidas>0?'#991B1B':'var(--t2)')+';">'+vencidas+'</div></div>';
-  html += '</div>';
-  html += '<div style="margin-top:10px;text-align:center;"><a href="seguimiento_v2.html" style="font-size:12px;color:var(--brand-700);text-decoration:none;font-weight:600;">Ver seguimiento completo →</a></div>';
-  return html;
-}
-
-function filterSelect(key, label, options) {
-  var html = '<div class="filter-group"><span class="filter-label">'+label+':</span><select onchange="setFilter(\''+key+'\',this.value)">';
-  options.forEach(function(o){
-    html += '<option value="'+o+'"'+(FILTERS[key]===o?' selected':'')+'>'+o+'</option>';
-  });
-  html += '</select></div>';
-  return html;
-}
-
-function formatDate(s) {
-  if (!s) return "—";
-  var str = String(s);
-  if (str.length >= 10) {
-    var parts = str.substring(0,10).split("-");
-    if (parts.length === 3) return parts[2]+'/'+parts[1]+'/'+parts[0];
-  }
-  return str;
-}
-
-// =============================================
-// MODAL
-// =============================================
-function openModal(eventoId) {
-  var ev = EVENTOS.filter(function(e){return e.evento_id === eventoId})[0];
-  if (!ev) return;
-  MODAL_EVENT = ev;
-  var meta = TIPO_META[ev.tipo] || {label:ev.tipo, icon:"📋", className:""};
-  var acciones = ACCIONES.filter(function(a){return String(a.evento_id) === String(eventoId)});
-
-  var html = '<div class="modal-overlay" id="modalOverlay" onclick="if(event.target.id===\'modalOverlay\')closeModal()">';
-  html += '<div class="modal-box">';
-  html += '<div class="modal-header">';
-  html += '<h3><span class="badge '+meta.className+'">'+meta.icon+' '+meta.label+'</span> &nbsp; '+escapeHTML(ev.evento_id)+'</h3>';
-  html += '<button class="modal-close" onclick="closeModal()">×</button>';
-  html += '</div>';
-  html += '<div class="modal-body">';
-
-  html += modalRow("Subtipo", ev.subtipo);
-  html += modalRow("Fecha / Hora", formatDate(ev.fecha_evento) + ' ' + (ev.hora_evento||""));
-  html += modalRow("Sector", ev.sector);
-  html += modalRow("Turno", ev.turno);
-  html += modalRow("Prioridad", ev.prioridad);
-  html += modalRow("Reportado por", (ev.reportado_por_nombre||"") + (ev.reportado_por_legajo?' (Leg. '+escapeHTML(ev.reportado_por_legajo)+')':''));
-  if (ev.persona_nombre) html += modalRow("Persona", ev.persona_nombre + (ev.persona_legajo?' (Leg. '+escapeHTML(ev.persona_legajo)+')':''));
-  html += modalRow("Descripción", ev.descripcion);
-
-  // Específicos
-  if (ev.tipo === "OBSERVACION") {
-    if (ev.obs_tipo_acto_condicion) html += modalRow("Tipo", ev.obs_tipo_acto_condicion);
-    if (ev.obs_accion_inmediata) html += modalRow("Acción inmediata", ev.obs_accion_inmediata);
-  } else if (ev.tipo === "CONVERSACION") {
-    if (ev.conv_tema) html += modalRow("Tema", ev.conv_tema);
-    if (ev.conv_compromiso) html += modalRow("Compromiso", ev.conv_compromiso);
-  } else if (ev.tipo === "INCIDENTE") {
-    if (ev.inc_equipo_afectado) html += modalRow("Equipo", ev.inc_equipo_afectado);
-    if (ev.inc_dano_estimado_ars) html += modalRow("Daño estimado", "$"+ev.inc_dano_estimado_ars);
-    if (ev.inc_accion_inmediata) html += modalRow("Acción inmediata", ev.inc_accion_inmediata);
-    if (ev.inc_notif_responsable) html += modalRow("Notif. responsable", ev.inc_notif_responsable + (ev.inc_notif_a_quien?' — '+ev.inc_notif_a_quien:''));
-  } else if (ev.tipo === "ACCIDENTE") {
-    if (ev.acc_parte_cuerpo) html += modalRow("Parte del cuerpo", ev.acc_parte_cuerpo);
-    if (ev.acc_tipo_lesion) html += modalRow("Tipo de lesión", ev.acc_tipo_lesion);
-    if (ev.acc_mecanismo) html += modalRow("Mecanismo", ev.acc_mecanismo);
-    if (ev.acc_accion_inmediata) html += modalRow("Acción inmediata", ev.acc_accion_inmediata);
-    if (ev.acc_notif_art) html += modalRow("Notif. ART", ev.acc_notif_art);
-    if (ev.acc_dias_baja_estimados) html += modalRow("Días baja", ev.acc_dias_baja_estimados);
-  } else if (ev.tipo === "AMBIENTE") {
-    if (ev.amb_sustancia) html += modalRow("Sustancia", ev.amb_sustancia);
-    if (ev.amb_cantidad) html += modalRow("Cantidad", ev.amb_cantidad+' '+(ev.amb_unidad||""));
-    if (ev.amb_medio_impactado) html += modalRow("Medio impactado", ev.amb_medio_impactado);
-    if (ev.amb_contencion_aplicada) html += modalRow("Contención", ev.amb_contencion_aplicada);
-    if (ev.amb_notif_autoridad) html += modalRow("Notif. autoridad", ev.amb_notif_autoridad);
-  }
-
-  // Foto
-  if (ev.foto_url) {
-    html += '<div style="margin-top:12px;text-align:center;">'
-      + '<div style="font-size:11px;color:var(--t2);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">📷 Foto del evento</div>'
-      + '<a href="'+escapeHTML(ev.foto_url)+'" target="_blank" rel="noopener" title="Click para ver en grande">'
-      + '<img src="'+escapeHTML(ev.foto_url)+'" style="max-width:100%;max-height:300px;border-radius:8px;border:1px solid var(--border);cursor:pointer;" alt="Foto del evento"/>'
-      + '</a>'
-      + '<div style="font-size:10px;color:var(--t3);margin-top:4px;">Click en la imagen para verla en grande</div>'
-      + '</div>';
-  }
-
-  // Acciones
-  html += '<h4 style="margin-top:18px;font-size:13px;font-weight:700;color:var(--t1);">Acciones correctivas ('+acciones.length+')</h4>';
-  if (acciones.length === 0) {
-    html += '<div style="margin-top:8px;font-size:12px;color:var(--t3);">Este evento no tiene acciones correctivas asignadas.</div>';
-  } else {
-    html += '<div class="actions-list">';
-    acciones.forEach(function(a){
-      var estadoClass = a.estado === "Cerrada" ? "cerrado" : (a.estado === "En proceso" ? "tratamiento" : "abierto");
-      html += '<div class="action-item">'
-        + '<div class="action-info">'
-        + '<div class="action-desc">'+escapeHTML(a.descripcion)+'</div>'
-        + '<div class="action-meta">👤 '+(a.responsable_nombre||"—")+' · 📅 '+formatDate(a.fecha_vencimiento)+'</div>'
-        + '</div>'
-        + '<span class="badge estado '+estadoClass+'">'+a.estado+'</span>'
-        + '</div>';
-    });
-    html += '</div>';
-  }
-
-  html += '<button class="btn btn-secondary" style="margin-top:12px;width:100%;" onclick="abrirNuevaAccion(\''+escapeHTML(ev.evento_id)+'\')">+ Nueva acción correctiva</button>';
-
-  html += '</div>'; // body
-  html += '<div class="modal-actions">';
-  html += '<button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>';
-  html += '</div></div></div>';
-
-  document.body.insertAdjacentHTML("beforeend", html);
-}
-
-function modalRow(label, value) {
-  if (!value || value === "undefined" || value === "") return "";
-  return '<div class="modal-field"><span class="modal-field-label">'+escapeHTML(label)+'</span><span class="modal-field-value">'+escapeHTML(value)+'</span></div>';
-}
-
-function closeModal() {
-  var m = document.getElementById("modalOverlay");
-  if (m) m.remove();
-  var n = document.getElementById("nuevaAccionOverlay");
-  if (n) n.remove();
-}
-
-// =============================================
-// NUEVA ACCIÓN CORRECTIVA
-// =============================================
-function abrirNuevaAccion(eventoId) {
-  var acciones = ACCIONES.filter(function(a){return String(a.evento_id) === String(eventoId)});
-  var nro = acciones.length + 1;
-
-  var html = '<div class="modal-overlay" id="nuevaAccionOverlay" onclick="if(event.target.id===\'nuevaAccionOverlay\')cerrarNuevaAccion()">';
-  html += '<div class="modal-box" style="max-width:480px;">';
-  html += '<div class="modal-header"><h3>Nueva acción correctiva</h3>'
-    + '<button class="modal-close" onclick="cerrarNuevaAccion()">×</button></div>';
-  html += '<div class="modal-body">';
-  html += '<div style="margin-bottom:14px;font-size:12px;color:var(--t2);">Evento: <code style="font-family:Plus Jakarta Sans,monospace;">'+eventoId+'</code> · Acción #'+nro+'</div>';
-
-  html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Descripción de la acción *</label>'
-    + '<textarea id="nac_desc" placeholder="¿Qué hay que hacer?" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;min-height:70px;"></textarea></div>';
-
-  html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Responsable *</label>'
-    + '<input type="text" id="nac_resp_search" placeholder="Buscar por nombre o legajo..." autocomplete="off" '
-    + 'oninput="filtrarResponsables(this.value)" '
-    + 'style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;margin-bottom:6px;">'
-    + '<select id="nac_resp" size="6" '
-    + 'style="width:100%;padding:6px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;">';
-  // Combinar Responsables (primero) + Personal (después)
-  // Cada option tiene data-legajo y data-nombre para reconocer al seleccionar
-  (MAESTROS.responsables||[]).forEach(function(r){
-    var nombre = r.nombre || "";
-    var legajo = r.legajo || "";
-    var rol = r.rol ? " · "+r.rol : "";
-    html += '<option value="'+escapeHTML(nombre)+'" data-legajo="'+escapeHTML(legajo)+'" data-nombre="'+escapeHTML(nombre)+'">'
-      + '★ '+escapeHTML(nombre) + (legajo?' (#'+escapeHTML(legajo)+')':'') + rol + '</option>';
-  });
-  (MAESTROS.personal||[]).forEach(function(p){
-    var nombre = p.nombre || "";
-    var legajo = p.legajo || "";
-    html += '<option value="'+escapeHTML(nombre)+'" data-legajo="'+escapeHTML(legajo)+'" data-nombre="'+escapeHTML(nombre)+'">'
-      + escapeHTML(nombre) + (legajo?' (#'+escapeHTML(legajo)+')':'') + '</option>';
-  });
-  html += '</select>';
-  html += '<div style="font-size:10px;color:var(--t3);margin-top:4px;">★ = supervisor/responsable. Asignar puede ser a cualquier persona del Personal.</div>';
-  html += '</div>';
-
-  html += '<div style="margin-bottom:14px;"><label style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;">Fecha de vencimiento</label>'
-    + '<input type="date" id="nac_fecha" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font:inherit;font-size:13px;"></div>';
-
-  html += '</div>'; // body
-  html += '<div class="modal-actions">';
-  html += '<button class="btn btn-secondary" onclick="cerrarNuevaAccion()">Cancelar</button>';
-  html += '<button class="btn btn-primary" onclick="guardarAccion(\''+eventoId+'\','+nro+')">Guardar acción</button>';
-  html += '</div></div></div>';
-
-  document.body.insertAdjacentHTML("beforeend", html);
-}
-
-function cerrarNuevaAccion() {
-  var m = document.getElementById("nuevaAccionOverlay");
-  if (m) m.remove();
-}
-
-// Filtrar lista de responsables/personal en el modal
-function filtrarResponsables(query) {
-  var sel = document.getElementById("nac_resp");
-  if (!sel) return;
-  var q = String(query || "").toLowerCase().trim();
-  for (var i = 0; i < sel.options.length; i++) {
-    var opt = sel.options[i];
-    var nombre = (opt.getAttribute("data-nombre") || opt.text).toLowerCase();
-    var legajo = (opt.getAttribute("data-legajo") || "").toLowerCase();
-    var match = !q || nombre.indexOf(q) !== -1 || legajo.indexOf(q) !== -1;
-    opt.style.display = match ? "" : "none";
-  }
-}
-
-function guardarAccion(eventoId, nro) {
-  var desc = document.getElementById("nac_desc").value.trim();
-  var sel = document.getElementById("nac_resp");
-  var opt = sel.options[sel.selectedIndex];
-  var resp = opt ? (opt.getAttribute("data-nombre") || sel.value.trim()) : sel.value.trim();
-  var legajo = opt ? (opt.getAttribute("data-legajo") || "") : "";
-  var fecha = document.getElementById("nac_fecha").value;
-
-  if (!desc || !resp || sel.selectedIndex < 0) {
-    alert("Completá descripción y elegí un responsable de la lista");
-    return;
-  }
-
-  var params = new URLSearchParams();
-  params.append("action","save_accion");
-  params.append("evento_id", eventoId);
-  params.append("nro_accion", nro);
-  params.append("descripcion", desc);
-  params.append("responsable_legajo", legajo || "");
-  params.append("responsable_nombre", resp);
-  params.append("fecha_vencimiento", fecha);
-  params.append("estado","Abierta");
-
-  // Optimistic
-  ACCIONES.push({
-    accion_id: "TEMP-"+Date.now(),
-    evento_id: eventoId,
-    nro_accion: nro,
-    descripcion: desc,
-    responsable_legajo: legajo,
-    responsable_nombre: resp,
-    fecha_vencimiento: fecha,
-    estado: "Abierta"
-  });
-
-  cerrarNuevaAccion();
-  closeModal();
-  render();
-
-  fetch(APPS_SCRIPT_URL, { method:"POST", body:params })
-    .then(function(r){ return r.json(); })
-    .then(function(resp){
-      // Recargar para tener el ID real
-      loadData();
-    })
-    .catch(function(err){ console.error(err); });
-}
-
-// Init
-loadData();
+function setHeat(btn,modo){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderHeat(modo); }
+renderHeat('graves');
+new Chart(document.getElementById('chDerr'),{type:'line',data:{labels:MES_LBL,datasets:[{data:DATA.derrames_mes,borderColor:'#548235',backgroundColor:'rgba(84,130,53,.12)',fill:true,tension:.3,pointRadius:4}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:5}}},maintainAspectRatio:false}});
+// Nivel 3
+document.getElementById('pendList').innerHTML = DATA.pendientes.map(p=>{
+  let cls='ok', txt='sin fecha';
+  if(p.v!==null){ if(p.v<0){cls='rojo';txt='vencida '+Math.abs(p.v)+' d';} else if(p.v<=3){cls='ambar';txt='vence en '+p.v+' d';} else {cls='ok';txt=p.v+' días';} }
+  return `<div class="pend-item"><span class="d">${p.d}</span><span class="venc ${cls}">${txt}</span></div>`;
+}).join('');
+document.getElementById('verList').innerHTML = DATA.cola_verif.map(c=>`<div class="ver-item"><span class="d">${c.d}<br><span class="who">Cerró: ${c.r} · evento ${c.t}</span></span><button class="btn-ver">Validar con foto</button></div>`).join('');
+
+const PART = {"unicos_mes": [3, 18, 33, 42, 34, 19], "nuevos_mes": [3, 15, 18, 14, 3, 0], "top3_pct": 28, "p50": 9, "p80": 20, "pareto": [{"n": "Vallejos J.", "v": 78}, {"n": "Manfredi J.", "v": 47}, {"n": "Zanotto A.", "v": 39}, {"n": "Gamero L.", "v": 30}, {"n": "Uribe S.", "v": 28}, {"n": "Urriaga M.", "v": 22}, {"n": "Lopez D.", "v": 21}, {"n": "Frias R.", "v": 21}, {"n": "Sanchez M.", "v": 20}, {"n": "Bolletta F.", "v": 20}], "resto": 263, "ret_junjul": "30/42", "ret_julago": "18/34", "ret_julago_pct": 53, "reportadores_unicos_total": 53};
+// Pareto de concentración (Nivel 1)
+const pLabels = PART.pareto.map(p=>p.n).concat(['Otros 43','Nunca (103)']);
+const pVals = PART.pareto.map(p=>p.v).concat([PART.resto, 0]);
+new Chart(document.getElementById('chPareto'),{type:'bar',data:{labels:pLabels,datasets:[{data:pVals,backgroundColor:pLabels.map((_,i)=>i<3?'#B8402A':(i<10?'#C97A12':'#94A3B8')),borderRadius:3}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}},maintainAspectRatio:false}});
+// Cobertura por rol (Nivel 1)
+const ROLES=[['Gerentes',3,3],['Jefes',7,7],['Supervisores',23,37],['Operadores',10,109]];
+document.getElementById('cobRoles').innerHTML = ROLES.map(r=>{
+  const pct=Math.round(r[1]/r[2]*100);
+  const col=pct>=80?'#548235':(pct>=40?'#C97A12':'#B8402A');
+  return `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--ink-700)"><span>${r[0]}</span><span>${r[1]} de ${r[2]} · ${pct}%</span></div><div style="height:14px;background:var(--ink-100);border-radius:7px;margin-top:4px"><div style="height:14px;width:${Math.max(pct,3)}%;background:${col};border-radius:7px"></div></div></div>`;
+}).join('');
+// Curva de adopción (Nivel 2)
+new Chart(document.getElementById('chAdop'),{type:'line',data:{labels:MES_LBL,datasets:[
+ {label:'Únicos del mes',data:PART.unicos_mes,borderColor:'#334155',backgroundColor:'rgba(51,65,85,.08)',fill:true,tension:.3,pointRadius:4},
+ {label:'Nuevos del mes',data:PART.nuevos_mes,borderColor:'#B8402A',tension:.3,pointRadius:4}
+]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}},scales:{y:{beginAtZero:true}},maintainAspectRatio:false}});
 </script>
 </body>
 </html>
