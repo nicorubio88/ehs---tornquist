@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard EHS v3 — Mockup · Planta Tornquist</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+const PART = {"unicos_mes": [3, 18, 33, 42, 34, 19], "nuevos_mes": [3, 15, 18, 14, 3, 0], "top3_pct": 28, "p50": 9, "p80": 20, "pareto": [{"n": "Vallejos J.", "v": 78}, {"n": "Manfredi J.", "v": 47}, {"n": "Zanotto A.", "v": 39}, {"n": "Gamero L.", "v": 30}, {"n": "Uribe S.", "v": 28}, {"n": "Urriaga M.", "v": 22}, {"n": "Lopez D.", "v": 21}, {"n": "Frias R.", "v": 21}, {"n": "Sanchez M.", "v": 20}, {"n": "Bolletta F.", "v": 20}], "resto": 263, "ret_junjul": "30/42", "ret_julago": "18/34", "ret_julago_pct": 53, "reportadores_unicos_total": 53};
+// Pareto de concentración (Nivel 1)
+const pLabels = PART.pareto.map(p=>p.n).concat(['Otros 43','Nunca (103)']);
+const pVals = PART.pareto.map(p=>p.v).concat([PART.resto, 0]);
+new Chart(document.getElementById('chPareto'),{type:'bar',data:{labels:pLabels,datasets:[{data:pVals,backgroundColor:pLabels.map((_,i)=>i<3?'#B8402A':(i<10?'#C97A12':'#94A3B8')),borderRadius:3}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}},maintainAspectRatio:false}});
+// Cobertura por rol (Nivel 1)
+const ROLES=[['Gerentes',3,3],['Jefes',7,7],['Supervisores',23,37],['Operadores',10,109]];
+document.getElementById('cobRoles').innerHTML = ROLES.map(r=>{
+  const pct=Math.round(r[1]/r[2]*100);
+  const col=pct>=80?'#548235':(pct>=40?'#C97A12':'#B8402A');
+  return `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--ink-700)"><span>${r[0]}</span><span>${r[1]} de ${r[2]} · ${pct}%</span></div><div style="height:14px;background:var(--ink-100);border-radius:7px;margin-top:4px"><div style="height:14px;width:${Math.max(pct,3)}%;background:${col};border-radius:7px"></div></div></div>`;
+}).join('');
+// Curva de adopción (Nivel 2)
+new Chart(document.getElementById('chAdop'),{type:'line',data:{labels:MES_LBL,datasets:[
+ {label:'Únicos del mes',data:PART.unicos_mes,borderColor:'#334155',backgroundColor:'rgba(51,65,85,.08)',fill:true,tension:.3,pointRadius:4},
+ {label:'Nuevos del mes',data:PART.nuevos_mes,borderColor:'#B8402A',tension:.3,pointRadius:4}
+]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}},scales:{y:{beginAtZero:true}},maintainAspectRatio:false}});
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-50:#EFF5EA;--brand-100:#E7F2DC;--brand-200:#D6EAC4;--brand-500:#5E9A3B;--brand-600:#548235;--brand-700:#3D5F26;--brand-800:#2E4A1C;
+  --ink-50:#F8FAFC;--ink-100:#F1F5F9;--ink-200:#E2E8F0;--ink-400:#94A3B8;--ink-500:#64748B;--ink-700:#334155;--ink-900:#0F172A;
+  --rojo:#B8402A;--rojo-bg:#FBEAE5;--rojo-bd:#EFC4B8;--ambar:#C97A12;--ambar-bg:#FDF3E3;--ambar-bd:#F3DCB4;--verde-bg:#E7F2DC;--verde-bd:#D6EAC4;
+  --shadow:0 1px 2px rgba(15,23,42,.05);--shadow-md:0 4px 14px rgba(15,23,42,.07);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--ink-50);color:var(--ink-900);letter-spacing:-.01em}
+.mock-banner{background:var(--ink-900);color:#fff;font-size:11px;padding:6px 24px;display:flex;justify-content:space-between;align-items:center}
+.mock-banner strong{color:#7BC142}
+.topbar{background:#fff;border-bottom:1px solid var(--ink-200);padding:0 24px;display:flex;align-items:center;gap:28px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;padding:14px 0}
+.brand-mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--brand-600),var(--brand-800));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px}
+.brand-name{font-size:14px;font-weight:700;line-height:1.1}
+.brand-sub{font-size:10px;font-weight:600;color:var(--ink-500);text-transform:uppercase;letter-spacing:.06em}
+.tabs{display:flex;gap:4px;flex:1}
+.tab{border:none;background:transparent;cursor:pointer;font:inherit;padding:12px 18px 10px;border-bottom:3px solid transparent;text-align:left;transition:background .15s}
+.tab:hover{background:var(--ink-50)}
+.tab:focus-visible{outline:2px solid var(--brand-600);outline-offset:-2px}
+.tab .q{display:block;font-size:10px;font-weight:600;color:var(--ink-400);letter-spacing:.04em}
+.tab .n{display:block;font-size:14px;font-weight:700;color:var(--ink-700)}
+.tab.active{border-bottom-color:var(--brand-600)}
+.tab.active .n{color:var(--brand-800)}
+.tab.active .q{color:var(--brand-600)}
+.topctrl{display:flex;align-items:center;gap:10px;padding:10px 0}
+.periodo{font-size:12px;font-weight:600;color:var(--ink-700);background:var(--ink-100);border:1px solid var(--ink-200);border-radius:8px;padding:7px 12px}
+.btn-comite{font:inherit;font-size:12px;font-weight:700;color:#fff;background:var(--brand-700);border:none;border-radius:8px;padding:8px 14px;cursor:pointer}
+.btn-comite:hover{background:var(--brand-800)}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 24px 60px}
+.vista{display:none}.vista.active{display:block}
+.sec-label{font-size:11px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 10px}
+.sec-label:first-child{margin-top:0}
+.card{background:#fff;border:1px solid var(--ink-200);border-radius:12px;box-shadow:var(--shadow);padding:16px 18px}
+.grid{display:grid;gap:12px}
+/* ---- NIVEL 1 ---- */
+.row-res{grid-template-columns:1.35fr 1fr 1fr}
+.hero-dias{display:flex;flex-direction:column;justify-content:center}
+.hero-dias .big{font-size:56px;font-weight:800;color:var(--brand-800);line-height:1}
+.hero-dias .lbl{font-size:13px;font-weight:600;color:var(--ink-700);margin-top:6px}
+.hero-dias .sub{font-size:11px;color:var(--ink-500);margin-top:2px}
+.kpi-pend{background:repeating-linear-gradient(-45deg,#fff,#fff 8px,var(--ink-50) 8px,var(--ink-50) 16px)}
+.kpi-pend .t{font-size:12px;font-weight:700;color:var(--ink-700)}
+.kpi-pend .v{font-size:30px;font-weight:800;color:var(--ink-400);margin:4px 0}
+.kpi-pend .need{font-size:11px;color:var(--ambar);font-weight:600;line-height:1.35}
+.row-cult{grid-template-columns:repeat(3,1fr);margin-top:12px}
+.kpi{position:relative}
+.kpi .t{font-size:12px;font-weight:700;color:var(--ink-700)}
+.kpi .v{font-size:30px;font-weight:800;margin:4px 0;color:var(--ink-900)}
+.kpi .meta{font-size:11px;color:var(--ink-500)}
+.pill{position:absolute;top:14px;right:14px;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px}
+.pill.rojo{background:var(--rojo-bg);color:var(--rojo)}
+.pill.ambar{background:var(--ambar-bg);color:var(--ambar)}
+.pill.verde{background:var(--verde-bg);color:var(--brand-800)}
+/* semáforo — elemento firma */
+.semaforo{grid-template-columns:repeat(4,1fr);margin-top:12px}
+.sem{border-radius:12px;padding:16px 18px;border:1px solid;cursor:pointer;transition:transform .12s}
+.sem:hover{transform:translateY(-2px)}
+.sem.rojo{background:var(--rojo-bg);border-color:var(--rojo-bd)}
+.sem.verde{background:var(--verde-bg);border-color:var(--verde-bd)}
+.sem .v{font-size:40px;font-weight:800;line-height:1}
+.sem.rojo .v{color:var(--rojo)}.sem.verde .v{color:var(--brand-800)}
+.sem .t{font-size:12px;font-weight:700;margin-top:6px;color:var(--ink-900)}
+.sem .drill{font-size:10px;font-weight:600;color:var(--ink-500);margin-top:6px}
+.sem-title{display:flex;align-items:baseline;gap:10px;margin:22px 0 10px}
+.sem-title .sec-label{margin:0}
+.sem-title .regla{font-size:11px;color:var(--rojo);font-weight:600}
+.row-trend{grid-template-columns:1.5fr 1fr;margin-top:12px}
+h3{font-size:13px;font-weight:700;color:var(--ink-900);margin-bottom:10px}
+.pyr-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.pyr-lbl{width:110px;font-size:11px;font-weight:600;color:var(--ink-700);text-align:right}
+.pyr-bar{height:20px;border-radius:4px;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding:0 7px;min-width:26px}
+/* ---- NIVEL 2 ---- */
+.heat table{border-collapse:collapse;width:100%;font-size:12px}
+.heat th{font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;text-align:center}
+.heat th:first-child{text-align:left}
+.heat td{padding:0;text-align:center}
+.heat td.sector{font-size:12px;font-weight:600;color:var(--ink-700);text-align:left;padding:4px 8px;white-space:nowrap}
+.cell{margin:2px;border-radius:5px;padding:8px 0;font-weight:700;font-size:12px}
+.toggle{display:inline-flex;border:1px solid var(--ink-200);border-radius:8px;overflow:hidden}
+.toggle button{border:none;font:inherit;font-size:12px;font-weight:600;padding:7px 14px;background:transparent;color:var(--ink-500);cursor:pointer}
+.toggle button.on{background:var(--brand-600);color:#fff}
+.row-turnos{grid-template-columns:1fr 1fr;margin-top:12px}
+.split{display:flex;gap:10px;margin-top:8px}
+.split>div{flex:1;border-radius:10px;padding:14px;text-align:center}
+.split .a{background:var(--ink-100)}
+.split .b{background:var(--rojo-bg)}
+.split .n{font-size:30px;font-weight:800}
+.split .a .n{color:var(--ink-700)}.split .b .n{color:var(--rojo)}
+.split .l{font-size:11px;font-weight:600;color:var(--ink-500);margin-top:3px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:10px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.04em;padding:8px;border-bottom:1px solid var(--ink-200)}
+.tbl td{padding:8px;border-bottom:1px solid var(--ink-100)}
+.tbl td.num{font-weight:700}
+.tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
+.tag.rojo{background:var(--rojo-bg);color:var(--rojo)}
+.tag.verde{background:var(--verde-bg);color:var(--brand-800)}
+.tag.ambar{background:var(--ambar-bg);color:var(--ambar)}
+/* ---- NIVEL 3 ---- */
+.identidad{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:14px}
+.identidad .chip{background:var(--brand-100);border:1px solid var(--brand-200);color:var(--brand-800);font-weight:700;border-radius:999px;padding:6px 14px;font-size:12px}
+.pend-item,.ver-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--ink-100);font-size:12.5px}
+.pend-item .d,.ver-item .d{flex:1;color:var(--ink-700)}
+.pend-item .who,.ver-item .who{font-size:11px;color:var(--ink-500);white-space:nowrap}
+.venc{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.venc.rojo{background:var(--rojo-bg);color:var(--rojo)}
+.venc.ambar{background:var(--ambar-bg);color:var(--ambar)}
+.venc.ok{background:var(--ink-100);color:var(--ink-500)}
+.btn-ver{font:inherit;font-size:11px;font-weight:700;border:1px solid var(--brand-200);background:var(--brand-50);color:var(--brand-800);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.nota-nueva{font-size:11px;color:var(--ink-500);background:var(--ambar-bg);border:1px solid var(--ambar-bd);border-radius:8px;padding:8px 12px;margin-bottom:12px}
+.row3{grid-template-columns:1fr 1fr}
+canvas{max-width:100%}
+@media(max-width:900px){.row-res,.row-cult,.semaforo,.row-trend,.row-turnos,.row3{grid-template-columns:1fr}.tabs{order:3;width:100%}}
+@media print{
+  .mock-banner,.topctrl,.tabs{display:none!important}
+  .vista{display:block!important;page-break-after:always}
+  body{background:#fff}
+  .card,.sem{box-shadow:none}
+  .vista::before{content:attr(data-print-title);display:block;font-size:16px;font-weight:800;margin:10px 0 14px;color:var(--brand-800)}
+}
+</style>
+</head>
+<body>
+<div class="mock-banner"><span><strong>MOCKUP NAVEGABLE · Dashboard EHS v3</strong> — Fase 1 de la propuesta, con datos reales al 14/08/2026</span><span>589 eventos · 500 acciones</span></div>
+<div class="topbar">
+  <div class="brand"><div class="brand-mark">T</div><div><div class="brand-name">Sistema EHS</div><div class="brand-sub">Planta Tornquist</div></div></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" role="tab" onclick="verTab(this,'v1')"><span class="q">¿Estamos seguros?</span><span class="n">Gerencia</span></button>
+    <button class="tab" role="tab" onclick="verTab(this,'v2')"><span class="q">¿Dónde está el problema?</span><span class="n">Jefatura</span></button>
+    <button class="tab" role="tab" onclick="verTab(this,'v3')"><span class="q">¿Qué tengo que hacer hoy?</span><span class="n">Supervisión</span></button>
+  </nav>
+  <div class="topctrl">
+    <span class="periodo">Período: 24 mar – 14 ago 2026</span>
+    <button class="btn-comite" onclick="window.print()">Generar informe del período</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ═══════════ NIVEL 1 · GERENCIA ═══════════ -->
+<section id="v1" class="vista active" data-print-title="Informe EHS · Nivel Gerencia · corte 14/08/2026">
+  <div class="sec-label">Resultados</div>
+  <div class="grid row-res">
+    <div class="card hero-dias">
+      <div class="big" id="diasSin"></div>
+      <div class="lbl">días sin accidentes registrables (FA + LTA)</div>
+      <div class="sub" id="ultAcc"></div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        <span class="tag verde" title="First Aid / primeros auxilios">FA · 9</span>
+        <span class="tag verde" title="Lost Time Accident / con baja">LTA · 0 confirmados</span>
+        <span class="tag ambar">5 sin clasificar (v1)</span>
+        <span class="tag ambar" title="Near Miss / casi accidente">NM · 16</span>
+      </div>
+    </div>
+    <div class="card kpi-pend">
+      <div class="t">Índice de Frecuencia (IF)</div>
+      <div class="v">—</div>
+      <div class="need">Pendiente de dato: horas hombre trabajadas por mes (Regla 1). Se activa solo, sin desarrollo extra.</div>
+    </div>
+    <div class="card kpi-pend">
+      <div class="t">Índice de Gravedad (IG)</div>
+      <div class="v">—</div>
+      <div class="need">Pendiente de dato: horas hombre + días de baja reales por accidente (Reglas 1 y 2).</div>
+    </div>
+  </div>
+
+  <div class="sec-label">Cultura</div>
+  <div class="grid row-cult">
+    <div class="card kpi"><span class="pill rojo">Brecha</span><div class="t">Ratio observaciones / accidente</div><div class="v">31:1</div><div class="meta">436 obs / 14 accid · objetivo 100:1</div></div>
+    <div class="card kpi"><span class="pill rojo">Brecha</span><div class="t">Reporte de operarios</div><div class="v">2%</div><div class="meta">13 de 589 eventos · objetivo ≥50% · 10 de 109 operarios participaron</div></div>
+    <div class="card kpi"><span class="pill ambar">Etapa 2 de 4</span><div class="t">Curva de Bradley</div><div class="v">Dependiente</div><div class="meta">La seguridad la empuja la supervisión. Falta: ratio ≥50:1 y operarios ≥50%</div></div>
+  </div>
+
+
+  <div class="sec-label">¿De quién depende la cultura?</div>
+  <div class="grid row-cult">
+    <div class="card kpi"><span class="pill rojo">Dependencia alta</span><div class="t">Personas que generan el 50% del reporte</div><div class="v">9</div><div class="meta">Top 3 (Vallejos, Manfredi, Zanotto) generan el 28% · 20 personas generan el 80%</div></div>
+    <div class="card kpi"><span class="pill rojo">Base congelada</span><div class="t">Nuevos reportadores en agosto</div><div class="v">0</div><div class="meta">Julio: 3 · Junio: 14 · El sistema dejó de incorporar gente desde junio</div></div>
+    <div class="card kpi"><span class="pill ambar">En baja</span><div class="t">Base activa del mes</div><div class="v">19</div><div class="meta">personas reportaron en agosto · jul: 34 · jun: 42 · retención jul→ago: 53%</div></div>
+  </div>
+  <div class="grid row-trend">
+    <div class="card"><h3>Concentración del reporte · quién genera los 589 eventos</h3><div style="height:220px"><canvas id="chPareto"></canvas></div><div style="font-size:11px;color:var(--ink-500);margin-top:6px">10 personas concentran el 55% del sistema. Las otras 43 que alguna vez reportaron suman el 45% restante; 103 personas del maestro nunca reportaron.</div></div>
+    <div class="card"><h3>Cobertura por rol · ¿quién participa?</h3><div id="cobRoles"></div><div style="font-size:11px;color:var(--ink-500);margin-top:8px">El liderazgo participa al 100%. La cultura se corta en el nivel supervisor→operario: ahí está el trabajo de los próximos 90 días.</div></div>
+  </div>
+
+  <div class="sem-title"><div class="sec-label">Riesgos abiertos</div><span class="regla">· regla: no hay umbral tolerable — cualquier valor mayor a cero está en rojo</span></div>
+  <div class="grid semaforo">
+    <div class="sem rojo" title="Click: lista de casos"><div class="v">16</div><div class="t">Graves sin acción correctiva</div><div class="drill">3 accidentes con lesión · ver lista →</div></div>
+    <div class="sem rojo"><div class="v">23</div><div class="t">Prioridad Alta sin acción</div><div class="drill">1 de cada 4 eventos Alta · ver lista →</div></div>
+    <div class="sem rojo"><div class="v">39</div><div class="t">Backlog fuera de norma (&gt;14 días)</div><div class="drill">de 75 acciones abiertas · ver lista →</div></div>
+    <div class="sem rojo"><div class="v">4</div><div class="t">Llegadas a pluvial sin verificación</div><div class="drill">de 7 casos con llegada a pluvial · ver lista →</div></div>
+  </div>
+
+  <div class="grid row-trend">
+    <div class="card"><h3>Registrables y casi accidentes por mes · FA / LTA / NM</h3><div style="height:210px"><canvas id="chAcc"></canvas></div><div style="font-size:11px;color:var(--ink-500);margin-top:6px"><strong style="color:var(--rojo)">Ratio NM por accidente: 1,1</strong> — la referencia de pirámide es ~30. Los casi accidentes casi no se reportan: es el predictor más barato y hoy está mudo.</div></div>
+    <div class="card"><h3>Pirámide del período</h3><div id="pyr"></div><div style="font-size:11px;color:var(--ink-500);margin-top:8px">Taxonomía estándar: LTA (con baja) · FA (primeros auxilios) · NM (near miss). El formulario ya la captura en los subtipos; solo falta reclasificar los 5 migrados.</div></div>
+  </div>
+</section>
+
+<!-- ═══════════ NIVEL 2 · JEFATURA ═══════════ -->
+<section id="v2" class="vista" data-print-title="Informe EHS · Nivel Jefatura · corte 14/08/2026">
+  <div class="sec-label" style="display:flex;justify-content:space-between;align-items:center">
+    <span>Mapa de calor · sector × mes</span>
+    <span class="toggle"><button class="on" onclick="setHeat(this,'graves')">Graves (acc+inc)</button><button onclick="setHeat(this,'todos')">Todos los eventos</button></span>
+  </div>
+  <div class="card heat"><table id="heatTbl"></table>
+    <div style="font-size:11px;color:var(--ink-500);margin-top:10px">La columna "tasa por persona" se habilita al completar la dotación por sector (Regla 3 — hoja Maestro_Validacion ya entregada).</div>
+  </div>
+
+  <div class="grid row-turnos">
+    <div class="card"><h3>La ventana ciega: turnos</h3>
+      <div class="split"><div class="a"><div class="n">72%</div><div class="l">del reporte es del turno central</div></div><div class="b"><div class="n">86%</div><div class="l">de los accidentes son de turnos rotativos</div></div></div>
+      <div class="split"><div class="a"><div class="n">9 de 14</div><div class="l">accidentes entre 18:00 y 04:00</div></div><div class="b"><div class="n">−75%</div><div class="l">cae el reporte los fines de semana</div></div></div>
+    </div>
+    <div class="card"><h3>Integridad del ciclo de acciones</h3>
+      <table class="tbl">
+        <tr><th>Indicador</th><th>Hoy</th><th>Objetivo</th><th></th></tr>
+        <tr><td>Cierres validados por otra persona</td><td class="num">15%</td><td>100% en graves/Alta</td><td><span class="tag rojo">Brecha</span></td></tr>
+        <tr><td>Cierres con foto de evidencia</td><td class="num">0%</td><td>100%</td><td><span class="tag rojo">Brecha</span></td></tr>
+        <tr><td>Acciones con fecha de vencimiento</td><td class="num">84%</td><td>100% (campo obligatorio)</td><td><span class="tag ambar">79 sin fecha</span></td></tr>
+        <tr><td>Cierre dentro de 14 días</td><td class="num">72%</td><td>≥85%</td><td><span class="tag ambar">Cerca</span></td></tr>
+        <tr><td>Concentración en una persona</td><td class="num">32%</td><td>&lt;20%</td><td><span class="tag rojo">Cuello de botella</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+
+  <div class="sec-label" style="margin-top:22px">Adopción · ¿la base crece o se congeló?</div>
+  <div class="grid row-turnos">
+    <div class="card"><h3>Reportadores únicos y nuevos por mes</h3><div style="height:200px"><canvas id="chAdop"></canvas></div><div style="font-size:11px;color:var(--ink-500);margin-top:6px">La línea de nuevos en cero es la señal de alarma: sin incorporación, la base activa solo puede achicarse.</div></div>
+    <div class="card"><h3>Lectura y palanca</h3>
+      <table class="tbl">
+        <tr><th>Señal</th><th>Valor</th><th></th></tr>
+        <tr><td>Nuevos reportadores (ago)</td><td class="num">0</td><td><span class="tag rojo">Congelado</span></td></tr>
+        <tr><td>Retención mes a mes (jul→ago)</td><td class="num">53%</td><td><span class="tag ambar">Se pierde la mitad</span></td></tr>
+        <tr><td>Operarios que alguna vez reportaron</td><td class="num">10 de 109</td><td><span class="tag rojo">9%</span></td></tr>
+        <tr><td>Personas del maestro sin ningún reporte</td><td class="num">103</td><td><span class="tag rojo">66%</span></td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Meta sugerida para el trimestre: ≥5 reportadores nuevos por mes y retención ≥70%, medido acá todos los meses.</div>
+    </div>
+  </div>
+  <div class="grid row-turnos">
+    <div class="card"><h3>Ambiente · derrames por mes</h3><div style="height:190px"><canvas id="chDerr"></canvas></div></div>
+    <div class="card"><h3>Ambiente · llegadas a pluvial / cuerpo de agua</h3>
+      <div class="split"><div class="b"><div class="n">7</div><div class="l">casos en el período</div></div><div class="b"><div class="n">4</div><div class="l">sin verificación de contención</div></div><div class="a"><div class="n">32</div><div class="l">impactos a suelo</div></div></div>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:10px">Cada llegada a pluvial es una línea propia del comité hasta verificar la contención.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ NIVEL 3 · SUPERVISIÓN ═══════════ -->
+<section id="v3" class="vista" data-print-title="Informe EHS · Nivel Supervisión · corte 14/08/2026">
+  <div class="identidad"><span style="font-size:12px;color:var(--ink-500)">Soy:</span><span class="chip">ZANOTTO AGUSTIN · #104377</span><span style="font-size:11px;color:var(--ink-500)">(cambiar)</span></div>
+  <div class="grid row3">
+    <div class="card"><h3>Mis pendientes</h3><div id="pendList"></div></div>
+    <div class="card"><h3>Cola de verificación <span class="tag ambar" style="margin-left:6px">NUEVO</span></h3>
+      <div class="nota-nueva">Acciones de eventos graves o prioridad Alta que su responsable marcó como cerradas. Pasan a "Cerrada" cuando otra persona las valida con foto de evidencia.</div>
+      <div id="verList"></div>
+    </div>
+  </div>
+  <div class="grid row3" style="margin-top:12px">
+    <div class="card"><h3>Participación de mi equipo</h3>
+      <table class="tbl"><tr><th>Universo</th><th>Cumplieron objetivo</th><th></th></tr>
+      <tr><td>Operarios (semana, ≥1 reporte)</td><td class="num">4 de 109</td><td><span class="tag rojo">4%</span></td></tr>
+      <tr><td>Supervisión + jefatura</td><td class="num">19 de 47</td><td><span class="tag ambar">40%</span></td></tr>
+      </table>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Tabla completa por persona: ya existe en el dashboard actual, se conserva en esta pestaña.</div>
+    </div>
+    <div class="card"><h3>Eventos de mi sector (Pulper)</h3>
+      <table class="tbl"><tr><th>Este mes</th><th>Acumulado</th><th>Graves sin acción</th></tr>
+      <tr><td class="num">6 eventos</td><td class="num">73 eventos</td><td><span class="tag rojo">2 pendientes</span></td></tr></table>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Tabla de eventos completa con filtros y modales: se conserva de la versión actual, pre-filtrada por el sector de la identidad.</div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+const DATA = {"dias_sin_acc": 25, "ult_acc": "2026-07-21", "acc_por_mes": [1, 2, 2, 4, 5, 0], "ev_por_mes": [3, 39, 128, 206, 153, 60], "meses": ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"], "heat_graves": {"Mesas-Prensas": [0, 0, 0, 5, 3, 0], "Pulper": [0, 0, 1, 4, 4, 1], "Estucado": [0, 0, 0, 4, 0, 0], "Planta de Pasta": [0, 1, 1, 2, 0, 0], "Alistado": [0, 0, 1, 2, 0, 0], "Secado": [0, 0, 0, 1, 3, 0], "Efluente Primario - Hidropolis": [0, 0, 0, 1, 1, 0], "Cellier": [1, 0, 0, 0, 0, 0], "Taller Mecánico": [0, 0, 0, 1, 0, 0], "Caldera": [0, 0, 0, 0, 0, 0]}, "heat_todos": {"Mesas-Prensas": [0, 4, 19, 37, 23, 9], "Pulper": [0, 1, 18, 27, 20, 7], "Estucado": [0, 3, 7, 27, 19, 16], "Planta de Pasta": [0, 6, 12, 16, 10, 7], "Alistado": [0, 0, 12, 23, 11, 1], "Secado": [0, 2, 6, 6, 18, 1], "Efluente Primario - Hidropolis": [0, 3, 5, 5, 9, 1], "Cellier": [1, 1, 10, 5, 2, 3], "Taller Mecánico": [0, 7, 1, 8, 6, 0], "Caldera": [0, 1, 7, 5, 8, 1]}, "pluvial_total": 7, "pluvial_sin_verif": 4, "pendientes": [{"d": "Seleccionar, ordenar y limpiar todo el sector para disminuir los accidentes.", "r": "LABAT NORBERTO ANDRES", "v": -43, "e": "En proceso"}, {"d": "Colocación de dispositivo de seguridad que permite enclavamiento de la bajada pu", "r": "ZANOTTO AGUSTIN", "v": -40, "e": "Abierta"}, {"d": "Se saco la barra con el puente y lingas", "r": "ZANOTTO AGUSTIN", "v": -23, "e": "En proceso"}, {"d": "Esas 2 carretillas se usan en ese sector??\nDe ser asi y ese es el sector se tien", "r": "VALLEJOS JOSE LUIS", "v": -23, "e": "En proceso"}, {"d": "reparar", "r": "HEIM DAMIAN", "v": -17, "e": "En proceso"}, {"d": "Colocar luminaria bajo del puente de grua", "r": "URRIAGA MARTIN", "v": -5, "e": "Abierta"}], "cola_verif": [{"d": "Empezar a dosificar antiespumante", "r": "ISSALY IGNACIO", "t": "OBSERVACION"}, {"d": "Se pide al rpoveedor que analice otro lugar por donde pasa el caño de escape, en", "r": "ZANOTTO AGUSTIN", "t": "INCIDENTE"}, {"d": "Caolocar contenedores vacios ", "r": "VALLEJOS JOSE LUIS", "t": "AMBIENTE"}, {"d": "Soldar baranda de seguridad", "r": "VALLEJOS JOSE LUIS", "t": "OBSERVACION"}, {"d": "reparar la pared con durlock nuevo.", "r": "VALLEJOS JOSE LUIS", "t": "INCIDENTE"}], "derrames_mes": [0, 0, 3, 15, 17, 1]};
+function verTab(btn, id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.vista').forEach(v=>v.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+// Nivel 1
+document.getElementById('diasSin').textContent = DATA.dias_sin_acc;
+document.getElementById('ultAcc').textContent = 'Último: '+DATA.ult_acc+' (Secado, FA). El contador de días sin LTA se activa al clasificar los 5 accidentes migrados de la v1.';
+const MES_LBL = ['Mar','Abr','May','Jun','Jul','Ago*'];
+const LTA = {"fa_mes": [0, 0, 0, 4, 5, 0], "sc_mes": [1, 2, 2, 0, 0, 0], "nm_mes": [0, 0, 0, 11, 5, 0], "fa": 9, "sc": 5, "nm": 16, "otros_inc": 20};
+new Chart(document.getElementById('chAcc'),{type:'bar',data:{labels:MES_LBL,datasets:[{label:'FA (primeros auxilios)',data:LTA.fa_mes,backgroundColor:'#C97A12',stack:'a',borderRadius:3},{label:'Sin clasificar (v1)',data:LTA.sc_mes,backgroundColor:'#94A3B8',stack:'a',borderRadius:3},{label:'LTA (con baja)',data:[0,0,0,0,0,0],backgroundColor:'#B8402A',stack:'a',borderRadius:3},{label:'NM (casi accidentes)',data:LTA.nm_mes,type:'line',borderColor:'#334155',borderDash:[5,4],tension:.3,pointRadius:4}]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:10}}}},scales:{y:{beginAtZero:true,ticks:{stepSize:2}},x:{stacked:true}},maintainAspectRatio:false}});
+const PYR=[['Observaciones',436,'#334155'],['Ambiente',67,'#548235'],['Conversaciones',36,'#94A3B8'],['Inc. materiales',20,'#94A3B8'],['NM · casi accid.',16,'#C97A12'],['FA · prim. auxilios',9,'#D85A30'],['LTA · con baja',0,'#B8402A']];
+document.getElementById('pyr').innerHTML = PYR.map(p=>`<div class="pyr-row"><div class="pyr-lbl">${p[0]}</div><div class="pyr-bar" style="width:${Math.max(7,p[1]/436*100)}%;background:${p[2]};${p[1]===0?'opacity:.45':''}">${p[1]===0?'0*':p[1]}</div></div>`).join('') + '<div style="font-size:10px;color:var(--ink-500);margin-top:4px">* 0 confirmados · 5 accidentes de la v1 pendientes de clasificar con/sin baja</div>';
+// Nivel 2 heatmap
+function heatColor(v,max){ if(v===0) return '#F1F5F9'; const t=v/max; if(t<0.34) return '#FDE9C8'; if(t<0.67) return '#F5B461'; return '#D85A30'; }
+function renderHeat(modo){
+  const src = modo==='graves' ? DATA.heat_graves : DATA.heat_todos;
+  const max = Math.max(...Object.values(src).flat(),1);
+  let h='<tr><th>Sector</th>'+MES_LBL.map(m=>'<th>'+m+'</th>').join('')+'</tr>';
+  Object.keys(src).forEach(s=>{
+    h+='<tr><td class="sector">'+s+'</td>'+src[s].map(v=>'<td><div class="cell" style="background:'+heatColor(v,max)+';color:'+(v/max>0.66?'#fff':'#334155')+'">'+(v||'·')+'</div></td>').join('')+'</tr>';
+  });
+  document.getElementById('heatTbl').innerHTML=h;
+}
+function setHeat(btn,modo){ btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderHeat(modo); }
+renderHeat('graves');
+new Chart(document.getElementById('chDerr'),{type:'line',data:{labels:MES_LBL,datasets:[{data:DATA.derrames_mes,borderColor:'#548235',backgroundColor:'rgba(84,130,53,.12)',fill:true,tension:.3,pointRadius:4}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:5}}},maintainAspectRatio:false}});
+// Nivel 3
+document.getElementById('pendList').innerHTML = DATA.pendientes.map(p=>{
+  let cls='ok', txt='sin fecha';
+  if(p.v!==null){ if(p.v<0){cls='rojo';txt='vencida '+Math.abs(p.v)+' d';} else if(p.v<=3){cls='ambar';txt='vence en '+p.v+' d';} else {cls='ok';txt=p.v+' días';} }
+  return `<div class="pend-item"><span class="d">${p.d}</span><span class="venc ${cls}">${txt}</span></div>`;
+}).join('');
+document.getElementById('verList').innerHTML = DATA.cola_verif.map(c=>`<div class="ver-item"><span class="d">${c.d}<br><span class="who">Cerró: ${c.r} · evento ${c.t}</span></span><button class="btn-ver">Validar con foto</button></div>`).join('');
+
+const PART = {"unicos_mes": [3, 18, 33, 42, 34, 19], "nuevos_mes": [3, 15, 18, 14, 3, 0], "top3_pct": 28, "p50": 9, "p80": 20, "pareto": [{"n": "Vallejos J.", "v": 78}, {"n": "Manfredi J.", "v": 47}, {"n": "Zanotto A.", "v": 39}, {"n": "Gamero L.", "v": 30}, {"n": "Uribe S.", "v": 28}, {"n": "Urriaga M.", "v": 22}, {"n": "Lopez D.", "v": 21}, {"n": "Frias R.", "v": 21}, {"n": "Sanchez M.", "v": 20}, {"n": "Bolletta F.", "v": 20}], "resto": 263, "ret_junjul": "30/42", "ret_julago": "18/34", "ret_julago_pct": 53, "reportadores_unicos_total": 53};
+// Pareto de concentración (Nivel 1)
+const pLabels = PART.pareto.map(p=>p.n).concat(['Otros 43','Nunca (103)']);
+const pVals = PART.pareto.map(p=>p.v).concat([PART.resto, 0]);
+new Chart(document.getElementById('chPareto'),{type:'bar',data:{labels:pLabels,datasets:[{data:pVals,backgroundColor:pLabels.map((_,i)=>i<3?'#B8402A':(i<10?'#C97A12':'#94A3B8')),borderRadius:3}]},options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}},maintainAspectRatio:false}});
+// Cobertura por rol (Nivel 1)
+const ROLES=[['Gerentes',3,3],['Jefes',7,7],['Supervisores',23,37],['Operadores',10,109]];
+document.getElementById('cobRoles').innerHTML = ROLES.map(r=>{
+  const pct=Math.round(r[1]/r[2]*100);
+  const col=pct>=80?'#548235':(pct>=40?'#C97A12':'#B8402A');
+  return `<div style="margin:9px 0"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;color:var(--ink-700)"><span>${r[0]}</span><span>${r[1]} de ${r[2]} · ${pct}%</span></div><div style="height:14px;background:var(--ink-100);border-radius:7px;margin-top:4px"><div style="height:14px;width:${Math.max(pct,3)}%;background:${col};border-radius:7px"></div></div></div>`;
+}).join('');
+// Curva de adopción (Nivel 2)
+new Chart(document.getElementById('chAdop'),{type:'line',data:{labels:MES_LBL,datasets:[
+ {label:'Únicos del mes',data:PART.unicos_mes,borderColor:'#334155',backgroundColor:'rgba(51,65,85,.08)',fill:true,tension:.3,pointRadius:4},
+ {label:'Nuevos del mes',data:PART.nuevos_mes,borderColor:'#B8402A',tension:.3,pointRadius:4}
+]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:10}}}},scales:{y:{beginAtZero:true}},maintainAspectRatio:false}});
+</script>
+</body>
+</html>
