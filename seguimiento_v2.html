@@ -373,6 +373,65 @@ var FILTERS = {
   soloMias:false
 };
 
+// ─────────────────────────────────────────────────
+// FILTROS POR URL — llegada desde el dashboard
+// El dashboard abre esta página con ?sector=...&desde=...&hasta=...
+// Los aplicamos ANTES del primer render para que la tabla llegue ya filtrada.
+// Parámetros aceptados:
+//   sector, tipo, estado, area, criticidad, responsable, buscar
+//   desde / hasta  (YYYY-MM-DD, sobre la fecha de creación de la acción)
+//   vencidas=1
+// ─────────────────────────────────────────────────
+var FILTROS_DE_LINK = [];
+
+function leerParametrosURL() {
+  var q = {};
+  var query = (window.location.search || "").replace(/^\?/, "");
+  if (!query && window.location.hash.indexOf("?") >= 0) {
+    query = window.location.hash.slice(window.location.hash.indexOf("?") + 1);
+  }
+  query.split("&").forEach(function(par) {
+    if (!par) return;
+    var i = par.indexOf("=");
+    var k = decodeURIComponent(i < 0 ? par : par.slice(0, i));
+    var v = decodeURIComponent((i < 0 ? "" : par.slice(i + 1)).replace(/\+/g, " "));
+    if (k) q[k] = v.trim();
+  });
+  return q;
+}
+
+function aplicarFiltrosDeURL() {
+  var q = leerParametrosURL();
+  var mapa = [
+    ["sector",      "sector",      "Sector"],
+    ["tipo",        "tipoEvento",  "Tipo de evento"],
+    ["estado",      "estado",      "Estado"],
+    ["area",        "area",        "Área"],
+    ["criticidad",  "criticidad",  "Criticidad"],
+    ["responsable", "responsable", "Responsable"],
+    ["buscar",      "busqueda",    "Búsqueda"]
+  ];
+  mapa.forEach(function(m) {
+    var v = q[m[0]];
+    if (!v || v === "Todos" || v === "(sin sector)") return;
+    FILTERS[m[1]] = v;
+    FILTROS_DE_LINK.push(m[2] + ": " + v);
+  });
+  if (/^\d{4}-\d{2}-\d{2}$/.test(q.desde || "")) {
+    FILTERS.fechaCreDesde = q.desde;
+    FILTROS_DE_LINK.push("desde " + q.desde);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(q.hasta || "")) {
+    FILTERS.fechaCreHasta = q.hasta;
+    FILTROS_DE_LINK.push("hasta " + q.hasta);
+  }
+  if (q.vencidas === "1") {
+    FILTERS.soloVencidas = true;
+    FILTROS_DE_LINK.push("solo vencidas");
+  }
+}
+aplicarFiltrosDeURL();
+
 // Áreas disponibles para asignación
 var AREAS = ["Mantenimiento", "Producción", "I+D", "Calidad", "EHS", "Recursos Humanos", "Ingeniería"];
 
@@ -553,7 +612,18 @@ function clearFilters() {
   FILTERS.busqueda = "";
   FILTERS.soloVencidas = false;
   // soloMias se conserva (es una preferencia del usuario)
+  FILTROS_DE_LINK = [];
   render();
+}
+
+// Quita los filtros que vinieron por URL y limpia la barra de direcciones,
+// para que un F5 no los vuelva a aplicar.
+function quitarFiltrosDeLink() {
+  FILTROS_DE_LINK = [];
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+  clearFilters();
 }
 
 function toggleVencidas() {
@@ -945,7 +1015,13 @@ function renderFiltros() {
   html += filterSelect("responsable","Responsable",responsablesUnicos);
   html += filterSelect("creador","Creador",creadoresUnicos);
   html += filterSelect("cerradaPor","Cerrada por",cerradasPorUnicos);
-  html += filterSelect("sector","Sector",["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;})));
+  var listaSectores = ["Todos"].concat((MAESTROS.sectores||[]).map(function(s){return s.nombre;}));
+  // Si el sector vino por URL y no figura en Maestros, lo agregamos para que el
+  // desplegable muestre lo que realmente se está filtrando.
+  if (FILTERS.sector !== "Todos" && listaSectores.indexOf(FILTERS.sector) === -1) {
+    listaSectores.push(FILTERS.sector);
+  }
+  html += filterSelect("sector","Sector",listaSectores);
   html += filterSelect("tipoEvento","Tipo evento",["Todos","OBSERVACION","CONVERSACION","INCIDENTE","ACCIDENTE","AMBIENTE"]);
 
   // Rango de fechas de creación
@@ -961,6 +1037,19 @@ function renderFiltros() {
   html += '<button class="btn-clear" onclick="clearFilters()">✕ Limpiar filtros</button>';
 
   html += '</div>';
+
+  // Aviso: la vista llegó filtrada desde el dashboard
+  if (FILTROS_DE_LINK.length) {
+    html += '<div style="font-size:12px;color:#3D5F26;padding:9px 13px;background:#E7F2DC;'
+      + 'border:1px solid #D6EAC4;border-radius:8px;margin-bottom:12px;display:flex;'
+      + 'justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">'
+      + '<span>🔗 Vista abierta desde el dashboard con estos filtros: <strong>'
+      + escapeHTML(FILTROS_DE_LINK.join(" · ")) + '</strong></span>'
+      + '<button onclick="quitarFiltrosDeLink()" style="font:inherit;font-size:11.5px;font-weight:700;'
+      + 'color:#fff;background:#3D5F26;border:none;border-radius:7px;padding:6px 12px;cursor:pointer;'
+      + 'white-space:nowrap;">Ver todas las acciones</button>'
+      + '</div>';
+  }
 
   // Tip si no hay identidad
   if (!IDENTIDAD.nombre) {
