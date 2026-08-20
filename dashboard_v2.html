@@ -348,6 +348,36 @@ canvas{max-width:100%}
 .tabla-acc tr.fila-click:hover td{background:var(--ink-50)}
 @media print{.tile.clickeable{cursor:default}.verlista{display:none}}
 </style>
+<style>
+/* franjas horarias */
+.sub-tit{font-size:11px;font-weight:700;color:var(--ink-500);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px}
+.fr{display:flex;align-items:center;gap:9px;font-size:12px;margin-bottom:6px}
+.fr .frn{width:58px;flex-shrink:0;font-weight:700;color:var(--ink-700)}
+.fr .frb{flex:1;height:12px;background:var(--ink-100);border-radius:6px;overflow:hidden}
+.fr .frb i{display:block;height:100%;border-radius:6px}
+.fr .frv{width:44px;text-align:right;font-weight:800;color:var(--ink-900);flex-shrink:0}
+.fr .frd{width:64px;text-align:right;color:var(--ink-400);font-size:11px;flex-shrink:0}
+.frnota{font-size:11px;color:var(--ambar);margin-top:6px}
+/* campaña / lesiones */
+.card.campana{background:linear-gradient(180deg,#fff,var(--brand-50))}
+.card.campana p{font-size:13.5px;line-height:1.65;color:var(--ink-700)}
+.chips-les{display:flex;flex-wrap:wrap;gap:6px}
+.chip-les{font-size:11.5px;color:var(--ink-700);background:var(--ink-100);border:1px solid var(--ink-200);border-radius:999px;padding:4px 11px}
+.chip-les strong{color:var(--ink-900)}
+@media(max-width:760px){.fr .frd{display:none}.fr .frn{width:52px}}
+</style>
+<style>
+.pareto-txt{font-size:12.5px;line-height:1.6;color:var(--ink-700);margin-top:10px}
+.pareto-nota{font-size:11px;color:var(--ambar);margin-top:6px}
+</style>
+<style>
+@media print{
+  /* que una tarjeta no quede cortada al medio entre dos hojas */
+  .card, .res-card, .tile, .persona{ break-inside:avoid; page-break-inside:avoid }
+  .grid{ break-inside:auto }
+  .toggle{ display:none!important }
+}
+</style>
 
 </head>
 <body>
@@ -459,6 +489,11 @@ canvas{max-width:100%}
     <div class="card"><h3>La ventana ciega: turnos</h3>
       <div class="split"><div class="a"><div class="n" id="tCentral">—</div><div class="l">del reporte es del turno central</div></div><div class="b"><div class="n" id="tRotativo">—</div><div class="l">de los accidentes son de turnos rotativos</div></div></div>
       <div class="split"><div class="a"><div class="n" id="tNoche">—</div><div class="l">accidentes entre 18:00 y 04:00</div></div><div class="b"><div class="n" id="tFinde">—</div><div class="l">cae el reporte los fines de semana</div></div></div>
+      <div class="sub-tit">Tasa de gravedad por turno</div>
+      <div id="turnosTbl"></div>
+      <div class="sub-tit">Tasa de gravedad por franja horaria</div>
+      <div id="franjas"></div>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Porcentaje de eventos que terminaron en accidente o incidente, sobre los reportados en cada franja. Cuanto más alto, más caro sale cada reporte que no se hace ahí.</div>
     </div>
     <div class="card"><h3>Integridad del ciclo de acciones</h3>
       <table class="tbl" id="tblIntegridad"></table>
@@ -474,6 +509,26 @@ canvas{max-width:100%}
       <div style="font-size:11px;color:var(--ink-500);margin-top:8px">Meta sugerida para el trimestre: ≥5 reportadores nuevos por mes y retención ≥70%, medido acá todos los meses.</div>
     </div>
   </div>
+  <div class="sec-label" style="margin-top:22px">¿Dónde se lastima la gente? · orientación para campañas</div>
+  <div class="grid row-turnos">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <h3 style="margin:0">Pareto · ¿dónde se lastima la gente?</h3>
+        <span class="toggle">
+          <button class="on" onclick="setPareto(this,'parte')">Parte del cuerpo</button>
+          <button onclick="setPareto(this,'mecanismo')">Mecanismo</button>
+          <button onclick="setPareto(this,'sector')">Sector</button>
+        </span>
+      </div>
+      <div style="height:270px"><canvas id="chParetoLes"></canvas></div>
+      <div id="lesionBody"></div>
+    </div>
+    <div class="card campana"><h3>Qué campaña rinde más</h3>
+      <p id="lesionOrienta"></p>
+      <div style="font-size:11px;color:var(--ink-500);margin-top:10px">La v1 del formulario pedía el EPP que la persona tenía puesto y la tarea que estaba haciendo. Recuperar esos dos campos permitiría cerrar el círculo: saber si el EPP falló, si no estaba, o si el problema era el método.</div>
+    </div>
+  </div>
+
   <div class="grid row-turnos">
     <div class="card"><h3>Ambiente · derrames por mes</h3><div style="height:190px"><canvas id="chDerr"></canvas></div></div>
     <div class="card"><h3>Ambiente · llegadas a pluvial / cuerpo de agua</h3>
@@ -689,11 +744,65 @@ function esc(s){
 function upper(s){
   return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().trim();
 }
+// Zona horaria de la planta. El backend guarda algunas fechas con
+// new Date().toISOString(), que es UTC: un cierre cargado a las 22 h de un
+// martes queda como el miércoles a las 01:00Z. Si se recorta el string a los
+// primeros 10 caracteres, esa acción figura cerrada un día después de lo real.
+// En la base actual eso afecta a 69 de 425 cierres (16%), todos los cargados
+// entre las 21 y las 24 h. Por eso convertimos a hora local antes de quedarnos
+// con la fecha.
+var TZ_PLANTA = "America/Argentina/Buenos_Aires";
+function fechaLocalDesdeISO(s){
+  var t = new Date(s);
+  if(isNaN(t.getTime())) return "";
+  try{
+    return t.toLocaleDateString("en-CA", { timeZone: TZ_PLANTA });   // en-CA => YYYY-MM-DD
+  }catch(e){
+    var off = new Date(t.getTime() - 3*3600000);                     // respaldo: UTC-3 fijo
+    return off.toISOString().slice(0,10);
+  }
+}
+
+/* Devuelve la hora del día (0-23) de un evento, o null.
+   Google Sheets guarda una celda de hora como un datetime con fecha 30/12/1899.
+   Apps Script lo serializa a ISO en UTC, así que un evento de las 16:01 llega
+   como "1899-12-30T19:01:00.000Z". Con un regex sobre el string se pierde el
+   dato entero — es lo que hacía que el panel de turnos mostrara "0 de 0". */
+function horaDe(v){
+  if(v===null || v===undefined || v==="") return null;
+  var s = String(v).trim();
+  // "16:01" o "16:01:00"
+  var m = s.match(/^(\d{1,2}):(\d{2})/);
+  if(m){ var hh=+m[1]; return (hh>=0 && hh<=23) ? hh : null; }
+  // datetime ISO (celda de hora de Sheets, o fecha+hora completa)
+  if(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)){
+    var t = new Date(s);
+    if(!isNaN(t.getTime())){
+      try{
+        var hs = t.toLocaleTimeString("en-GB", { timeZone: TZ_PLANTA, hour12:false });
+        var h2 = parseInt(hs.slice(0,2),10);
+        if(!isNaN(h2)) return h2;
+      }catch(e){
+        return (t.getUTCHours() + 21) % 24;               // respaldo UTC-3
+      }
+    }
+  }
+  // fracción de día (0.6673 = 16:01)
+  var n = parseFloat(s);
+  if(!isNaN(n) && n>=0 && n<1) return Math.floor(n*24);
+  return null;
+}
+
 // Devuelve 'YYYY-MM-DD' desde string ISO, Date serializado, o dd/mm/yyyy.
 function iso(v){
   if(!v && v!==0) return "";
   var s = String(v).trim();
   if(!s) return "";
+  // ISO con hora y zona (lo que escribe new Date().toISOString() en el backend)
+  if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)){
+    var loc = fechaLocalDesdeISO(s);
+    if(loc) return loc;
+  }
   var m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(m) return m[1]+"-"+m[2]+"-"+m[3];
   m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
@@ -751,7 +860,18 @@ function claseAcc(e){
 function esNM(e){ return e.tipo==="INCIDENTE" && SUB_NM.indexOf(upper(e.subtipo))>=0; }
 function esDerrame(e){ return e.tipo==="AMBIENTE" && upper(e.subtipo).indexOf("DERRAME")>=0; }
 function llegoPluvial(e){ return e.tipo==="AMBIENTE" && upper(e.amb_llego_pluvial).indexOf("SI")===0; }
-function esRotativo(e){ var t=upper(e.turno); return t && t!=="DIURNO"; }
+/* Vocabulario de turnos del formulario: A, B, C, D son rotativos; "Diurno" es el
+   turno central. Cualquier otro valor es un error de carga: no se asume nada, se
+   excluye del cálculo y se informa aparte. */
+var TURNOS_ROT = ["A","B","C","D"];
+function turnoNorm(e){
+  var t = upper(e.turno);
+  if(!t) return null;
+  if(TURNOS_ROT.indexOf(t)>=0) return "ROT";
+  if(t==="DIURNO") return "CEN";
+  return "OTRO";
+}
+function esRotativo(e){ return turnoNorm(e)==="ROT"; }
 function accAbierta(a){ return upper(a.estado)!=="CERRADA"; }
 
 /* ─────────────── NORMALIZACIÓN ─────────────── */
@@ -1061,13 +1181,43 @@ function calcular(){
   m.suelo = evs.filter(function(e){ return upper(e.amb_medio_impactado).indexOf("SUELO")>=0; }).length;
 
   // --- Turnos ---
-  var conTurno = evs.filter(function(e){ return upper(e.turno); });
-  m.pctCentral = pct(conTurno.filter(function(e){ return upper(e.turno)==="DIURNO"; }).length, conTurno.length);
-  var accConTurno = evs.filter(function(e){ return esAccidente(e) && upper(e.turno); });
+  var conTurno = evs.filter(function(e){ return turnoNorm(e)==="ROT" || turnoNorm(e)==="CEN"; });
+  m.pctCentral = pct(conTurno.filter(function(e){ return turnoNorm(e)==="CEN"; }).length, conTurno.length);
+  var accConTurno = evs.filter(function(e){ return esAccidente(e) && (turnoNorm(e)==="ROT"||turnoNorm(e)==="CEN"); });
   m.pctAccRot = pct(accConTurno.filter(esRotativo).length, accConTurno.length);
-  var accHora = evs.filter(function(e){ return esAccidente(e) && /^\d{1,2}:/.test(String(e.hora_evento||"")); });
-  m.accNoche = accHora.filter(function(e){ var h=parseInt(String(e.hora_evento).split(":")[0],10); return h>=18||h<4; }).length;
+  m.turnoFueraDeLista = evs.filter(function(e){ return turnoNorm(e)==="OTRO"; })
+                           .map(function(e){ return String(e.turno).trim(); });
+  // Detalle turno por turno: A/B/C/D son turnos reales, no abreviaturas de Diurno
+  m.turnos = TURNOS_ROT.concat(["Diurno"]).map(function(t){
+    var ev = evs.filter(function(e){ return upper(e.turno)===upper(t); });
+    var gr = ev.filter(esGrave).length, ac = ev.filter(esAccidente).length;
+    return { turno:t, rotativo:t!=="Diurno", eventos:ev.length, graves:gr, accidentes:ac,
+             tasa: ev.length ? gr/ev.length*100 : 0 };
+  }).filter(function(x){ return x.eventos>0; });
+  var rot = m.turnos.filter(function(x){ return x.rotativo; });
+  var cen = m.turnos.filter(function(x){ return !x.rotativo; });
+  function agg(l,k){ return l.reduce(function(a,b){ return a+b[k]; },0); }
+  m.turnoResumen = {
+    rotEv:agg(rot,"eventos"), rotGr:agg(rot,"graves"), rotAc:agg(rot,"accidentes"),
+    cenEv:agg(cen,"eventos"), cenGr:agg(cen,"graves"), cenAc:agg(cen,"accidentes")
+  };
+  m.turnoResumen.tasaRot = m.turnoResumen.rotEv ? m.turnoResumen.rotGr/m.turnoResumen.rotEv*100 : 0;
+  m.turnoResumen.tasaCen = m.turnoResumen.cenEv ? m.turnoResumen.cenGr/m.turnoResumen.cenEv*100 : 0;
+  m.turnoResumen.veces = m.turnoResumen.tasaCen ? m.turnoResumen.tasaRot/m.turnoResumen.tasaCen : 0;
+  m.turnoPeor = m.turnos.slice().sort(function(a,b){ return b.tasa-a.tasa; })
+                   .filter(function(x){ return x.eventos>=15; })[0] || null;
+  var accHora = evs.filter(function(e){ return esAccidente(e) && horaDe(e.hora_evento)!==null; });
+  m.accNoche = accHora.filter(function(e){ var h=horaDe(e.hora_evento); return h>=18||h<4; }).length;
   m.accConHora = accHora.length;
+  m.accSinHora = evs.filter(esAccidente).length - accHora.length;
+  // Tasa de gravedad por franja: dónde el reporte es más flaco y el daño más alto
+  var FR = [["06–14",6,14],["14–22",14,22],["22–06",22,6]];
+  m.franjas = FR.map(function(f){
+    function dentro(h){ return f[1]<f[2] ? (h>=f[1]&&h<f[2]) : (h>=f[1]||h<f[2]); }
+    var ev = evs.filter(function(e){ var h=horaDe(e.hora_evento); return h!==null && dentro(h); });
+    var gr = ev.filter(esGrave).length;
+    return { nombre:f[0], eventos:ev.length, graves:gr, tasa: ev.length? gr/ev.length*100 : 0 };
+  });
   // Caída de reporte fin de semana (eventos por día hábil vs fin de semana)
   var hab=0, fin=0, dHab=0, dFin=0;
   evs.forEach(function(e){ var w=new Date(e.fecha+"T00:00:00").getDay(); if(w===0||w===6) fin++; else hab++; });
@@ -1122,8 +1272,76 @@ function calcular(){
       m.heat[s].todos.push(evs.filter(function(e){ return e.sector===s && e.mes===mm; }).length);
     });
   });
+  calcularLesiones(m, evs);
   calcularAnalitica(m, evs, meses, corte);
   return m;
+}
+
+/* ── Dónde se lastima la gente: base para orientar las campañas ──
+   El campo de parte del cuerpo admite varias (ej. "Brazo, Dedos, Mano"), así que
+   se separa y se cuenta cada una. Manos y dedos se agrupan aparte porque, para
+   una campaña, son la misma intervención: guantes, herramientas y puntos de
+   atrapamiento. */
+function partesDelCuerpo(v){
+  if(!v) return [];
+  return String(v).split(/[,\/;]| y /).map(function(x){ return x.trim(); })
+          .filter(Boolean)
+          .map(function(x){ return x.charAt(0).toUpperCase()+x.slice(1).toLowerCase(); });
+}
+function calcularLesiones(m, evs){
+  var accs = evs.filter(esAccidente);
+  var partes = {}, lesiones = {}, cruce = {}, conDato = 0;
+  accs.forEach(function(e){
+    var ps = partesDelCuerpo(e.acc_parte_cuerpo);
+    if(ps.length) conDato++;
+    var les = String(e.acc_tipo_lesion||"").trim() || "sin dato";
+    if(String(e.acc_tipo_lesion||"").trim()) lesiones[les] = (lesiones[les]||0)+1;
+    ps.forEach(function(x){
+      partes[x] = (partes[x]||0)+1;
+      var k = x+" · "+les;
+      cruce[k] = (cruce[k]||0)+1;
+    });
+  });
+  var sectores = {};
+  accs.forEach(function(e){ sectores[e.sector] = (sectores[e.sector]||0)+1; });
+
+  /* Ordena desc, calcula % y % acumulado, y marca cuáles forman el 80%
+     (los "pocos vitales" de Juran). */
+  function pareto(obj){
+    var lista = Object.keys(obj).map(function(k){ return {cat:k, n:obj[k]}; })
+                      .sort(function(a,b){ return b.n-a.n || (a.cat<b.cat?-1:1); });
+    var tot = lista.reduce(function(a,b){ return a+b.n; },0);
+    var ac = 0, vitales = 0, yaCubierto = false;
+    lista.forEach(function(x){
+      ac += x.n;
+      x.pct = tot ? x.n/tot*100 : 0;
+      x.acum = tot ? ac/tot*100 : 0;
+      // Entran al 80% todas las categorías hasta la primera que lo alcanza.
+      x.vital = !yaCubierto;
+      if(x.vital) vitales++;
+      if(x.acum >= 80) yaCubierto = true;
+    });
+    return { lista:lista, total:tot, vitales:vitales, pctVitales: tot && vitales ? lista[vitales-1].acum : 0 };
+  }
+
+  var lista = Object.keys(partes).map(function(k){ return {parte:k, n:partes[k]}; })
+                    .sort(function(a,b){ return b.n-a.n; });
+  var menciones = lista.reduce(function(a,b){ return a+b.n; },0);
+  var manos = lista.filter(function(x){ return /^(mano|manos|dedo|dedos)$/i.test(x.parte); })
+                   .reduce(function(a,b){ return a+b.n; },0);
+  m.lesion = {
+    partes: lista, menciones: menciones, conDato: conDato, total: accs.length,
+    manosDedos: manos, pctManos: menciones ? Math.round(manos/menciones*100) : 0,
+    lesiones: Object.keys(lesiones).map(function(k){ return {tipo:k, n:lesiones[k]}; })
+                    .sort(function(a,b){ return b.n-a.n; }),
+    cruce: Object.keys(cruce).map(function(k){ return {k:k, n:cruce[k]}; })
+                 .sort(function(a,b){ return b.n-a.n; }).slice(0,5),
+    pareto: {
+      parte:     pareto(partes),
+      mecanismo: pareto(lesiones),
+      sector:    pareto(sectores)
+    }
+  };
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -1372,6 +1590,7 @@ function renderTodo(){
   renderPiramide();
   renderHeat(HEAT_MODO);
   renderTurnos();
+  renderLesiones();
   renderIntegridad();
   renderAdopcion();
   renderAmbiente();
@@ -1651,8 +1870,176 @@ function drillHeat(sector, i){
 function renderTurnos(){
   setTxt("tCentral", M.pctCentral+"%");
   setTxt("tRotativo", M.pctAccRot+"%");
-  setTxt("tNoche", M.accNoche+" de "+M.accConHora);
+  setTxt("tNoche", M.accConHora>0 ? (M.accNoche+" de "+M.accConHora) : "sin dato");
   setTxt("tFinde", (M.caidaFinde>0?"+":"")+M.caidaFinde+"%");
+  // Detalle por turno
+  var maxTasa = Math.max.apply(null,[1].concat(M.turnos.map(function(t){ return t.tasa; })));
+  setHTML("turnosTbl", M.turnos.map(function(t){
+    var col = t.tasa>=maxTasa*0.85 ? "var(--rojo)" : (t.tasa>=maxTasa*0.55 ? "var(--ambar)" : "var(--ink-400)");
+    return '<div class="fr"><span class="frn">'+(t.rotativo? "Turno "+t.turno : "Diurno")+
+      '</span><span class="frb"><i style="width:'+(t.tasa/maxTasa*100)+'%;background:'+col+'"></i></span>'+
+      '<span class="frv">'+t.tasa.toFixed(1)+'%</span>'+
+      '<span class="frd">'+t.graves+" de "+t.eventos+"</span></div>";
+  }).join("")+
+  '<div class="frnota" style="color:var(--ink-500)">Rotativos (A+B+C+D): <strong>'+M.turnoResumen.rotAc+
+  " de "+(M.turnoResumen.rotAc+M.turnoResumen.cenAc)+"</strong> accidentes con solo el "+
+  pct(M.turnoResumen.rotEv, M.turnoResumen.rotEv+M.turnoResumen.cenEv)+"% del reporte · tasa de gravedad "+
+  (M.turnoResumen.veces?M.turnoResumen.veces.toFixed(1)+"× la del turno central":"—")+".</div>"+
+  (M.turnoFueraDeLista.length ? '<div class="frnota">'+M.turnoFueraDeLista.length+
+     " evento(s) con turno fuera de la lista A/B/C/D/Diurno ("+
+     esc(M.turnoFueraDeLista.slice(0,3).join(", "))+"): quedan fuera del cálculo.</div>" : ""));
+
+  // Tasa de gravedad por franja horaria
+  var maxT = Math.max.apply(null,[1].concat(M.franjas.map(function(f){ return f.tasa; })));
+  setHTML("franjas", M.franjas.map(function(f){
+    var col = f.tasa>=maxT*0.85 ? "var(--rojo)" : (f.tasa>=maxT*0.6 ? "var(--ambar)" : "var(--ink-400)");
+    return '<div class="fr"><span class="frn">'+f.nombre+' h</span>'+
+      '<span class="frb"><i style="width:'+(f.tasa/maxT*100)+'%;background:'+col+'"></i></span>'+
+      '<span class="frv">'+f.tasa.toFixed(1)+'%</span>'+
+      '<span class="frd">'+f.graves+" de "+f.eventos+"</span></div>";
+  }).join("")+(M.accSinHora>0 ? '<div class="frnota">'+M.accSinHora+" accidente(s) sin hora cargada quedan fuera de este cálculo.</div>" : ""));
+}
+
+/* ── PARETO de lesiones ──
+   Un eje solo: barras = % del total, línea = % acumulado, ambas en la misma
+   escala 0–100. Los conteos absolutos van como etiqueta sobre cada barra, así
+   que no hace falta un segundo eje (que además inventaría una correlación
+   arbitraria entre dos escalas). Referencia al 80% para separar los pocos
+   vitales de los muchos triviales. */
+var PARETO_DIM = "parte";
+var DIM_LBL = { parte:"parte del cuerpo", mecanismo:"mecanismo de lesión", sector:"sector" };
+
+function setPareto(btn, dim){
+  btn.parentElement.querySelectorAll("button").forEach(function(b){ b.classList.remove("on"); });
+  btn.classList.add("on");
+  PARETO_DIM = dim;
+  dibujarPareto();
+}
+
+// Etiqueta directa con el conteo arriba de cada barra (sin plugins externos).
+var etiquetasPareto = {
+  id: "etiquetasPareto",
+  afterDatasetsDraw: function(chart){
+    var meta = chart.getDatasetMeta(0);
+    if(!meta || meta.hidden) return;
+    var ctx = chart.ctx, datos = chart.$conteos || [];
+    ctx.save();
+    ctx.font = "700 11px 'Plus Jakarta Sans', system-ui, sans-serif";
+    ctx.fillStyle = "#334155";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    meta.data.forEach(function(bar,i){
+      if(datos[i]===undefined) return;
+      ctx.fillText(String(datos[i]), bar.x, bar.y - 4);
+    });
+    ctx.restore();
+  }
+};
+
+function dibujarPareto(){
+  var P = M.lesion.pareto[PARETO_DIM];
+  if(!P || !P.lista.length){
+    setHTML("lesionBody",'<div class="empty-mini">Sin datos de '+DIM_LBL[PARETO_DIM]+" en el período.</div>");
+    return;
+  }
+  var labels = P.lista.map(function(x){ return x.cat.length>22 ? x.cat.slice(0,20)+"…" : x.cat; });
+  var pcts   = P.lista.map(function(x){ return +x.pct.toFixed(1); });
+  var acums  = P.lista.map(function(x){ return +x.acum.toFixed(1); });
+  var conteos= P.lista.map(function(x){ return x.n; });
+  var COL_VITAL = "#B8402A", COL_RESTO = "#7C8DA4", COL_LINEA = "#334155";
+
+  crearChart("chParetoLes",{
+    type:"bar",
+    data:{ labels:labels, datasets:[
+      { label:"% del total", data:pcts, order:2,
+        backgroundColor: P.lista.map(function(x){ return x.vital ? COL_VITAL : COL_RESTO; }),
+        borderRadius:4, borderSkipped:false, categoryPercentage:.72, barPercentage:.86 },
+      { label:"% acumulado", data:acums, type:"line", order:1,
+        borderColor:COL_LINEA, borderWidth:2, backgroundColor:COL_LINEA,
+        pointRadius:4, pointHoverRadius:6, tension:0, fill:false },
+      { label:"Referencia 80%", data:labels.map(function(){ return 80; }), type:"line", order:0,
+        borderColor:"#C97A12", borderWidth:1.5, borderDash:[5,4], pointRadius:0, fill:false }
+    ]},
+    options:{
+      maintainAspectRatio:false,
+      interaction:{ mode:"index", intersect:false },
+      plugins:{
+        legend:{ position:"bottom", labels:{ boxWidth:10, font:{size:10} } },
+        tooltip:{ callbacks:{ label:function(c){
+          var x = P.lista[c.dataIndex];
+          if(c.datasetIndex===0) return "  "+x.n+" caso"+(x.n===1?"":"s")+" · "+x.pct.toFixed(1)+"% del total";
+          if(c.datasetIndex===1) return "  acumulado hasta acá: "+x.acum.toFixed(1)+"%";
+          return null;
+        } } }
+      },
+      scales:{
+        y:{ beginAtZero:true, max:100, title:{display:true,text:"% del total",font:{size:10}},
+            ticks:{ callback:function(v){ return v+"%"; }, font:{size:10} },
+            grid:{ color:"#F1F5F9" } },
+        x:{ ticks:{ autoSkip:false, maxRotation:38, minRotation:0, font:{size:10} }, grid:{ display:false } }
+      }
+    }
+  }, function(chart){ chart.$conteos = conteos; }, [etiquetasPareto]);
+
+  /* La conclusión no se limita a leer el corte del 80%: con pocas categorías y
+     muchos empates ese corte puede marcar casi todo como "vital" y no decir nada.
+     Lo importante para decidir una campaña es si hay o no concentración real. */
+  var nom = DIM_LBL[PARETO_DIM];
+  var top1 = P.lista[0];
+  var top2 = P.lista.slice(0,2);
+  var pct2 = top2.reduce(function(a,b){ return a+b.pct; },0);
+  var disperso = P.vitales / P.lista.length >= 0.6;
+  var h = "";
+
+  if(!disperso || pct2 >= 50){
+    h = "<p class='pareto-txt'><strong>"+esc(top2.map(function(x){return x.cat;}).join(" y "))+
+      " concentran el "+Math.round(pct2)+"%</strong> de las lesiones por "+nom+
+      " ("+top2.reduce(function(a,b){return a+b.n;},0)+" de "+P.total+" casos). "+
+      "El corte del 80% cae en la categoría "+P.vitales+" de "+P.lista.length+
+      ": ahí está el límite entre lo que conviene atacar y la cola larga.</p>";
+  } else {
+    h = "<p class='pareto-txt'><strong>No hay concentración por "+nom+"</strong>: hacen falta "+
+      P.vitales+" de "+P.lista.length+" categorías para llegar al 80%, y la primera ("+esc(top1.cat)+
+      ") explica apenas el "+Math.round(top1.pct)+"%. Una campaña general por este eje se diluye; "+
+      "conviene elegir el eje donde sí haya concentración.</p>";
+  }
+  if(PARETO_DIM==="parte" && M.lesion.pctManos>=40){
+    h += "<p class='pareto-txt'>Agrupando mano y dedos —que para una campaña son la misma intervención— "+
+      "suman el <strong>"+M.lesion.pctManos+"%</strong> en una sola línea de trabajo.</p>";
+  }
+  if(P.total < 20)
+    h += "<p class='pareto-nota'>Son "+P.total+" registros: alcanza para orientar una campaña, no para afirmar una tendencia. "+
+         "El Pareto se vuelve confiable a partir de unos 30 casos.</p>";
+  setHTML("lesionBody", h);
+}
+
+/* Dónde se lastima la gente — orientación para las campañas */
+function renderLesiones(){
+  var L = M.lesion;
+  if(!L || L.total===0){
+    setHTML("lesionBody",'<div class="empty-mini">Sin accidentes con lesión en el período.</div>');
+    setTxt("lesionOrienta","");
+    return;
+  }
+  if(L.menciones===0){
+    setHTML("lesionBody",'<div class="empty-mini">Ninguno de los '+L.total+
+      " accidentes tiene cargada la parte del cuerpo. Es un campo del formulario: sin él no se puede orientar una campaña.</div>");
+    setTxt("lesionOrienta","");
+    return;
+  }
+  dibujarPareto();
+
+  var top = L.partes[0];
+  var arq = L.cruce.length ? L.cruce[0].k.toLowerCase() : null;
+  var txt = "<strong>Manos y dedos concentran el "+L.pctManos+"% de las partes lesionadas</strong> ("+
+    L.manosDedos+" de "+L.menciones+" menciones sobre "+L.conDato+" accidentes con el dato cargado). ";
+  if(arq) txt += "El caso más repetido es <strong>"+esc(arq)+"</strong>. ";
+  txt += L.pctManos>=40
+    ? "Una campaña que apunte a manos —guantes adecuados a la tarea, puntos de atrapamiento, herramienta correcta y bloqueo antes de meter la mano— ataca la mitad del daño real de la planta con un solo mensaje."
+    : "El daño está repartido entre varias partes del cuerpo: conviene una campaña por sector antes que una general.";
+  if(L.conDato < L.total)
+    txt += " <em>"+(L.total-L.conDato)+" de "+L.total+" accidentes no tienen la parte del cuerpo cargada.</em>";
+  setHTML("lesionOrienta", txt);
 }
 function renderIntegridad(){
   function fila(n,hoy,obj,tagClase,tagTxt){
@@ -2003,6 +2390,11 @@ function blqTitulares(){
   t.push(["Accidentes sin acción correctiva", M.acc.sinAccion+" de "+M.acc.total,
           M.acc.sinAccion>0 ? "Res. SRT 230/2003: todo accidente se investiga" : "cobertura completa",
           M.acc.sinAccion>0 ? "malo" : "bueno"]);
+  if(M.lesion && M.lesion.menciones>0){
+    t.push(["Parte del cuerpo más afectada", M.lesion.partes[0].parte,
+            "manos y dedos: "+M.lesion.pctManos+"% de las lesiones · orienta la campaña",
+            M.lesion.pctManos>=40 ? "medio" : "neutro"]);
+  }
   t.push(["Reincidencia post-cierre", M.reinc.pct+"%",
           M.reinc.n+" de "+M.reinc.base+" riesgos identificados ya habían tenido una acción cerrada",
           M.reinc.pct>=40 ? "malo" : (M.reinc.pct>=20?"medio":"bueno")]);
@@ -2085,6 +2477,19 @@ function blqAccidentes(){
   if(M.acc.artNotificada < M.acc.total){
     h += '<p class="ojo">Notificación a la ART registrada en <strong>'+M.acc.artNotificada+" de "+M.acc.total+
          "</strong> accidentes. La Res. SRT 230/2003 obliga a denunciar todos los accidentes de trabajo.</p>";
+  }
+
+  // Dónde se lastima la gente
+  if(M.lesion && M.lesion.menciones>0){
+    var L = M.lesion;
+    h += "<p><strong>Dónde se lastiman:</strong> "+
+      L.partes.slice(0,4).map(function(x){ return x.parte.toLowerCase()+" ("+x.n+")"; }).join(", ")+
+      (L.partes.length>4 ? " y "+(L.partes.length-4)+" más" : "")+". "+
+      (L.pctManos>=40
+        ? "<strong>Manos y dedos concentran el "+L.pctManos+"%</strong> de las partes lesionadas"+
+          (L.cruce.length ? ", y el caso más repetido es "+esc(L.cruce[0].k.toLowerCase()) : "")+
+          ": es el foco de campaña con mejor relación esfuerzo/impacto."
+        : "El daño está repartido: conviene campaña por sector antes que una general.")+"</p>";
   }
 
   // Detalle caso por caso
@@ -2291,6 +2696,17 @@ function blqRecomendaciones(){
   if(M.acc.diasCargadosEn===0 && M.acc.total>0) r.push(["Cargar días de baja en cada accidente y las horas hombre trabajadas por mes en Maestros. Con esos dos datos el Índice de Frecuencia y el de Gravedad se encienden solos, sin desarrollo.","Regla: días de baja cargados = 0 y horas hombre no disponibles"]);
   if(M.pers.repiteAccidente.length>0) r.push(["Entrevista individual con las "+M.pers.repiteAccidente.length+" persona(s) que se accidentaron más de una vez, mirando tarea, turno y condición del puesto antes que el comportamiento. Una repetición en la misma persona en pocas semanas suele ser una señal del puesto, no del operario.","Regla: personas con más de un accidente en el período > 0"]);
   if(M.reinc.pct>=40 && M.reinc.top.length) r.push(["Sacar del circuito de acción correctiva los "+Math.min(3,M.reinc.top.length)+" riesgos más reincidentes ("+M.reinc.top.slice(0,3).map(function(x){return x.tema.toLowerCase()+" en "+x.sector;}).join("; ")+") y tratarlos como Kobetsu Kaizen con 5 Porqués y estandarización posterior. Volver a repararlos ya se probó y vuelven.","Regla: reincidencia post-cierre ≥ 40%"]);
+  if(M.lesion && M.lesion.pctManos>=40) r.push(["Campaña de manos: guantes adecuados a cada tarea, identificación de puntos de atrapamiento, herramienta correcta y bloqueo antes de meter la mano. Manos y dedos son el "+M.lesion.pctManos+"% de las partes lesionadas"+(M.lesion.cruce.length?" y el caso típico es "+M.lesion.cruce[0].k.toLowerCase():"")+", así que un solo mensaje cubre la mitad del daño real.","Regla: manos y dedos ≥ 40% de las partes lesionadas"]);
+  if(M.turnoResumen && M.turnoResumen.veces >= 1.5 && M.turnoResumen.rotEv > 30)
+    r.push(["Llevar la observación al turno rotativo: A, B, C y D generan el "+
+      pct(M.turnoResumen.rotEv, M.turnoResumen.rotEv+M.turnoResumen.cenEv)+"% del reporte pero "+
+      M.turnoResumen.rotAc+" de los "+(M.turnoResumen.rotAc+M.turnoResumen.cenAc)+" accidentes, con una tasa de gravedad "+
+      M.turnoResumen.veces.toFixed(1)+"× la del turno central"+
+      (M.turnoPeor && M.turnoPeor.rotativo ? " (el peor es el turno "+M.turnoPeor.turno+", "+M.turnoPeor.tasa.toFixed(1)+"%)" : "")+
+      ". Recorridas programadas con el supervisor de cada turno, no una campaña general.",
+      "Regla: tasa de gravedad de rotativos ≥ 1,5× la del central"]);
+  if(M.franjas && M.franjas.length===3 && M.franjas[2].eventos>0 && M.franjas[2].tasa > M.franjas[0].tasa*1.5)
+    r.push(["Recorridas programadas en la franja 22–06 h: ahí la tasa de gravedad es "+M.franjas[2].tasa.toFixed(1)+"% contra "+M.franjas[0].tasa.toFixed(1)+"% de la mañana, con apenas "+M.franjas[2].eventos+" eventos reportados. No es que de noche pase menos: es que se mira menos.","Regla: tasa de gravedad nocturna > 1,5× la diurna"]);
   if(M.ratioNM!==null && M.ratioNM<5) r.push(["Campaña específica de casi accidentes durante un mes: pedir NM, no más observaciones. Meta de 3 NM por cada accidente del trimestre. El casi accidente enseña dónde va a doler antes de que duela.","Regla: ratio NM/accidente "+M.ratioNM.toFixed(1)+" < 5"]);
   if(M.nuevosUlt===0) r.push(["Incorporar antes que exigir: cada supervisor suma 2 operarios de su turno por mes como reportadores, acompañándolos en la primera carga. Duplica la base en un trimestre sin pedirle más a las "+M.p50+" personas que hoy sostienen el sistema.","Regla: nuevos reportadores del mes = 0"]);
   if(M.conFoto<50 && M.acCerradas>0) r.push(["Foto de evidencia obligatoria para cerrar acciones de eventos graves y prioridad Alta, y validación por una persona distinta del responsable. Hoy el "+M.conFoto+"% de los cierres tiene foto y el resto es palabra.","Regla: cierres con foto < 50%"]);
@@ -2367,7 +2783,7 @@ function pintarChartsResumen(){
    guardamos la configuración y montamos el gráfico recién cuando su contenedor
    tiene tamaño real (al abrir la pestaña, o al preparar la impresión). Esto es
    lo que hacía que el informe en PDF saliera con dos gráficos en blanco. */
-var CHART_CFG = {};
+var CHART_CFG = {}, CHART_PRE = {}, CHART_PLUGINS = {};
 /* Sin animación: un tablero de gestión no la necesita, y sobre todo garantiza
    que al imprimir se capture el gráfico terminado y no el primer cuadro de la
    animación (que dibuja todas las series en cero). */
@@ -2376,8 +2792,10 @@ if(typeof Chart !== "undefined"){
   Chart.defaults.animations = false;
   Chart.defaults.transitions = { active:{animation:{duration:0}}, resize:{animation:{duration:0}} };
 }
-function crearChart(id,cfg){
+function crearChart(id,cfg,antesDeDibujar,plugins){
   CHART_CFG[id] = cfg;
+  CHART_PRE[id] = antesDeDibujar || null;
+  CHART_PLUGINS[id] = plugins || null;
   montarChart(id);
 }
 function avisoSinChart(cv){
@@ -2400,7 +2818,10 @@ function montarChart(id){
   if(!box || box.clientWidth===0 || box.clientHeight===0) return;   // oculto: se monta más tarde
   try{
     if(CHARTS[id]) CHARTS[id].destroy();
-    CHARTS[id] = new Chart(cv, cfg);
+    var c = Object.assign({}, cfg);
+    if(CHART_PLUGINS[id]) c.plugins = CHART_PLUGINS[id];
+    CHARTS[id] = new Chart(cv, c);
+    if(CHART_PRE[id]){ CHART_PRE[id](CHARTS[id]); CHARTS[id].update("none"); }
   }catch(err){ console.error("Chart "+id, err); }
 }
 /* Monta los que quedaron pendientes y reajusta los que ya estaban bien. */
